@@ -1,0 +1,19 @@
+<section class="mx-auto flex max-w-[1120px] flex-col items-center gap-12 px-6 py-24">
+  <header class="flex max-w-[720px] flex-col items-center gap-3 text-center">
+    <h1 class="text-display text-text">Конвертируйте файлы за секунды</h1>
+    <p class="text-body text-text-secondary">
+      JPG, PNG, DOCX и PDF — перетащите файл, выберите формат, заберите результат.
+    </p>
+  </header>
+
+  <div class="grid w-full grid-cols-1 gap-6 sm:grid-cols-2">
+    @for (direction of directions; track direction.from + direction.to) {
+      <app-format-card
+        [from]="direction.from"
+        [to]="direction.to"
+        [description]="direction.description"
+        [icon]="direction.icon"
+      />
+    }
+  </div>
+</section>
