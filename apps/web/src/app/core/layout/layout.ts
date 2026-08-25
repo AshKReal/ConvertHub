@@ -7,6 +7,8 @@ import type { MessageKey } from '../i18n/messages';
 import { I18nService } from '../services/i18n';
 import { ModalService } from '../services/modal';
 import { ThemeService } from '../services/theme';
+import { ToastService } from '../services/toast';
+import { Toast } from '../../shared/ui/toast/toast';
 
 const LOCALE_NAME_KEYS: Record<Locale, MessageKey> = {
   en: 'layout.language.en',
@@ -16,13 +18,14 @@ const LOCALE_NAME_KEYS: Record<Locale, MessageKey> = {
 
 @Component({
   selector: 'app-layout',
-  imports: [RouterOutlet, RouterLink, NgComponentOutlet],
+  imports: [RouterOutlet, RouterLink, NgComponentOutlet, Toast],
   templateUrl: './layout.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Layout {
   protected readonly themeService = inject(ThemeService);
   protected readonly modalService = inject(ModalService);
+  protected readonly toastService = inject(ToastService);
   protected readonly i18n = inject(I18nService);
 
   protected readonly locales = LOCALES;

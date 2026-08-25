@@ -4,3 +4,6 @@
  * и валидацию на сервере без единой правки в них.
  */
 export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+/** Реальный расчёт занятого места — спека 010; здесь только предел (AGENTS.md). */
+export const USER_STORAGE_QUOTA_BYTES = 300 * 1024 * 1024;

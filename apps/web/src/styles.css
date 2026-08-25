@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -70,9 +70,9 @@
   --color-warning: var(--warning);
   --color-warning-subtle: var(--warning-subtle);
 
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
-  --font-heading: "Unbounded", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-heading: 'Unbounded', 'Inter', ui-sans-serif, system-ui, sans-serif;
 
   --text-display: 44px;
   --text-display--line-height: 1.1;
@@ -112,7 +112,9 @@
 }
 
 @layer base {
-  html { color-scheme: light dark; }
+  html {
+    color-scheme: light dark;
+  }
   html {
     -webkit-tap-highlight-color: transparent;
     scrollbar-color: var(--border-strong) transparent;
@@ -126,13 +128,17 @@
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
   }
-  .tnum { font-variant-numeric: tabular-nums; }
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
   :focus-visible {
     outline: 2px solid var(--accent-hover);
     outline-offset: 2px;
   }
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
       animation-duration: 0.01ms !important;
       transition-duration: 0.01ms !important;
     }
@@ -196,4 +202,17 @@
   textarea {
     resize: vertical;
   }
+}
+
+@keyframes indeterminate-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+.animate-indeterminate {
+  animation: indeterminate-progress 1.2s ease-in-out infinite;
 }

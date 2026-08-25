@@ -30,6 +30,15 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'dropzone.empty.hint': '{format} до {limit}',
   'dropzone.dragover.title': 'Отпустите файл',
   'dropzone.selected.change': 'Выбрать другой файл',
+  'dropzone.selected.start': 'Конвертировать',
+  'dropzone.quotaFull.title': 'Ваше хранилище заполнено — файл сконвертируется, но не сохранится.',
+  'dropzone.uploading.title': 'Загрузка…',
+  'dropzone.uploading.cancel': 'Отмена',
+  'dropzone.converting.title': 'Конвертируем…',
+  'dropzone.done.download': 'Скачать',
+  'dropzone.error.retry': 'Попробовать снова',
+
+  'toast.dismiss': 'Закрыть уведомление',
 
   'error.invalidApiKey': 'Ключ API недействителен или отозван. Проверьте ключ или выпустите новый.',
   'error.emailNotVerified':

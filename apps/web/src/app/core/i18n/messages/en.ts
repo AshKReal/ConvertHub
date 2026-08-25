@@ -35,6 +35,15 @@ export const EN_MESSAGES = {
   'dropzone.empty.hint': '{format} up to {limit}',
   'dropzone.dragover.title': 'Release to drop the file',
   'dropzone.selected.change': 'Choose another file',
+  'dropzone.selected.start': 'Convert',
+  'dropzone.quotaFull.title': "Your storage is full — this file will convert but won't be saved.",
+  'dropzone.uploading.title': 'Uploading…',
+  'dropzone.uploading.cancel': 'Cancel',
+  'dropzone.converting.title': 'Converting…',
+  'dropzone.done.download': 'Download',
+  'dropzone.error.retry': 'Try again',
+
+  'toast.dismiss': 'Close notification',
 
   'error.invalidApiKey': 'Invalid or revoked API key. Check the key or issue a new one.',
   'error.emailNotVerified': 'Confirm your email before continuing — check your inbox for the link.',

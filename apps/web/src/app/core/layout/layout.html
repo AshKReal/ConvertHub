@@ -95,4 +95,15 @@
       <ng-container *ngComponentOutlet="modal.component; inputs: modal.inputs" />
     </div>
   }
+
+  <div class="fixed bottom-4 right-4 z-40 flex flex-col-reverse gap-2">
+    @for (toast of toastService.toasts(); track toast.id) {
+      <app-toast
+        [variant]="toast.variant"
+        [message]="toast.message"
+        [dismissLabel]="i18n.t('toast.dismiss')"
+        (dismissed)="toastService.dismiss(toast.id)"
+      />
+    }
+  </div>
 </div>

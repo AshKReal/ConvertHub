@@ -1,0 +1,45 @@
+<div
+  class="flex w-[360px] max-w-[calc(100vw-2rem)] items-start gap-3 rounded-lg border-l-[3px] bg-surface p-4 text-body-sm text-text shadow-toast"
+  [class]="stripeClass()"
+  role="status"
+>
+  <svg
+    [class]="'mt-0.5 h-5 w-5 shrink-0 ' + iconClass()"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    @switch (variant()) {
+      @case ('success') {
+        <path d="M20 6 9 17l-5-5" />
+      }
+      @case ('danger') {
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 8v5M12 16h.01" />
+      }
+      @default {
+        <path d="M12 9v4M12 17h.01" />
+        <path
+          d="M10.29 3.86 1.82 18a1 1 0 0 0 .86 1.5h18.64a1 1 0 0 0 .86-1.5L13.71 3.86a1 1 0 0 0-1.72 0Z"
+        />
+      }
+    }
+  </svg>
+
+  <p class="flex-1">{{ message() }}</p>
+
+  <button
+    type="button"
+    class="shrink-0 text-text-muted transition-colors duration-150 hover:text-text"
+    [attr.aria-label]="dismissLabel()"
+    (click)="dismissed.emit()"
+  >
+    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  </button>
+</div>

@@ -1,39 +1,7 @@
 @let current = state();
 
 <div class="mx-auto w-full max-w-[640px]">
-  @if (current.kind === 'selected') {
-    <div [class]="zoneClass()">
-      <svg
-        [class]="iconClass()"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.5"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
-      >
-        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" />
-        <path d="M14 3v5h5" />
-      </svg>
-
-      <p class="max-w-full truncate font-heading text-heading-sm text-text">
-        {{ current.file.name }}
-      </p>
-
-      <p class="flex flex-wrap items-center justify-center gap-2 text-caption text-text-muted">
-        <span class="tnum font-mono">{{ i18n.formatBytes(current.file.size) }}</span>
-        <span aria-hidden="true">·</span>
-        <button
-          type="button"
-          class="text-label text-text-secondary underline decoration-strong underline-offset-2 transition-colors duration-150 hover:text-text hover:decoration-accent-hover"
-          (click)="clear()"
-        >
-          {{ i18n.t('dropzone.selected.change') }}
-        </button>
-      </p>
-    </div>
-  } @else {
+  @if (current.kind === 'empty' || current.kind === 'dragover' || current.kind === 'quotaFull') {
     <button type="button" [class]="zoneClass()" (click)="open()">
       <svg
         [class]="iconClass()"
@@ -45,32 +13,188 @@
         stroke-linejoin="round"
         aria-hidden="true"
       >
-        <path d="M12 16V4M8 8l4-4 4 4" />
-        <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+        @if (current.kind === 'quotaFull') {
+          <path d="M12 9v4M12 17h.01" />
+          <path
+            d="M10.29 3.86 1.82 18a1 1 0 0 0 .86 1.5h18.64a1 1 0 0 0 .86-1.5L13.71 3.86a1 1 0 0 0-1.72 0Z"
+          />
+        } @else {
+          <path d="M12 16V4M8 8l4-4 4 4" />
+          <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+        }
       </svg>
 
-      <span class="font-heading text-heading-sm text-text">
-        <span class="hidden sm:inline">
-          {{
-            current.kind === 'dragover'
-              ? i18n.t('dropzone.dragover.title')
-              : i18n.t('dropzone.empty.titleDesktop')
-          }}
+      @if (current.kind === 'quotaFull') {
+        <span class="max-w-[420px] text-body-sm text-text">
+          {{ i18n.t('dropzone.quotaFull.title') }}
         </span>
-        <span class="sm:hidden">{{ i18n.t('dropzone.empty.titleMobile') }}</span>
-      </span>
+      } @else {
+        <span class="font-heading text-heading-sm text-text">
+          <span class="hidden sm:inline">
+            {{
+              current.kind === 'dragover'
+                ? i18n.t('dropzone.dragover.title')
+                : i18n.t('dropzone.empty.titleDesktop')
+            }}
+          </span>
+          <span class="sm:hidden">{{ i18n.t('dropzone.empty.titleMobile') }}</span>
+        </span>
 
-      <span class="text-caption text-text-muted">
-        {{ i18n.t('dropzone.empty.hint', { format: direction().from, limit: maxSize() }) }}
-      </span>
+        <span class="text-caption text-text-muted">
+          {{ i18n.t('dropzone.empty.hint', { format: direction().from, limit: maxSize() }) }}
+        </span>
+      }
     </button>
+  } @else {
+    <div [class]="zoneClass()">
+      @switch (current.kind) {
+        @case ('selected') {
+          <svg
+            [class]="iconClass()"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" />
+            <path d="M14 3v5h5" />
+          </svg>
+
+          <p class="max-w-full truncate font-heading text-heading-sm text-text">
+            {{ current.file.name }}
+          </p>
+
+          <p class="flex flex-wrap items-center justify-center gap-2 text-caption text-text-muted">
+            <span class="tnum font-mono">{{ i18n.formatBytes(current.file.size) }}</span>
+            <span aria-hidden="true">·</span>
+            <button
+              type="button"
+              class="text-label text-text-secondary underline decoration-strong underline-offset-2 transition-colors duration-150 hover:text-text hover:decoration-accent-hover"
+              (click)="clear()"
+            >
+              {{ i18n.t('dropzone.selected.change') }}
+            </button>
+          </p>
+
+          <app-button (click)="start()">{{ i18n.t('dropzone.selected.start') }}</app-button>
+        }
+        @case ('uploading') {
+          <svg
+            [class]="iconClass()"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" />
+            <path d="M14 3v5h5" />
+          </svg>
+
+          <p class="max-w-full truncate font-heading text-heading-sm text-text">
+            {{ current.file.name }}
+          </p>
+
+          <p class="text-body-sm text-text-secondary">{{ i18n.t('dropzone.uploading.title') }}</p>
+
+          <div class="flex w-full max-w-[320px] items-center gap-3">
+            <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-muted">
+              <div
+                class="h-full rounded-full bg-accent-hover transition-[width] duration-200 ease-linear"
+                [style.width.%]="current.progress"
+              ></div>
+            </div>
+            <span class="tnum w-10 shrink-0 font-mono text-caption text-text-muted">
+              {{ current.progress }}%
+            </span>
+          </div>
+
+          <button
+            type="button"
+            class="text-label text-text-secondary underline decoration-strong underline-offset-2 transition-colors duration-150 hover:text-text hover:decoration-accent-hover"
+            (click)="cancel()"
+          >
+            {{ i18n.t('dropzone.uploading.cancel') }}
+          </button>
+        }
+        @case ('converting') {
+          <svg
+            class="h-8 w-8 text-text-secondary"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" />
+            <path d="M14 3v5h5" />
+          </svg>
+
+          <p class="max-w-full truncate font-heading text-heading-sm text-text">
+            {{ current.file.name }}
+          </p>
+
+          <p class="text-body-sm text-text-secondary">{{ i18n.t('dropzone.converting.title') }}</p>
+
+          <div class="h-1.5 w-full max-w-[320px] overflow-hidden rounded-full bg-surface-muted">
+            <div class="h-full w-1/3 animate-indeterminate rounded-full bg-accent-hover"></div>
+          </div>
+        }
+        @case ('done') {
+          <svg
+            class="h-8 w-8 text-success"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+
+          <p class="max-w-full truncate font-heading text-heading-sm text-text">
+            {{ current.file.name }}
+          </p>
+
+          <p class="tnum font-mono text-caption text-text-muted">
+            {{ i18n.formatBytes(current.file.size) }}
+          </p>
+
+          <app-button (click)="download()">{{ i18n.t('dropzone.done.download') }}</app-button>
+        }
+        @case ('error') {
+          <svg
+            class="h-8 w-8 text-danger"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 8v5M12 16h.01" />
+          </svg>
+
+          <p class="max-w-[420px] text-body-sm text-text">{{ current.error.message }}</p>
+
+          <app-button variant="secondary" (click)="retry()">
+            {{ i18n.t('dropzone.error.retry') }}
+          </app-button>
+        }
+      }
+    </div>
   }
 
-  <input
-    #picker
-    type="file"
-    class="hidden"
-    [attr.accept]="accept()"
-    (change)="onPicked()"
-  />
+  <input #picker type="file" class="hidden" [attr.accept]="accept()" (change)="onPicked()" />
 </div>
