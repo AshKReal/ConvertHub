@@ -1,0 +1,18 @@
+@if (current(); as direction) {
+  <div class="mx-auto flex max-w-[720px] flex-col gap-8 px-6 py-24">
+    <a class="text-label text-text-secondary no-underline hover:text-text" routerLink="/">
+      ← {{ i18n.t('convert.back') }}
+    </a>
+
+    <header class="flex flex-col gap-3">
+      <h1 class="font-heading text-heading-lg text-text">
+        {{ i18n.t('convert.pageTitle', { from: direction.from, to: direction.to }) }}
+      </h1>
+      <p class="text-body text-text-secondary">
+        {{ i18n.t(descriptionKeys[direction.id]) }}
+      </p>
+    </header>
+
+    <app-dropzone [direction]="direction" />
+  </div>
+}

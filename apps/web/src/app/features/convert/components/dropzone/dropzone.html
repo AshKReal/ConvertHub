@@ -1,0 +1,76 @@
+@let current = state();
+
+<div class="mx-auto w-full max-w-[640px]">
+  @if (current.kind === 'selected') {
+    <div [class]="zoneClass()">
+      <svg
+        [class]="iconClass()"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" />
+        <path d="M14 3v5h5" />
+      </svg>
+
+      <p class="max-w-full truncate font-heading text-heading-sm text-text">
+        {{ current.file.name }}
+      </p>
+
+      <p class="flex flex-wrap items-center justify-center gap-2 text-caption text-text-muted">
+        <span class="tnum font-mono">{{ i18n.formatBytes(current.file.size) }}</span>
+        <span aria-hidden="true">·</span>
+        <button
+          type="button"
+          class="text-label text-text-secondary underline decoration-strong underline-offset-2 transition-colors duration-150 hover:text-text hover:decoration-accent-hover"
+          (click)="clear()"
+        >
+          {{ i18n.t('dropzone.selected.change') }}
+        </button>
+      </p>
+    </div>
+  } @else {
+    <button type="button" [class]="zoneClass()" (click)="open()">
+      <svg
+        [class]="iconClass()"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M12 16V4M8 8l4-4 4 4" />
+        <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+      </svg>
+
+      <span class="font-heading text-heading-sm text-text">
+        <span class="hidden sm:inline">
+          {{
+            current.kind === 'dragover'
+              ? i18n.t('dropzone.dragover.title')
+              : i18n.t('dropzone.empty.titleDesktop')
+          }}
+        </span>
+        <span class="sm:hidden">{{ i18n.t('dropzone.empty.titleMobile') }}</span>
+      </span>
+
+      <span class="text-caption text-text-muted">
+        {{ i18n.t('dropzone.empty.hint', { format: direction().from, limit: maxSize() }) }}
+      </span>
+    </button>
+  }
+
+  <input
+    #picker
+    type="file"
+    class="hidden"
+    [attr.accept]="accept()"
+    (change)="onPicked()"
+  />
+</div>
