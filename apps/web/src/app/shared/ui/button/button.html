@@ -1,0 +1,11 @@
+@if (link(); as target) {
+  <a [routerLink]="target" [class]="classes()">
+    <ng-container [ngTemplateOutlet]="label" />
+  </a>
+} @else {
+  <button [type]="type()" [disabled]="disabled()" [class]="classes()">
+    <ng-container [ngTemplateOutlet]="label" />
+  </button>
+}
+
+<ng-template #label><ng-content /></ng-template>
