@@ -73,6 +73,13 @@ export const EN_MESSAGES = {
   'auth.forgotPassword.sentMessage':
     "If an account exists for that email, we've sent a link to reset the password.",
   'auth.forgotPassword.backToLogin': 'Back to log in',
+  'auth.resetPassword.title': 'Set a new password',
+  'auth.resetPassword.newPassword': 'New password',
+  'auth.resetPassword.confirmPassword': 'Confirm new password',
+  'auth.resetPassword.submit': 'Reset password',
+  'auth.resetPassword.mismatch': "Passwords don't match",
+  'auth.resetPassword.successTitle': 'Password updated',
+  'auth.resetPassword.successMessage': 'You can now log in with your new password.',
 
   'error.invalidApiKey': 'Invalid or revoked API key. Check the key or issue a new one.',
   'error.emailNotVerified': 'Confirm your email before continuing — check your inbox for the link.',

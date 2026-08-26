@@ -70,6 +70,13 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'auth.forgotPassword.sentMessage':
     'Якщо акаунт із такою поштою існує, ми надіслали на нього посилання для скидання пароля.',
   'auth.forgotPassword.backToLogin': 'Повернутися до входу',
+  'auth.resetPassword.title': 'Новий пароль',
+  'auth.resetPassword.newPassword': 'Новий пароль',
+  'auth.resetPassword.confirmPassword': 'Підтвердіть пароль',
+  'auth.resetPassword.submit': 'Скинути пароль',
+  'auth.resetPassword.mismatch': 'Паролі не збігаються',
+  'auth.resetPassword.successTitle': 'Пароль оновлено',
+  'auth.resetPassword.successMessage': 'Тепер ви можете увійти з новим паролем.',
 
   'error.invalidApiKey': 'Ключ API недійсний або відкликаний. Перевірте ключ або випустіть новий.',
   'error.emailNotVerified':

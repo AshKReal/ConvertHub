@@ -70,6 +70,13 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'auth.forgotPassword.sentMessage':
     'Если аккаунт с таким email существует, мы отправили на него ссылку для сброса пароля.',
   'auth.forgotPassword.backToLogin': 'Вернуться ко входу',
+  'auth.resetPassword.title': 'Новый пароль',
+  'auth.resetPassword.newPassword': 'Новый пароль',
+  'auth.resetPassword.confirmPassword': 'Подтвердите пароль',
+  'auth.resetPassword.submit': 'Сбросить пароль',
+  'auth.resetPassword.mismatch': 'Пароли не совпадают',
+  'auth.resetPassword.successTitle': 'Пароль обновлён',
+  'auth.resetPassword.successMessage': 'Теперь вы можете войти с новым паролем.',
 
   'error.invalidApiKey': 'Ключ API недействителен или отозван. Проверьте ключ или выпустите новый.',
   'error.emailNotVerified':
