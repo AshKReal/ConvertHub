@@ -10,6 +10,8 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'layout.language.en': 'English',
   'layout.language.ru': 'Русский',
   'layout.language.uk': 'Українська',
+  'layout.auth.login': 'Увійти',
+  'layout.auth.logout': 'Вийти',
 
   'home.title': 'Конвертуйте файли за секунди',
   'home.subtitle': 'JPG, PNG, DOCX і PDF — перетягніть файл, виберіть формат, заберіть результат.',
@@ -40,6 +42,25 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'dropzone.error.retry': 'Спробувати ще раз',
 
   'toast.dismiss': 'Закрити сповіщення',
+
+  'auth.email': 'Email',
+  'auth.password': 'Пароль',
+  'auth.or': 'або',
+  'auth.login.title': 'Вхід',
+  'auth.login.submit': 'Увійти',
+  'auth.login.error': 'Невірний email або пароль',
+  'auth.login.noAccount': 'Немає акаунта?',
+  'auth.login.registerLink': 'Зареєструватися',
+  'auth.register.title': 'Реєстрація',
+  'auth.register.submit': 'Створити акаунт',
+  'auth.register.hasAccount': 'Вже є акаунт?',
+  'auth.register.loginLink': 'Увійти',
+  'auth.error.emailRequired': 'Введіть email',
+  'auth.error.emailInvalid': 'Введіть коректний email',
+  'auth.error.passwordRequired': 'Введіть пароль',
+  'auth.error.passwordTooShort': 'Пароль має бути не коротшим за {min} символів',
+  'auth.oauth.google': 'Увійти через Google',
+  'auth.oauth.telegram': 'Увійти через Telegram',
 
   'error.invalidApiKey': 'Ключ API недійсний або відкликаний. Перевірте ключ або випустіть новий.',
   'error.emailNotVerified':

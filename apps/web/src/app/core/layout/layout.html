@@ -15,7 +15,29 @@
       </a>
 
       <nav class="flex items-center gap-2">
-        <!-- пункты навигации разделов добавятся вместе с экранами 019–023 -->
+        @if (authService.user(); as user) {
+          <div class="flex items-center gap-2 pr-1">
+            <span
+              class="flex h-8 w-8 items-center justify-center rounded-full bg-accent-subtle text-label text-text"
+              [attr.aria-label]="user.email"
+            >
+              {{ user.email.charAt(0).toUpperCase() }}
+            </span>
+            <span class="hidden text-label text-text-secondary sm:inline">{{ user.email }}</span>
+            <button
+              type="button"
+              class="text-label text-text-secondary underline decoration-strong underline-offset-2 transition-colors duration-150 hover:text-text hover:decoration-accent-hover"
+              (click)="authService.logout()"
+            >
+              {{ i18n.t('layout.auth.logout') }}
+            </button>
+          </div>
+        } @else {
+          <a routerLink="/login" class="text-label text-text-secondary no-underline hover:text-text">
+            {{ i18n.t('layout.auth.login') }}
+          </a>
+        }
+
         <div
           class="flex items-center gap-1 rounded-md border border-hairline bg-surface-muted p-1"
           role="group"

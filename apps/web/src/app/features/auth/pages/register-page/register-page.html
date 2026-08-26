@@ -1,0 +1,38 @@
+<div class="mx-auto flex max-w-[400px] flex-col gap-6 px-6 py-24">
+  <h1 class="text-center font-heading text-heading-lg text-text">
+    {{ i18n.t('auth.register.title') }}
+  </h1>
+
+  <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-4" novalidate>
+    <app-input
+      fieldId="register-email"
+      [label]="i18n.t('auth.email')"
+      type="email"
+      [control]="form.controls.email"
+      [errorMessage]="emailError"
+      autocomplete="email"
+    />
+    <app-input
+      fieldId="register-password"
+      [label]="i18n.t('auth.password')"
+      type="password"
+      [control]="form.controls.password"
+      [errorMessage]="passwordError"
+      autocomplete="new-password"
+    />
+    <app-button type="submit">{{ i18n.t('auth.register.submit') }}</app-button>
+  </form>
+
+  <div class="flex items-center gap-3 text-caption text-text-muted" aria-hidden="true">
+    <span class="h-px flex-1 bg-hairline"></span>
+    {{ i18n.t('auth.or') }}
+    <span class="h-px flex-1 bg-hairline"></span>
+  </div>
+
+  <app-oauth-buttons (chosen)="onOauth()" />
+
+  <p class="text-center text-body-sm text-text-secondary">
+    {{ i18n.t('auth.register.hasAccount') }}
+    <a routerLink="/login" class="text-text">{{ i18n.t('auth.register.loginLink') }}</a>
+  </p>
+</div>
