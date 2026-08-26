@@ -26,4 +26,11 @@ export class ModalService {
   close(id: number): void {
     this.stack.update((modals) => modals.filter((modal) => modal.id !== id));
   }
+
+  closeTop(): void {
+    const top = this.stack().at(-1);
+    if (top !== undefined) {
+      this.close(top.id);
+    }
+  }
 }

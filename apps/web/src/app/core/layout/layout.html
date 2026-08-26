@@ -113,7 +113,12 @@
   </main>
 
   @for (modal of modalService.stack(); track modal.id) {
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-text/40 p-4">
+    <!-- Клик мимо диалога закрывает его; клавиатурный эквивалент — Escape (layout.ts), не сам фон. -->
+    <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+    <div
+      class="fixed inset-0 z-50 flex items-center justify-center bg-text/40 p-4"
+      (click)="onBackdropClick($event, modal.id)"
+    >
       <ng-container *ngComponentOutlet="modal.component; inputs: modal.inputs" />
     </div>
   }

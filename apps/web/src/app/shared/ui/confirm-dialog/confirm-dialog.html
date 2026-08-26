@@ -1,0 +1,14 @@
+<div
+  class="flex w-[400px] max-w-[calc(100vw-2rem)] flex-col gap-4 rounded-xl bg-surface p-6 shadow-modal"
+  role="alertdialog"
+  aria-modal="true"
+  [attr.aria-label]="title()"
+>
+  <h2 class="font-heading text-heading-sm text-text">{{ title() }}</h2>
+  <p class="text-body-sm text-text-secondary">{{ message() }}</p>
+
+  <div class="flex justify-end gap-3">
+    <app-button variant="secondary" (click)="cancel()">{{ cancelLabel() }}</app-button>
+    <app-button [variant]="variant()" (click)="confirm()">{{ confirmLabel() }}</app-button>
+  </div>
+</div>

@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, inject } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
 
 import { LOCALES, LOCALE_SHORT_LABELS, type Locale } from '../i18n/locale';
@@ -33,4 +33,15 @@ export class Layout {
   protected readonly locales = LOCALES;
   protected readonly shortLabels = LOCALE_SHORT_LABELS;
   protected readonly nameKeys = LOCALE_NAME_KEYS;
+
+  @HostListener('window:keydown.escape')
+  protected onEscape(): void {
+    this.modalService.closeTop();
+  }
+
+  protected onBackdropClick(event: MouseEvent, modalId: number): void {
+    if (event.target === event.currentTarget) {
+      this.modalService.close(modalId);
+    }
+  }
 }
