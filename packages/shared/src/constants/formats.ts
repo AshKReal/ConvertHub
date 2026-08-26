@@ -3,7 +3,7 @@
  * по содержимому (TECH-SPEC.md §7.3). Поэтому `target` — часть контракта,
  * а `accept` и `extensions` нужны только диалогу выбора файла и ничего не гарантируют.
  */
-export const CONVERSION_TARGETS = ['png', 'jpg', 'pdf'] as const;
+export const CONVERSION_TARGETS = ['png', 'jpg', 'pdf', 'docx'] as const;
 
 export type ConversionTarget = (typeof CONVERSION_TARGETS)[number];
 
@@ -33,10 +33,10 @@ export const CONVERSION_DIRECTIONS = [
     extensions: ['.docx'],
   },
   {
-    id: 'pdf-to-jpg',
+    id: 'pdf-to-docx',
     from: 'PDF',
-    to: 'JPG',
-    target: 'jpg',
+    to: 'DOCX',
+    target: 'docx',
     accept: ['application/pdf'],
     extensions: ['.pdf'],
   },

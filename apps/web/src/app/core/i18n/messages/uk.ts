@@ -20,7 +20,8 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'direction.jpgToPng.description': 'Прозорий фон, без втрати якості',
   'direction.pngToJpg.description': 'Менший розмір файлу, налаштовувана якість',
   'direction.docxToPdf.description': 'Готово до друку та надсилання, верстку збережено',
-  'direction.pdfToJpg.description': 'Посторінково, з вибором роздільної здатності',
+  'direction.pdfToDocx.description':
+    'Редагований Word-документ — перевірте оформлення після конвертації',
 
   'convert.back': 'На головну',
   'convert.pageTitle': 'Конвертація {from} у {to}',

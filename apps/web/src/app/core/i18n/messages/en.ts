@@ -25,7 +25,7 @@ export const EN_MESSAGES = {
   'direction.jpgToPng.description': 'Transparent background, no quality loss',
   'direction.pngToJpg.description': 'Smaller file, adjustable quality',
   'direction.docxToPdf.description': 'Ready to print and send, layout preserved',
-  'direction.pdfToJpg.description': 'Page by page, with a choice of resolution',
+  'direction.pdfToDocx.description': 'Editable Word document — check formatting after conversion',
 
   'convert.back': 'Back to home',
   'convert.pageTitle': 'Convert {from} to {to}',

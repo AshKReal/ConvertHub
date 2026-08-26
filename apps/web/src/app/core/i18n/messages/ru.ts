@@ -20,7 +20,8 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'direction.jpgToPng.description': 'Прозрачный фон, без потери качества',
   'direction.pngToJpg.description': 'Меньше размер файла, настраиваемое качество',
   'direction.docxToPdf.description': 'Готово к печати и отправке, вёрстка сохранена',
-  'direction.pdfToJpg.description': 'Постранично, с выбором разрешения',
+  'direction.pdfToDocx.description':
+    'Редактируемый Word-документ — проверьте оформление после конвертации',
 
   'convert.back': 'На главную',
   'convert.pageTitle': 'Конвертация {from} в {to}',
