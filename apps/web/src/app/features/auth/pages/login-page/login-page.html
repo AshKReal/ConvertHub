@@ -36,7 +36,7 @@
     <span class="h-px flex-1 bg-hairline"></span>
   </div>
 
-  <app-oauth-buttons (chosen)="onOauth()" />
+  <app-oauth-buttons (chosen)="onOauth($event)" />
 
   <p class="text-center text-body-sm text-text-secondary">
     {{ i18n.t('auth.login.noAccount') }}
