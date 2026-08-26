@@ -1,0 +1,80 @@
+@if (user(); as currentUser) {
+  <div class="mx-auto flex max-w-[560px] flex-col gap-10 px-6 py-16">
+    <div class="flex items-center gap-4">
+      <span
+        class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent-subtle font-heading text-heading-sm text-text"
+        [attr.aria-label]="currentUser.email"
+      >
+        {{ currentUser.email.charAt(0).toUpperCase() }}
+      </span>
+      <div>
+        <h1 class="font-heading text-heading text-text">{{ i18n.t('profile.title') }}</h1>
+        <p class="text-body-sm text-text-secondary">{{ currentUser.email }}</p>
+      </div>
+    </div>
+
+    <section class="flex flex-col gap-4">
+      <h2 class="font-heading text-heading-sm text-text">
+        {{ i18n.t('profile.changePassword.title') }}
+      </h2>
+      <form [formGroup]="form" (ngSubmit)="changePassword()" class="flex flex-col gap-4" novalidate>
+        <app-input
+          fieldId="profile-current-password"
+          [label]="i18n.t('profile.changePassword.currentPassword')"
+          type="password"
+          [control]="form.controls.currentPassword"
+          [errorMessage]="currentPasswordError"
+          autocomplete="current-password"
+        />
+        <app-input
+          fieldId="profile-new-password"
+          [label]="i18n.t('auth.resetPassword.newPassword')"
+          type="password"
+          [control]="form.controls.newPassword"
+          [errorMessage]="newPasswordError"
+          autocomplete="new-password"
+        />
+        <app-input
+          fieldId="profile-confirm-password"
+          [label]="i18n.t('auth.resetPassword.confirmPassword')"
+          type="password"
+          [control]="form.controls.confirmPassword"
+          [errorMessage]="confirmPasswordError"
+          autocomplete="new-password"
+        />
+        <app-button type="submit">{{ i18n.t('profile.changePassword.submit') }}</app-button>
+      </form>
+    </section>
+
+    <section class="flex flex-col gap-3">
+      <h2 class="font-heading text-heading-sm text-text">{{ i18n.t('profile.providers.title') }}</h2>
+      <ul class="flex flex-col gap-2">
+        @for (provider of providers; track provider) {
+          <li
+            class="flex items-center justify-between rounded-lg border border-hairline bg-surface px-4 py-3"
+          >
+            <span class="text-body-sm text-text">{{ i18n.t(providerLabelKeys[provider]) }}</span>
+            <span
+              class="text-label"
+              [class]="isConnected(provider) ? 'text-success' : 'text-text-muted'"
+            >
+              {{
+                i18n.t(
+                  isConnected(provider) ? 'profile.providers.connected' : 'profile.providers.notConnected'
+                )
+              }}
+            </span>
+          </li>
+        }
+      </ul>
+    </section>
+
+    <section class="flex flex-col gap-3 rounded-lg border border-danger-border bg-danger-subtle p-4">
+      <h2 class="font-heading text-heading-sm text-text">{{ i18n.t('profile.deleteAccount.title') }}</h2>
+      <p class="text-body-sm text-text-secondary">{{ i18n.t('profile.deleteAccount.description') }}</p>
+      <app-button variant="danger" (click)="confirmDelete()">
+        {{ i18n.t('profile.deleteAccount.action') }}
+      </app-button>
+    </section>
+  </div>
+}

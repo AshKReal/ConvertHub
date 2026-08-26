@@ -17,13 +17,18 @@
       <nav class="flex items-center gap-2">
         @if (authService.user(); as user) {
           <div class="flex items-center gap-2 pr-1">
-            <span
-              class="flex h-8 w-8 items-center justify-center rounded-full bg-accent-subtle text-label text-text"
-              [attr.aria-label]="user.email"
+            <a
+              routerLink="/profile"
+              class="flex items-center gap-2 text-label text-text-secondary no-underline hover:text-text"
+              [attr.aria-label]="i18n.t('layout.auth.profileLink')"
             >
-              {{ user.email.charAt(0).toUpperCase() }}
-            </span>
-            <span class="hidden text-label text-text-secondary sm:inline">{{ user.email }}</span>
+              <span
+                class="flex h-8 w-8 items-center justify-center rounded-full bg-accent-subtle text-text"
+              >
+                {{ user.email.charAt(0).toUpperCase() }}
+              </span>
+              <span class="hidden sm:inline">{{ user.email }}</span>
+            </a>
             <button
               type="button"
               class="text-label text-text-secondary underline decoration-strong underline-offset-2 transition-colors duration-150 hover:text-text hover:decoration-accent-hover"

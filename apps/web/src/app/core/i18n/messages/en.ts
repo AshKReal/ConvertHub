@@ -17,6 +17,7 @@ export const EN_MESSAGES = {
   'layout.language.uk': 'Українська',
   'layout.auth.login': 'Log in',
   'layout.auth.logout': 'Log out',
+  'layout.auth.profileLink': 'Open profile',
 
   'home.title': 'Convert files in seconds',
   'home.subtitle': 'JPG, PNG, DOCX and PDF — drop a file, pick the format, take the result.',
@@ -80,6 +81,27 @@ export const EN_MESSAGES = {
   'auth.resetPassword.mismatch': "Passwords don't match",
   'auth.resetPassword.successTitle': 'Password updated',
   'auth.resetPassword.successMessage': 'You can now log in with your new password.',
+
+  'profile.title': 'Profile',
+  'profile.changePassword.title': 'Change password',
+  'profile.changePassword.currentPassword': 'Current password',
+  'profile.changePassword.submit': 'Change password',
+  'profile.changePassword.success': 'Password changed — log in again',
+  'profile.providers.title': 'Connected sign-in methods',
+  'profile.providers.password': 'Password',
+  'profile.providers.google': 'Google',
+  'profile.providers.telegram': 'Telegram',
+  'profile.providers.connected': 'Connected',
+  'profile.providers.notConnected': 'Not connected',
+  'profile.deleteAccount.title': 'Delete account',
+  'profile.deleteAccount.description':
+    "This can't be undone. You'll be signed out and lose access immediately.",
+  'profile.deleteAccount.action': 'Delete account',
+  'profile.deleteAccount.confirmTitle': 'Delete your account?',
+  'profile.deleteAccount.confirmMessage':
+    "This can't be undone. You'll be signed out and lose access immediately.",
+  'profile.deleteAccount.confirmAction': 'Delete account',
+  'profile.deleteAccount.cancel': 'Cancel',
 
   'error.invalidApiKey': 'Invalid or revoked API key. Check the key or issue a new one.',
   'error.emailNotVerified': 'Confirm your email before continuing — check your inbox for the link.',

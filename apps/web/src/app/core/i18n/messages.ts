@@ -1,5 +1,6 @@
 import type { ConversionDirectionId, ErrorCode } from '@convert-hub/shared';
 
+import type { LoginProvider } from '../services/auth';
 import type { Locale } from './locale';
 import { EN_MESSAGES, type MessageKey } from './messages/en';
 import { RU_MESSAGES } from './messages/ru';
@@ -46,4 +47,14 @@ export const ERROR_MESSAGE_KEYS: Record<ErrorCode, MessageKey> = {
   SERVICE_OVERLOADED: 'error.serviceOverloaded',
   STORAGE_UNAVAILABLE: 'error.storageUnavailable',
   CONVERSION_TIMEOUT: 'error.conversionTimeout',
+};
+
+/**
+ * Способ входа мок-сессии (`AuthService`) — подпись в профиле. Явная карта
+ * вместо склейки ключа: новый провайдер не скомпилируется без перевода.
+ */
+export const LOGIN_PROVIDER_LABEL_KEYS: Record<LoginProvider, MessageKey> = {
+  password: 'profile.providers.password',
+  google: 'profile.providers.google',
+  telegram: 'profile.providers.telegram',
 };

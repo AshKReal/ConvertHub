@@ -12,6 +12,7 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'layout.language.uk': 'Українська',
   'layout.auth.login': 'Увійти',
   'layout.auth.logout': 'Вийти',
+  'layout.auth.profileLink': 'Відкрити профіль',
 
   'home.title': 'Конвертуйте файли за секунди',
   'home.subtitle': 'JPG, PNG, DOCX і PDF — перетягніть файл, виберіть формат, заберіть результат.',
@@ -77,6 +78,27 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'auth.resetPassword.mismatch': 'Паролі не збігаються',
   'auth.resetPassword.successTitle': 'Пароль оновлено',
   'auth.resetPassword.successMessage': 'Тепер ви можете увійти з новим паролем.',
+
+  'profile.title': 'Профіль',
+  'profile.changePassword.title': 'Зміна пароля',
+  'profile.changePassword.currentPassword': 'Поточний пароль',
+  'profile.changePassword.submit': 'Змінити пароль',
+  'profile.changePassword.success': 'Пароль змінено, увійдіть знову',
+  'profile.providers.title': 'Способи входу',
+  'profile.providers.password': 'Пароль',
+  'profile.providers.google': 'Google',
+  'profile.providers.telegram': 'Telegram',
+  'profile.providers.connected': 'Підключено',
+  'profile.providers.notConnected': 'Не підключено',
+  'profile.deleteAccount.title': 'Видалення акаунта',
+  'profile.deleteAccount.description':
+    'Це незворотно. Вас буде розлогінено і ви одразу втратите доступ.',
+  'profile.deleteAccount.action': 'Видалити акаунт',
+  'profile.deleteAccount.confirmTitle': 'Видалити акаунт?',
+  'profile.deleteAccount.confirmMessage':
+    'Це незворотно. Вас буде розлогінено і ви одразу втратите доступ.',
+  'profile.deleteAccount.confirmAction': 'Видалити акаунт',
+  'profile.deleteAccount.cancel': 'Скасувати',
 
   'error.invalidApiKey': 'Ключ API недійсний або відкликаний. Перевірте ключ або випустіть новий.',
   'error.emailNotVerified':
