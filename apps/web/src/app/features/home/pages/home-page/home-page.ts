@@ -1,27 +1,21 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { CONVERSION_DIRECTIONS } from '@convert-hub/shared';
 
-import { FormatCard, FormatCardIcon } from '../../../../shared/ui/format-card/format-card';
-
-interface ConversionDirection {
-  from: string;
-  to: string;
-  description: string;
-  icon: FormatCardIcon;
-}
-
-const CONVERSION_DIRECTIONS: readonly ConversionDirection[] = [
-  { from: 'JPG', to: 'PNG', description: 'Прозрачный фон, без потери качества', icon: 'image' },
-  { from: 'PNG', to: 'JPG', description: 'Меньше размер файла, настраиваемое качество', icon: 'image' },
-  { from: 'DOCX', to: 'PDF', description: 'Готово к печати и отправке, вёрстка сохранена', icon: 'document-lines' },
-  { from: 'PDF', to: 'JPG', description: 'Постранично, с выбором разрешения', icon: 'document' },
-];
+import { DIRECTION_DESCRIPTION_KEYS } from '../../../../core/i18n/messages';
+import { I18nService } from '../../../../core/services/i18n';
+import { Button } from '../../../../shared/ui/button/button';
+import { FormatCard } from '../../../../shared/ui/format-card/format-card';
 
 @Component({
   selector: 'app-home-page',
-  imports: [FormatCard],
+  imports: [Button, FormatCard, RouterLink],
   templateUrl: './home-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HomePage {
+  protected readonly i18n = inject(I18nService);
+
   protected readonly directions = CONVERSION_DIRECTIONS;
+  protected readonly descriptionKeys = DIRECTION_DESCRIPTION_KEYS;
 }
