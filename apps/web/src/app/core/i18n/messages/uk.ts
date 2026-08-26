@@ -51,6 +51,7 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'auth.login.error': 'Невірний email або пароль',
   'auth.login.noAccount': 'Немає акаунта?',
   'auth.login.registerLink': 'Зареєструватися',
+  'auth.login.forgotPassword': 'Забули пароль?',
   'auth.register.title': 'Реєстрація',
   'auth.register.submit': 'Створити акаунт',
   'auth.register.hasAccount': 'Вже є акаунт?',
@@ -61,6 +62,14 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'auth.error.passwordTooShort': 'Пароль має бути не коротшим за {min} символів',
   'auth.oauth.google': 'Увійти через Google',
   'auth.oauth.telegram': 'Увійти через Telegram',
+  'auth.forgotPassword.title': 'Відновлення пароля',
+  'auth.forgotPassword.hint':
+    'Введіть email, вказаний під час реєстрації — надішлемо посилання для скидання пароля.',
+  'auth.forgotPassword.submit': 'Надіслати посилання',
+  'auth.forgotPassword.sentTitle': 'Перевірте пошту',
+  'auth.forgotPassword.sentMessage':
+    'Якщо акаунт із такою поштою існує, ми надіслали на нього посилання для скидання пароля.',
+  'auth.forgotPassword.backToLogin': 'Повернутися до входу',
 
   'error.invalidApiKey': 'Ключ API недійсний або відкликаний. Перевірте ключ або випустіть новий.',
   'error.emailNotVerified':

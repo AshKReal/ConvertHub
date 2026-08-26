@@ -51,6 +51,7 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'auth.login.error': 'Неверный email или пароль',
   'auth.login.noAccount': 'Нет аккаунта?',
   'auth.login.registerLink': 'Зарегистрироваться',
+  'auth.login.forgotPassword': 'Забыли пароль?',
   'auth.register.title': 'Регистрация',
   'auth.register.submit': 'Создать аккаунт',
   'auth.register.hasAccount': 'Уже есть аккаунт?',
@@ -61,6 +62,14 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'auth.error.passwordTooShort': 'Пароль должен быть не короче {min} символов',
   'auth.oauth.google': 'Войти через Google',
   'auth.oauth.telegram': 'Войти через Telegram',
+  'auth.forgotPassword.title': 'Восстановление пароля',
+  'auth.forgotPassword.hint':
+    'Введите email, указанный при регистрации, — пришлём ссылку для сброса пароля.',
+  'auth.forgotPassword.submit': 'Отправить ссылку',
+  'auth.forgotPassword.sentTitle': 'Проверьте почту',
+  'auth.forgotPassword.sentMessage':
+    'Если аккаунт с таким email существует, мы отправили на него ссылку для сброса пароля.',
+  'auth.forgotPassword.backToLogin': 'Вернуться ко входу',
 
   'error.invalidApiKey': 'Ключ API недействителен или отозван. Проверьте ключ или выпустите новый.',
   'error.emailNotVerified':

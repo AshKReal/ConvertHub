@@ -55,6 +55,7 @@ export const EN_MESSAGES = {
   'auth.login.error': 'Invalid email or password',
   'auth.login.noAccount': "Don't have an account?",
   'auth.login.registerLink': 'Sign up',
+  'auth.login.forgotPassword': 'Forgot password?',
   'auth.register.title': 'Create an account',
   'auth.register.submit': 'Create account',
   'auth.register.hasAccount': 'Already have an account?',
@@ -65,6 +66,13 @@ export const EN_MESSAGES = {
   'auth.error.passwordTooShort': 'Password must be at least {min} characters',
   'auth.oauth.google': 'Continue with Google',
   'auth.oauth.telegram': 'Continue with Telegram',
+  'auth.forgotPassword.title': 'Reset your password',
+  'auth.forgotPassword.hint': "Enter the email you signed up with and we'll send a reset link.",
+  'auth.forgotPassword.submit': 'Send reset link',
+  'auth.forgotPassword.sentTitle': 'Check your email',
+  'auth.forgotPassword.sentMessage':
+    "If an account exists for that email, we've sent a link to reset the password.",
+  'auth.forgotPassword.backToLogin': 'Back to log in',
 
   'error.invalidApiKey': 'Invalid or revoked API key. Check the key or issue a new one.',
   'error.emailNotVerified': 'Confirm your email before continuing — check your inbox for the link.',
