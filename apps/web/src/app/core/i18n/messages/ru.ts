@@ -10,6 +10,8 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'layout.language.en': 'English',
   'layout.language.ru': 'Русский',
   'layout.language.uk': 'Українська',
+  'layout.auth.login': 'Войти',
+  'layout.auth.logout': 'Выйти',
 
   'home.title': 'Конвертируйте файлы за секунды',
   'home.subtitle': 'JPG, PNG, DOCX и PDF — перетащите файл, выберите формат, заберите результат.',
@@ -20,7 +22,8 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'direction.jpgToPng.description': 'Прозрачный фон, без потери качества',
   'direction.pngToJpg.description': 'Меньше размер файла, настраиваемое качество',
   'direction.docxToPdf.description': 'Готово к печати и отправке, вёрстка сохранена',
-  'direction.pdfToJpg.description': 'Постранично, с выбором разрешения',
+  'direction.pdfToDocx.description':
+    'Редактируемый Word-документ — проверьте оформление после конвертации',
 
   'convert.back': 'На главную',
   'convert.pageTitle': 'Конвертация {from} в {to}',
@@ -39,6 +42,25 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'dropzone.error.retry': 'Попробовать снова',
 
   'toast.dismiss': 'Закрыть уведомление',
+
+  'auth.email': 'Email',
+  'auth.password': 'Пароль',
+  'auth.or': 'или',
+  'auth.login.title': 'Вход',
+  'auth.login.submit': 'Войти',
+  'auth.login.error': 'Неверный email или пароль',
+  'auth.login.noAccount': 'Нет аккаунта?',
+  'auth.login.registerLink': 'Зарегистрироваться',
+  'auth.register.title': 'Регистрация',
+  'auth.register.submit': 'Создать аккаунт',
+  'auth.register.hasAccount': 'Уже есть аккаунт?',
+  'auth.register.loginLink': 'Войти',
+  'auth.error.emailRequired': 'Введите email',
+  'auth.error.emailInvalid': 'Введите корректный email',
+  'auth.error.passwordRequired': 'Введите пароль',
+  'auth.error.passwordTooShort': 'Пароль должен быть не короче {min} символов',
+  'auth.oauth.google': 'Войти через Google',
+  'auth.oauth.telegram': 'Войти через Telegram',
 
   'error.invalidApiKey': 'Ключ API недействителен или отозван. Проверьте ключ или выпустите новый.',
   'error.emailNotVerified':

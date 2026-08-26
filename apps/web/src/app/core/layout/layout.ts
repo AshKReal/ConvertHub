@@ -4,6 +4,7 @@ import { RouterLink, RouterOutlet } from '@angular/router';
 
 import { LOCALES, LOCALE_SHORT_LABELS, type Locale } from '../i18n/locale';
 import type { MessageKey } from '../i18n/messages';
+import { AuthService } from '../services/auth';
 import { I18nService } from '../services/i18n';
 import { ModalService } from '../services/modal';
 import { ThemeService } from '../services/theme';
@@ -26,6 +27,7 @@ export class Layout {
   protected readonly themeService = inject(ThemeService);
   protected readonly modalService = inject(ModalService);
   protected readonly toastService = inject(ToastService);
+  protected readonly authService = inject(AuthService);
   protected readonly i18n = inject(I18nService);
 
   protected readonly locales = LOCALES;

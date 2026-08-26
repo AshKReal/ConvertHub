@@ -15,6 +15,8 @@ export const EN_MESSAGES = {
   'layout.language.en': 'English',
   'layout.language.ru': 'Русский',
   'layout.language.uk': 'Українська',
+  'layout.auth.login': 'Log in',
+  'layout.auth.logout': 'Log out',
 
   'home.title': 'Convert files in seconds',
   'home.subtitle': 'JPG, PNG, DOCX and PDF — drop a file, pick the format, take the result.',
@@ -25,7 +27,7 @@ export const EN_MESSAGES = {
   'direction.jpgToPng.description': 'Transparent background, no quality loss',
   'direction.pngToJpg.description': 'Smaller file, adjustable quality',
   'direction.docxToPdf.description': 'Ready to print and send, layout preserved',
-  'direction.pdfToJpg.description': 'Page by page, with a choice of resolution',
+  'direction.pdfToDocx.description': 'Editable Word document — check formatting after conversion',
 
   'convert.back': 'Back to home',
   'convert.pageTitle': 'Convert {from} to {to}',
@@ -44,6 +46,25 @@ export const EN_MESSAGES = {
   'dropzone.error.retry': 'Try again',
 
   'toast.dismiss': 'Close notification',
+
+  'auth.email': 'Email',
+  'auth.password': 'Password',
+  'auth.or': 'or',
+  'auth.login.title': 'Log in',
+  'auth.login.submit': 'Log in',
+  'auth.login.error': 'Invalid email or password',
+  'auth.login.noAccount': "Don't have an account?",
+  'auth.login.registerLink': 'Sign up',
+  'auth.register.title': 'Create an account',
+  'auth.register.submit': 'Create account',
+  'auth.register.hasAccount': 'Already have an account?',
+  'auth.register.loginLink': 'Log in',
+  'auth.error.emailRequired': 'Enter your email',
+  'auth.error.emailInvalid': 'Enter a valid email',
+  'auth.error.passwordRequired': 'Enter your password',
+  'auth.error.passwordTooShort': 'Password must be at least {min} characters',
+  'auth.oauth.google': 'Continue with Google',
+  'auth.oauth.telegram': 'Continue with Telegram',
 
   'error.invalidApiKey': 'Invalid or revoked API key. Check the key or issue a new one.',
   'error.emailNotVerified': 'Confirm your email before continuing — check your inbox for the link.',

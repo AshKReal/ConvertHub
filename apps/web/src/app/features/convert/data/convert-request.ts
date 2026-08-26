@@ -25,9 +25,5 @@ export function buildConvertFormData(file: File, request: ConvertRequest): FormD
     form.append('background', request.background);
   }
 
-  if (request.dpi !== undefined) {
-    form.append('dpi', String(request.dpi));
-  }
-
   return form;
 }

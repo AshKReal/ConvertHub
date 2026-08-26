@@ -1,0 +1,18 @@
+<div class="flex flex-col gap-1.5">
+  <label [for]="fieldId()" class="text-label text-text-secondary">{{ label() }}</label>
+
+  <input
+    [id]="fieldId()"
+    [type]="type()"
+    [formControl]="control()"
+    [autocomplete]="autocomplete()"
+    [attr.aria-invalid]="errorMessage() !== null"
+    [attr.aria-describedby]="describedBy()"
+    class="h-10 rounded-md border bg-surface px-3 py-[9px] text-body text-text transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-accent-hover"
+    [class]="errorMessage() !== null ? 'border-danger' : 'border-strong focus:border-accent-hover'"
+  />
+
+  @if (errorMessage(); as message) {
+    <p [id]="describedBy()" class="text-caption text-danger">{{ message }}</p>
+  }
+</div>

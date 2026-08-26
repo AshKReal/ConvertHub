@@ -17,7 +17,6 @@ export const convertRequestSchema = z.object({
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)
     .optional(),
-  dpi: z.union([z.literal(72), z.literal(150), z.literal(300)]).optional(),
 });
 
 export type ConvertRequest = z.infer<typeof convertRequestSchema>;

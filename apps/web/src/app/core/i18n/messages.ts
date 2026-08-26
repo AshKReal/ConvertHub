@@ -22,7 +22,7 @@ export const DIRECTION_DESCRIPTION_KEYS: Record<ConversionDirectionId, MessageKe
   'jpg-to-png': 'direction.jpgToPng.description',
   'png-to-jpg': 'direction.pngToJpg.description',
   'docx-to-pdf': 'direction.docxToPdf.description',
-  'pdf-to-jpg': 'direction.pdfToJpg.description',
+  'pdf-to-docx': 'direction.pdfToDocx.description',
 };
 
 /**

@@ -10,6 +10,10 @@ export const routes: Routes = [
     loadChildren: () => import('./features/convert/convert.routes').then((m) => m.CONVERT_ROUTES),
   },
   {
+    path: '',
+    loadChildren: () => import('./features/auth/auth.routes').then((m) => m.AUTH_ROUTES),
+  },
+  {
     path: '**',
     redirectTo: '',
   },
