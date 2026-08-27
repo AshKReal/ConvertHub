@@ -32,6 +32,11 @@ export const routes: Routes = [
       import('./features/api-keys/api-keys.routes').then((m) => m.API_KEYS_ROUTES),
   },
   {
+    path: 'api-docs',
+    loadChildren: () =>
+      import('./features/api-docs/api-docs.routes').then((m) => m.API_DOCS_ROUTES),
+  },
+  {
     path: '**',
     redirectTo: '',
   },

@@ -15,6 +15,7 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'layout.auth.profileLink': 'Открыть профиль',
   'layout.nav.files': 'Мои файлы',
   'layout.nav.apiKeys': 'API-ключи',
+  'layout.nav.apiDocs': 'Документация',
 
   'home.title': 'Конвертируйте файлы за секунды',
   'home.subtitle': 'JPG, PNG, DOCX и PDF — перетащите файл, выберите формат, заберите результат.',
@@ -162,4 +163,35 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'apiKeys.revokeConfirm.confirm': 'Отозвать',
   'apiKeys.revokeConfirm.cancel': 'Отмена',
   'apiKeys.revokeConfirm.success': 'Ключ отозван',
+
+  'apiDocs.title': 'Документация API',
+  'apiDocs.intro':
+    'Базовый URL https://api.convert-hub.io/v1. Только HTTPS — запросы по HTTP отклоняются, а не перенаправляются. Это заглушечная справка; сгенерированная OpenAPI-схема и интерактивный проигрыватель появятся позже.',
+  'apiDocs.auth.title': 'Аутентификация',
+  'apiDocs.auth.description':
+    'Каждый запрос несёт API-ключ в заголовке Bearer — выпускается на странице API-ключей.',
+  'apiDocs.endpoints.title': 'Эндпоинты',
+  'apiDocs.endpoints.convert': 'Конвертация файла (multipart)',
+  'apiDocs.endpoints.listFiles': 'Список ваших файлов, курсорная пагинация',
+  'apiDocs.endpoints.downloadFile': '302 на подписанную ссылку для скачивания',
+  'apiDocs.endpoints.deleteFile': 'Удаление файла, идемпотентно',
+  'apiDocs.endpoints.listConversions': 'История конвертаций, включая неуспешные',
+  'apiDocs.endpoints.formats': 'Поддерживаемые направления и лимиты, без ключа',
+  'apiDocs.endpoints.me': 'Аккаунт, квота, остаток лимита',
+  'apiDocs.endpoints.health': 'Для площадки развёртывания',
+  'apiDocs.limits.title': 'Лимиты',
+  'apiDocs.limits.fileSize': 'Размер файла: до {value}',
+  'apiDocs.limits.quota': 'Квота хранилища: {value} на аккаунт',
+  'apiDocs.limits.rateLimit': 'Запросов к API: 60 в минуту',
+  'apiDocs.limits.userDaily': 'Конвертаций для вошедшего: 100 в сутки',
+  'apiDocs.limits.guestHourly': 'Конвертаций для гостя: 5 в час, по IP',
+  'apiDocs.limits.pdfPages': 'Страниц в PDF: до 50 на файл',
+  'apiDocs.errors.title': 'Ошибки',
+  'apiDocs.errors.description':
+    'RFC 9457 problem+json, всегда с машиночитаемым кодом — по одному HTTP-статусу нельзя понять, стоит ли повторять запрос.',
+  'apiDocs.errors.retryable': 'Можно повторить',
+  'apiDocs.errors.notRetryable': 'Нельзя повторить',
+  'apiDocs.examples.title': 'Примеры интеграции',
+  'apiDocs.examples.convert': 'Конвертировать файл и сразу сохранить результат через curl -o:',
+  'apiDocs.examples.listFiles': 'Получить список файлов:',
 };

@@ -20,6 +20,7 @@ export const EN_MESSAGES = {
   'layout.auth.profileLink': 'Open profile',
   'layout.nav.files': 'My files',
   'layout.nav.apiKeys': 'API keys',
+  'layout.nav.apiDocs': 'Docs',
 
   'home.title': 'Convert files in seconds',
   'home.subtitle': 'JPG, PNG, DOCX and PDF — drop a file, pick the format, take the result.',
@@ -164,6 +165,37 @@ export const EN_MESSAGES = {
   'apiKeys.revokeConfirm.confirm': 'Revoke',
   'apiKeys.revokeConfirm.cancel': 'Cancel',
   'apiKeys.revokeConfirm.success': 'Key revoked',
+
+  'apiDocs.title': 'API documentation',
+  'apiDocs.intro':
+    'Base URL https://api.convert-hub.io/v1. HTTPS only — plain HTTP requests are rejected, not redirected. This is a stub reference; the generated OpenAPI schema and an interactive explorer land later.',
+  'apiDocs.auth.title': 'Authentication',
+  'apiDocs.auth.description':
+    'Every request carries a bearer API key issued from the API keys page.',
+  'apiDocs.endpoints.title': 'Endpoints',
+  'apiDocs.endpoints.convert': 'Convert a file (multipart)',
+  'apiDocs.endpoints.listFiles': 'List your files, cursor pagination',
+  'apiDocs.endpoints.downloadFile': '302 to a signed download link',
+  'apiDocs.endpoints.deleteFile': 'Delete a file, idempotent',
+  'apiDocs.endpoints.listConversions': 'Conversion history, including failures',
+  'apiDocs.endpoints.formats': 'Supported directions and limits, no key required',
+  'apiDocs.endpoints.me': 'Account, quota, remaining rate limit',
+  'apiDocs.endpoints.health': 'For the hosting platform',
+  'apiDocs.limits.title': 'Limits',
+  'apiDocs.limits.fileSize': 'File size: up to {value}',
+  'apiDocs.limits.quota': 'Storage quota: {value} per account',
+  'apiDocs.limits.rateLimit': 'API requests: 60 per minute',
+  'apiDocs.limits.userDaily': 'Signed-in conversions: 100 per day',
+  'apiDocs.limits.guestHourly': 'Guest conversions: 5 per hour, by IP',
+  'apiDocs.limits.pdfPages': 'PDF pages: up to 50 per file',
+  'apiDocs.errors.title': 'Errors',
+  'apiDocs.errors.description':
+    "RFC 9457 problem+json, always with a machine-readable code — the HTTP status alone doesn't tell you whether to retry.",
+  'apiDocs.errors.retryable': 'Retryable',
+  'apiDocs.errors.notRetryable': 'Not retryable',
+  'apiDocs.examples.title': 'Integration examples',
+  'apiDocs.examples.convert': 'Convert a file and save the result directly with curl -o:',
+  'apiDocs.examples.listFiles': 'List your files:',
 } as const;
 
 export type MessageKey = keyof typeof EN_MESSAGES;
