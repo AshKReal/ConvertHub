@@ -14,6 +14,7 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'layout.auth.logout': 'Выйти',
   'layout.auth.profileLink': 'Открыть профиль',
   'layout.nav.files': 'Мои файлы',
+  'layout.nav.apiKeys': 'API-ключи',
 
   'home.title': 'Конвертируйте файлы за секунды',
   'home.subtitle': 'JPG, PNG, DOCX и PDF — перетащите файл, выберите формат, заберите результат.',
@@ -135,4 +136,30 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'files.badge.saved': 'Сохранён',
   'files.badge.temporary': 'Временный',
   'files.save.toggle': 'Сохранять этот файл',
+
+  'apiKeys.title': 'API-ключи',
+  'apiKeys.issue.action': 'Выпустить новый ключ',
+  'apiKeys.empty.title': 'Ключей пока нет',
+  'apiKeys.empty.hint': 'Выпустите ключ, чтобы обращаться к API.',
+  'apiKeys.row.created': 'Выпущен {date}',
+  'apiKeys.row.neverUsed': 'Никогда не использовался',
+  'apiKeys.row.lastUsed': 'Использован {date}',
+  'apiKeys.row.reissue': 'Перевыпустить',
+  'apiKeys.row.revoke': 'Отозвать',
+  'apiKeys.reveal.title': 'Ваш новый ключ',
+  'apiKeys.reveal.warning':
+    'Это единственный раз, когда он показывается полностью — скопируйте его сейчас.',
+  'apiKeys.reveal.copy': 'Копировать',
+  'apiKeys.reveal.copied': 'Скопировано',
+  'apiKeys.reveal.done': 'Готово',
+  'apiKeys.reissueConfirm.title': 'Перевыпустить ключ?',
+  'apiKeys.reissueConfirm.message': 'Старый ключ перестанет работать сразу.',
+  'apiKeys.reissueConfirm.confirm': 'Перевыпустить',
+  'apiKeys.reissueConfirm.cancel': 'Отмена',
+  'apiKeys.revokeConfirm.title': 'Отозвать ключ?',
+  'apiKeys.revokeConfirm.message':
+    'Всё, что использует этот ключ, сразу перестанет работать. Это необратимо.',
+  'apiKeys.revokeConfirm.confirm': 'Отозвать',
+  'apiKeys.revokeConfirm.cancel': 'Отмена',
+  'apiKeys.revokeConfirm.success': 'Ключ отозван',
 };

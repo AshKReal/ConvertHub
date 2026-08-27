@@ -19,6 +19,7 @@ export const EN_MESSAGES = {
   'layout.auth.logout': 'Log out',
   'layout.auth.profileLink': 'Open profile',
   'layout.nav.files': 'My files',
+  'layout.nav.apiKeys': 'API keys',
 
   'home.title': 'Convert files in seconds',
   'home.subtitle': 'JPG, PNG, DOCX and PDF — drop a file, pick the format, take the result.',
@@ -138,6 +139,31 @@ export const EN_MESSAGES = {
   'files.badge.saved': 'Saved',
   'files.badge.temporary': 'Temporary',
   'files.save.toggle': 'Keep this file',
+
+  'apiKeys.title': 'API keys',
+  'apiKeys.issue.action': 'Issue new key',
+  'apiKeys.empty.title': 'No API keys yet',
+  'apiKeys.empty.hint': 'Issue a key to call the API.',
+  'apiKeys.row.created': 'Issued {date}',
+  'apiKeys.row.neverUsed': 'Never used',
+  'apiKeys.row.lastUsed': 'Last used {date}',
+  'apiKeys.row.reissue': 'Reissue',
+  'apiKeys.row.revoke': 'Revoke',
+  'apiKeys.reveal.title': 'Your new key',
+  'apiKeys.reveal.warning': "This is the only time it's shown in full — copy it now.",
+  'apiKeys.reveal.copy': 'Copy',
+  'apiKeys.reveal.copied': 'Copied',
+  'apiKeys.reveal.done': 'Done',
+  'apiKeys.reissueConfirm.title': 'Reissue this key?',
+  'apiKeys.reissueConfirm.message': 'The old key stops working immediately.',
+  'apiKeys.reissueConfirm.confirm': 'Reissue',
+  'apiKeys.reissueConfirm.cancel': 'Cancel',
+  'apiKeys.revokeConfirm.title': 'Revoke this key?',
+  'apiKeys.revokeConfirm.message':
+    "Anything using this key stops working immediately. This can't be undone.",
+  'apiKeys.revokeConfirm.confirm': 'Revoke',
+  'apiKeys.revokeConfirm.cancel': 'Cancel',
+  'apiKeys.revokeConfirm.success': 'Key revoked',
 } as const;
 
 export type MessageKey = keyof typeof EN_MESSAGES;

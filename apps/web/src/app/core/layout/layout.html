@@ -91,6 +91,12 @@
               {{ i18n.t('layout.nav.files') }}
             </a>
             <a
+              routerLink="/api-keys"
+              class="text-label text-text-secondary no-underline hover:text-text"
+            >
+              {{ i18n.t('layout.nav.apiKeys') }}
+            </a>
+            <a
               routerLink="/profile"
               class="flex items-center gap-2 text-label text-text-secondary no-underline hover:text-text"
               [attr.aria-label]="i18n.t('layout.auth.profileLink')"

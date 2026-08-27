@@ -26,6 +26,12 @@ export const routes: Routes = [
     loadChildren: () => import('./features/files/files.routes').then((m) => m.FILES_ROUTES),
   },
   {
+    path: 'api-keys',
+    canActivate: [authGuard],
+    loadChildren: () =>
+      import('./features/api-keys/api-keys.routes').then((m) => m.API_KEYS_ROUTES),
+  },
+  {
     path: '**',
     redirectTo: '',
   },

@@ -1,0 +1,21 @@
+<div class="mx-auto flex max-w-[720px] flex-col gap-6 px-6 py-16">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <h1 class="font-heading text-heading text-text">{{ i18n.t('apiKeys.title') }}</h1>
+    <app-button (click)="issueKey()">{{ i18n.t('apiKeys.issue.action') }}</app-button>
+  </div>
+
+  @if (keys().length === 0) {
+    <div
+      class="flex flex-col items-center gap-2 rounded-lg border border-hairline bg-surface px-6 py-16 text-center"
+    >
+      <p class="font-heading text-heading-sm text-text">{{ i18n.t('apiKeys.empty.title') }}</p>
+      <p class="text-body-sm text-text-secondary">{{ i18n.t('apiKeys.empty.hint') }}</p>
+    </div>
+  } @else {
+    <div class="flex flex-col overflow-hidden rounded-lg border border-hairline bg-surface">
+      @for (key of keys(); track key.id) {
+        <app-key-row [key]="key" (reissue)="reissueKey(key.id)" (revoke)="revokeKey(key.id)" />
+      }
+    </div>
+  }
+</div>

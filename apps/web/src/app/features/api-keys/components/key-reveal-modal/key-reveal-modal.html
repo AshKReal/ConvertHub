@@ -1,0 +1,24 @@
+<div
+  class="flex w-[480px] max-w-[calc(100vw-2rem)] flex-col gap-4 rounded-xl bg-surface p-6 shadow-modal"
+  role="alertdialog"
+  aria-modal="true"
+  [attr.aria-label]="i18n.t('apiKeys.reveal.title')"
+>
+  <h2 class="font-heading text-heading-sm text-text">{{ i18n.t('apiKeys.reveal.title') }}</h2>
+  <p class="text-body-sm text-text-secondary">{{ i18n.t('apiKeys.reveal.warning') }}</p>
+
+  <div class="flex items-center gap-2 rounded-md border border-strong bg-surface px-3 py-[9px]">
+    <code class="min-w-0 flex-1 truncate font-mono text-body-sm text-text">{{ fullKey() }}</code>
+    <button
+      type="button"
+      class="shrink-0 text-label text-text-secondary underline decoration-strong underline-offset-2 transition-colors duration-150 hover:text-text hover:decoration-accent-hover"
+      (click)="copy()"
+    >
+      {{ copied() ? i18n.t('apiKeys.reveal.copied') : i18n.t('apiKeys.reveal.copy') }}
+    </button>
+  </div>
+
+  <div class="flex justify-end">
+    <app-button (click)="close()">{{ i18n.t('apiKeys.reveal.done') }}</app-button>
+  </div>
+</div>
