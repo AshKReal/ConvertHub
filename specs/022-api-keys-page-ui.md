@@ -113,13 +113,13 @@
 
 ## Чек-лист
 
-- [ ] `model/api-key.ts`, `data/api-keys.mock.ts`, `data/api-keys.store.ts`
-- [ ] `components/key-row` — маска, даты, действия
-- [ ] `components/key-reveal-modal` — полный ключ, копирование, «Готово»
-- [ ] `pages/api-keys-page` — список, пустое состояние, выпуск/перевыпуск/отзыв
-- [ ] Маршрут `/api-keys` за `authGuard`, ссылка в шапке
-- [ ] Тексты en/ru/uk
-- [ ] Ручная проверка в браузере (Playwright): все переходы из «Поведение», обе темы, 320px
+- [x] `model/api-key.ts`, `data/api-keys.mock.ts`, `data/api-keys.store.ts`
+- [x] `components/key-row` — маска, даты, действия
+- [x] `components/key-reveal-modal` — полный ключ, копирование, «Готово»
+- [x] `pages/api-keys-page` — список, пустое состояние, выпуск/перевыпуск/отзыв
+- [x] Маршрут `/api-keys` за `authGuard`, ссылка в шапке
+- [x] Тексты en/ru/uk
+- [x] Ручная проверка в браузере (Playwright): все переходы из «Поведение», обе темы, 320px — прошли, буфер обмена подтверждён (`navigator.clipboard.readText()` совпал с показанным значением), `console --errors` пуст
 
 ### Приёмка
 
