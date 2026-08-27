@@ -13,6 +13,7 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'layout.auth.login': 'Войти',
   'layout.auth.logout': 'Выйти',
   'layout.auth.profileLink': 'Открыть профиль',
+  'layout.nav.files': 'Мои файлы',
 
   'home.title': 'Конвертируйте файлы за секунды',
   'home.subtitle': 'JPG, PNG, DOCX и PDF — перетащите файл, выберите формат, заберите результат.',
@@ -124,4 +125,14 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'error.storageUnavailable': 'Хранилище временно недоступно. Попробуйте немного позже.',
   'error.conversionTimeout':
     'Конвертация заняла слишком много времени и была остановлена. Попробуйте с файлом поменьше.',
+
+  'files.title': 'Мои файлы',
+  'files.quota.label': '{used} из {total}',
+  'files.empty.title': 'Файлов пока нет',
+  'files.empty.hint': 'Сконвертируйте файл и включите «Сохранить», чтобы он появился здесь.',
+  'files.loadMore.action': 'Показать ещё',
+  'files.loadMore.loading': 'Загрузка…',
+  'files.badge.saved': 'Сохранён',
+  'files.badge.temporary': 'Временный',
+  'files.save.toggle': 'Сохранять этот файл',
 };

@@ -18,6 +18,7 @@ export const EN_MESSAGES = {
   'layout.auth.login': 'Log in',
   'layout.auth.logout': 'Log out',
   'layout.auth.profileLink': 'Open profile',
+  'layout.nav.files': 'My files',
 
   'home.title': 'Convert files in seconds',
   'home.subtitle': 'JPG, PNG, DOCX and PDF — drop a file, pick the format, take the result.',
@@ -127,6 +128,16 @@ export const EN_MESSAGES = {
   'error.storageUnavailable': 'Storage is temporarily unavailable. Try again shortly.',
   'error.conversionTimeout':
     'Conversion took too long and was stopped. Try again with a smaller file.',
+
+  'files.title': 'My files',
+  'files.quota.label': '{used} of {total} used',
+  'files.empty.title': 'No files yet',
+  'files.empty.hint': 'Convert a file and turn on "Save" to see it here.',
+  'files.loadMore.action': 'Show more',
+  'files.loadMore.loading': 'Loading…',
+  'files.badge.saved': 'Saved',
+  'files.badge.temporary': 'Temporary',
+  'files.save.toggle': 'Keep this file',
 } as const;
 
 export type MessageKey = keyof typeof EN_MESSAGES;

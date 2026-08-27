@@ -21,6 +21,11 @@ export const routes: Routes = [
     loadChildren: () => import('./features/profile/profile.routes').then((m) => m.PROFILE_ROUTES),
   },
   {
+    path: 'files',
+    canActivate: [authGuard],
+    loadChildren: () => import('./features/files/files.routes').then((m) => m.FILES_ROUTES),
+  },
+  {
     path: '**',
     redirectTo: '',
   },

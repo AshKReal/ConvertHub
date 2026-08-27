@@ -13,6 +13,7 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'layout.auth.login': 'Увійти',
   'layout.auth.logout': 'Вийти',
   'layout.auth.profileLink': 'Відкрити профіль',
+  'layout.nav.files': 'Мої файли',
 
   'home.title': 'Конвертуйте файли за секунди',
   'home.subtitle': 'JPG, PNG, DOCX і PDF — перетягніть файл, виберіть формат, заберіть результат.',
@@ -123,4 +124,14 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'error.storageUnavailable': 'Сховище тимчасово недоступне. Спробуйте трохи пізніше.',
   'error.conversionTimeout':
     'Конвертація тривала задовго і була зупинена. Спробуйте з меншим файлом.',
+
+  'files.title': 'Мої файли',
+  'files.quota.label': '{used} з {total}',
+  'files.empty.title': 'Файлів поки немає',
+  'files.empty.hint': 'Сконвертуйте файл і увімкніть «Зберегти», щоб він з’явився тут.',
+  'files.loadMore.action': 'Показати ще',
+  'files.loadMore.loading': 'Завантаження…',
+  'files.badge.saved': 'Збережено',
+  'files.badge.temporary': 'Тимчасовий',
+  'files.save.toggle': 'Зберігати цей файл',
 };
