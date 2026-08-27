@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Статус | draft |
+| Статус | код написан, приёмка владельцем не пройдена |
 | Зависит от | 025 |
 | Источник | ТЗ п. 4.4, 12.7, `TECH-SPEC.md` §7.4, §10, §11, `ARCHITECTURE.md` §6.1–6.2 |
 | Критичность | обычная |
@@ -136,18 +136,18 @@
 
 ## Чек-лист
 
-- [ ] `model/file-entry.ts` — тип `FileEntry`, категория иконки по `ConversionTarget`
-- [ ] `data/files.mock.ts` — `MOCK_FILES`, мок-задержка
-- [ ] `data/files.store.ts` — `entries`/`loading`/`loadingMore`/`hasMore`/`usedBytes`, `loadMore()`, `toggleSave()`
-- [ ] `shared/ui/file-type-icon` — три категории
-- [ ] `shared/ui/storage-quota` — полоса + подпись, цвет по проценту
-- [ ] `components/file-row` — иконка, имя, размер+дата, бейдж, тумблер
-- [ ] `components/file-row-skeleton`
-- [ ] `pages/files-page` — список, «Показать ещё», пустое состояние, `providers: [FilesStore]`
-- [ ] Маршрут `/files` за `authGuard`
-- [ ] Ссылка «Мои файлы» в шапке
-- [ ] Тексты en/ru/uk
-- [ ] Ручная проверка в браузере (Playwright): все переходы из «Поведение», пустое состояние, обе темы, RU/UK, 320px
+- [x] `model/file-entry.ts` — тип `FileEntry`, категория иконки по `ConversionTarget`
+- [x] `data/files.mock.ts` — `MOCK_FILES`, мок-задержка
+- [x] `data/files.store.ts` — `entries`/`loading`/`loadingMore`/`hasMore`/`usedBytes`, `loadMore()`, `toggleSave()`
+- [x] `shared/ui/file-type-icon` — три категории
+- [x] `shared/ui/storage-quota` — полоса + подпись, цвет по проценту
+- [x] `components/file-row` — иконка, имя, размер+дата, бейдж, тумблер
+- [x] `components/file-row-skeleton`
+- [x] `pages/files-page` — список, «Показать ещё», пустое состояние, `providers: [FilesStore]`
+- [x] Маршрут `/files` за `authGuard`
+- [x] Ссылка «Мои файлы» в шапке
+- [x] Тексты en/ru/uk
+- [x] Ручная проверка в браузере (Playwright): все переходы из «Поведение», пустое состояние, обе темы, RU/UK, 320px — прошли, `console --errors` пуст. Найдена и исправлена реальная 320px-ошибка (не преэкзистентная): подпись «размер · дата» переносилась на вторую строку и ломала фиксированную высоту 64px, строки наезжали друг на друга — добавлен `truncate`
 
 ### Приёмка
 
