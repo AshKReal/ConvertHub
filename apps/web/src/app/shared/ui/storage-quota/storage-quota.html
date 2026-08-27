@@ -1,0 +1,10 @@
+<div class="flex flex-col gap-1.5">
+  <div class="h-2 overflow-hidden rounded-full bg-surface-muted">
+    <div
+      class="h-full rounded-full transition-[width] duration-200 ease-linear"
+      [class]="barClass()"
+      [style.width.%]="percent()"
+    ></div>
+  </div>
+  <span class="tnum font-mono text-caption text-text-muted">{{ label() }}</span>
+</div>
