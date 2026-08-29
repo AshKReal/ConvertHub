@@ -19,6 +19,49 @@
           {{ i18n.t('layout.nav.apiDocs') }}
         </a>
 
+        @if (authService.user(); as user) {
+          <div class="flex items-center gap-2 pl-1">
+            <a
+              routerLink="/files"
+              class="text-label text-text-secondary no-underline hover:text-text"
+            >
+              {{ i18n.t('layout.nav.files') }}
+            </a>
+            <a
+              routerLink="/api-keys"
+              class="text-label text-text-secondary no-underline hover:text-text"
+            >
+              {{ i18n.t('layout.nav.apiKeys') }}
+            </a>
+            <a
+              routerLink="/profile"
+              class="flex items-center gap-2 text-label text-text-secondary no-underline hover:text-text"
+              [attr.aria-label]="i18n.t('layout.auth.profileLink')"
+            >
+              <span
+                class="flex h-8 w-8 items-center justify-center rounded-full bg-accent-subtle text-text"
+              >
+                {{ user.email.charAt(0).toUpperCase() }}
+              </span>
+              <span class="hidden sm:inline">{{ user.email }}</span>
+            </a>
+            <button
+              type="button"
+              class="text-label text-text-secondary underline decoration-strong underline-offset-2 transition-colors duration-150 hover:text-text hover:decoration-accent-hover"
+              (click)="authService.logout()"
+            >
+              {{ i18n.t('layout.auth.logout') }}
+            </button>
+          </div>
+        } @else {
+          <a
+            routerLink="/login"
+            class="flex h-9 items-center justify-center rounded-md border border-strong bg-surface px-3 text-label text-text no-underline transition-colors duration-150 hover:bg-surface-muted active:translate-y-px"
+          >
+            {{ i18n.t('layout.auth.login') }}
+          </a>
+        }
+
         <div
           class="flex items-center gap-1 rounded-md border border-hairline bg-surface-muted p-1"
           role="group"
@@ -85,49 +128,6 @@
             </svg>
           }
         </button>
-
-        @if (authService.user(); as user) {
-          <div class="flex items-center gap-2 pl-1">
-            <a
-              routerLink="/files"
-              class="text-label text-text-secondary no-underline hover:text-text"
-            >
-              {{ i18n.t('layout.nav.files') }}
-            </a>
-            <a
-              routerLink="/api-keys"
-              class="text-label text-text-secondary no-underline hover:text-text"
-            >
-              {{ i18n.t('layout.nav.apiKeys') }}
-            </a>
-            <a
-              routerLink="/profile"
-              class="flex items-center gap-2 text-label text-text-secondary no-underline hover:text-text"
-              [attr.aria-label]="i18n.t('layout.auth.profileLink')"
-            >
-              <span
-                class="flex h-8 w-8 items-center justify-center rounded-full bg-accent-subtle text-text"
-              >
-                {{ user.email.charAt(0).toUpperCase() }}
-              </span>
-              <span class="hidden sm:inline">{{ user.email }}</span>
-            </a>
-            <button
-              type="button"
-              class="text-label text-text-secondary underline decoration-strong underline-offset-2 transition-colors duration-150 hover:text-text hover:decoration-accent-hover"
-              (click)="authService.logout()"
-            >
-              {{ i18n.t('layout.auth.logout') }}
-            </button>
-          </div>
-        } @else {
-          <a
-            routerLink="/login"
-            class="flex h-9 items-center justify-center rounded-md border border-strong bg-surface px-3 text-label text-text no-underline transition-colors duration-150 hover:bg-surface-muted active:translate-y-px"
-          >
-            {{ i18n.t('layout.auth.login') }}
-          </a>
-        }
       </nav>
     </div>
   </header>
