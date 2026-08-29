@@ -18,3 +18,9 @@ Thumbs.db
 .idea/
 
 .claude/skills/
+
+# specs/000-engine-quality-check.md - real test files and converter output, not repo content
+scripts/engine-check/samples/
+scripts/engine-check/results/
+__pycache__/
+*.pyc
