@@ -24,3 +24,4 @@ scripts/engine-check/samples/
 scripts/engine-check/results/
 __pycache__/
 *.pyc
+scripts/engine-check/.venv312/

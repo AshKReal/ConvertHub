@@ -10,6 +10,13 @@ npm install
 python -m pip install -r requirements.txt
 ```
 
+`aspose-words` (кандидат C) не поддерживает Python 3.14 — отдельный `venv` на 3.12:
+
+```
+py -3.12 -m venv .venv312
+.venv312\Scripts\python.exe -m pip install -r requirements-aspose.txt
+```
+
 Разложить тестовые файлы (не коммитятся, `.gitignore`):
 
 ```
@@ -26,7 +33,7 @@ node jpg-png.mjs
 node docx-pdf.mjs
 node pdf-docx-a-libreoffice.mjs
 python pdf-docx-b-pdf2docx.py
-python pdf-docx-c-aspose.py
+.venv312\Scripts\python.exe pdf-docx-c-aspose.py
 ```
 
 Каждый скрипт:

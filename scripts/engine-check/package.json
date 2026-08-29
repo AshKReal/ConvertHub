@@ -4,6 +4,6 @@
   "type": "module",
   "description": "One-off spike scripts for specs/000-engine-quality-check.md. Not part of any workspace, not built, not typechecked.",
   "dependencies": {
-    "sharp": "^0.33.5"
+    "sharp": "^0.35.4"
   }
 }

@@ -2,7 +2,7 @@
 // Usage: node jpg-png.mjs
 import sharp from 'sharp';
 import { basename, extname, join } from 'node:path';
-import { listFiles, fileSize, timed, report } from './lib.mjs';
+import { listFiles, fileSize, timed, report, ensureDir } from './lib.mjs';
 
 const SAMPLES_DIR = join(import.meta.dirname, 'samples', 'jpg-png');
 const OUT_DIR = join(import.meta.dirname, 'results', 'jpg-png-out');
@@ -12,6 +12,8 @@ if (files.length === 0) {
   console.error(`No files in ${SAMPLES_DIR} - drop 20-30 real JPG/PNG files there first.`);
   process.exit(1);
 }
+
+await ensureDir(OUT_DIR);
 
 const rows = [];
 for (const file of files) {
