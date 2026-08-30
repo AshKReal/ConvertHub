@@ -124,7 +124,16 @@ export class AccountService {
       select: { email: true, passwordHash: true },
     });
 
-    if (!(await argon2.verify(user.passwordHash, currentPassword))) {
+    // Спека 008: чисто-Google аккаунт (`passwordHash: null`) не имеет пароля,
+    // который можно ввести верно — тот же код, что "неверный текущий пароль"
+    // (честно: такого пароля не существует), без отдельного кода и без
+    // `argon2.verify(null, ...)`, который бросил бы `TypeError`, а не
+    // доменную ошибку. Профиль (008) скрывает саму форму для этого случая —
+    // сюда можно дойти только curl'ом или гонкой с параллельной отвязкой.
+    if (
+      user.passwordHash === null ||
+      !(await argon2.verify(user.passwordHash, currentPassword))
+    ) {
       throw new AppException('INVALID_CREDENTIALS');
     }
 

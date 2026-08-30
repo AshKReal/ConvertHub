@@ -7,17 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Минимальная таблица (спека 003) расширена спекой 007: email/passwordHash.
-/// OAuth-идентичности (`identities`, provider/provider_uid) — спека 008,
-/// отдельной таблицей, не сюда.
+/// Минимальная таблица (спека 003) расширена спекой 007: email/passwordHash,
+/// спекой 008: nullable passwordHash + identities (чисто-OAuth пользователь).
 model User {
   id           String @id @db.VarChar(26)
   /// Спека 007. Хранится и сравнивается в нижнем регистре — нормализация
   /// на входе (`auth.service.ts`), не в БД.
   email        String @unique
-  /// argon2id (`AUTH-RULES.md` §2). Nullable не нужен в 007 — паролем
-  /// обзаводится каждый пользователь; 008 сделает nullable под чисто-OAuth.
-  passwordHash String @map("password_hash")
+  /// argon2id (`AUTH-RULES.md` §2). Nullable с 008 — пользователь, созданный
+  /// через Google, пароля не имеет; `login()` (007) уже безопасен на этот
+  /// случай (`user?.passwordHash ?? DUMMY_PASSWORD_HASH`).
+  passwordHash String? @map("password_hash")
 
   storageUsedBytes Int      @default(0) @map("storage_used_bytes")
   createdAt        DateTime @default(now()) @map("created_at")
@@ -27,8 +27,35 @@ model User {
   conversions         Conversion[]
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
+  identities          Identity[]
 
   @@map("users")
+}
+
+/// Спека 008. Идентификация по `sub` провайдера (`AUTH-RULES.md`), не по
+/// email — email на стороне провайдера может смениться. Составной уникальный
+/// индекс: один provider_uid не может быть привязан дважды ни к какому
+/// аккаунту.
+model Identity {
+  id          String           @id @db.VarChar(26)
+  userId      String           @map("user_id") @db.VarChar(26)
+  provider    IdentityProvider
+  providerUid String           @map("provider_uid")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  /// Cascade — то же решение владельца, что 009: удаление аккаунта стирает
+  /// все его идентичности одним вызовом `prisma.user.delete()`.
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUid])
+  @@index([userId])
+  @@map("identities")
+}
+
+/// Спека 008. Пока один провайдер (`AUTH-RULES.md` §5) — Telegram добавится
+/// сюда же новым значением, когда/если вернётся в план.
+enum IdentityProvider {
+  GOOGLE
 }
 
 /// Спека 009. Тот же приём, что `RefreshToken` (007): опаковый токен, в БД
