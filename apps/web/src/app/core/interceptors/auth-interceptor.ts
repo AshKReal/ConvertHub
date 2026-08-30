@@ -5,17 +5,27 @@ import { catchError, switchMap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../services/auth';
 
-const AUTH_PREFIX = `${environment.apiUrl}/v1/auth/`;
-
+const AUTH_BASE = `${environment.apiUrl}/v1/auth`;
 /**
- * `register`/`login`/`refresh`/`logout` never carry a Bearer token and must
- * never trigger the refresh-and-retry path below — `refresh` itself can 401
+ * Only these four never carry a Bearer token and must never trigger the
+ * refresh-and-retry path below — `refresh` itself can legitimately 401
  * (no/expired cookie), and retrying THAT via another refresh call would be
- * either pointless or (worse) a second concurrent /refresh outside the
- * single-flight in `AuthService.ensureFreshToken()`.
+ * either pointless or a second concurrent /refresh outside the single-flight
+ * in `AuthService.ensureFreshToken()`. `GET /v1/auth/me` is NOT here: it's
+ * the one protected route under this prefix and needs the retry same as any
+ * other — a plain `/v1/auth/` prefix exclusion swallowed it silently (caught
+ * by manual testing: 3 concurrent 401s from a corrupted token produced zero
+ * /refresh calls instead of one).
  */
+const UNAUTHENTICATED_AUTH_PATHS = new Set([
+  `${AUTH_BASE}/register`,
+  `${AUTH_BASE}/login`,
+  `${AUTH_BASE}/refresh`,
+  `${AUTH_BASE}/logout`,
+]);
+
 function isProtectedApiRequest(url: string): boolean {
-  return url.startsWith(environment.apiUrl) && !url.startsWith(AUTH_PREFIX);
+  return url.startsWith(environment.apiUrl) && !UNAUTHENTICATED_AUTH_PATHS.has(url);
 }
 
 /**
