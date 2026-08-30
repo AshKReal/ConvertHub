@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, type HttpEvent } from '@angular/common/http';
 import { inject } from '@angular/core';
 import type { ConvertRequest } from '@convert-hub/shared';
 import type { Observable } from 'rxjs';
@@ -17,10 +17,18 @@ export function injectConvertApi() {
   const http = inject(HttpClient);
 
   return {
-    /** Ответ — бинарный результат конвертации (ARCHITECTURE.md §7.3), не JSON. */
-    convert(file: File, request: ConvertRequest): Observable<Blob> {
+    /**
+     * Поток событий, не готовый `Blob` (спека 005) — `reportProgress` даёт
+     * реальный `HttpEventType.UploadProgress` для полосы прогресса зоны
+     * загрузки, `observe: 'events'` нужен, чтобы его вообще получить. Тело
+     * успешного ответа — бинарный результат конвертации (ARCHITECTURE.md §7.3),
+     * `responseType: 'blob'` действует и на событие `Response` внутри потока.
+     */
+    convert(file: File, request: ConvertRequest): Observable<HttpEvent<Blob>> {
       return http.post(`${environment.apiUrl}/v1/convert`, buildConvertFormData(file, request), {
         responseType: 'blob',
+        reportProgress: true,
+        observe: 'events',
       });
     },
   };

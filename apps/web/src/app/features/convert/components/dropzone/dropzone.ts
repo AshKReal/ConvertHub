@@ -8,6 +8,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { HttpEventType, type HttpEvent } from '@angular/common/http';
 import {
   ERROR_CODES,
   MAX_FILE_SIZE_BYTES,
@@ -59,9 +60,6 @@ const ICON_BY_KIND: Partial<Record<DropzoneStateKind, string>> = {
  */
 const MOCK_STORAGE_USED_BYTES = 0;
 
-const UPLOAD_TICK_MS = 150;
-const UPLOAD_STEP = 20;
-
 @Component({
   selector: 'app-dropzone',
   imports: [Button],
@@ -96,7 +94,6 @@ export class Dropzone {
   private readonly progress = signal(0);
   private readonly error = signal<AppError | null>(null);
 
-  private uploadTimer: ReturnType<typeof setInterval> | null = null;
   private convertSubscription: Subscription | null = null;
 
   /** `ARCHITECTURE.md` §6.4: выставляется до выбора файла, по данным `['me']` — здесь на моке. */
@@ -138,7 +135,7 @@ export class Dropzone {
   }
 
   protected clear(): void {
-    this.stopTimers();
+    this.stopConversion();
     this.file.set(null);
     this.resultBlob.set(null);
     this.phase.set('idle');
@@ -173,7 +170,11 @@ export class Dropzone {
     this.select(this.picker().nativeElement.files);
   }
 
-  /** Кнопка запуска в `selected` — перенесена сюда из 001, включает автомат. */
+  /**
+   * Кнопка запуска в `selected` — перенесена сюда из 001, включает автомат.
+   * Прогресс и переход в `converting` — по настоящим событиям `HttpClient`
+   * (спека 005), не по таймеру: `runConversion()` подписывается сразу.
+   */
   protected start(): void {
     if (this.file() === null || this.phase() !== 'idle') {
       return;
@@ -181,21 +182,10 @@ export class Dropzone {
 
     this.phase.set('uploading');
     this.progress.set(0);
-
-    this.uploadTimer = setInterval(() => {
-      const next = this.progress() + UPLOAD_STEP;
-      if (next >= 100) {
-        this.progress.set(100);
-        this.stopUploadTimer();
-        this.phase.set('converting');
-        this.runConversion();
-        return;
-      }
-      this.progress.set(next);
-    }, UPLOAD_TICK_MS);
+    this.runConversion();
   }
 
-  /** Пока просто возврат в `empty` — реальный обрыв HTTP при подключении в 005. */
+  /** Обрыв настоящего HTTP-запроса через `unsubscribe()` (спека 005), не просто скрытие индикатора. */
   protected cancel(): void {
     this.clear();
   }
@@ -220,11 +210,11 @@ export class Dropzone {
   }
 
   /**
-   * Реальный `POST /v1/convert` (026) — прогресс выше остаётся имитацией
-   * (настоящие события загрузки и обрыв через HTTP — 005), меняется только
-   * источник итога: раньше сфабрикованный в браузере, теперь ответ сервера.
-   * Отказ показывается тостом, не в самой зоне — так же, как уже решено в 006
-   * для сбоя конвертера, в отличие от отказа при выборе файла (см. `select()`).
+   * Реальный `POST /v1/convert` (005) — `HttpEventType.UploadProgress` двигает
+   * полосу прогресса по фактически отправленным байтам, переход в `converting`
+   * происходит по факту `loaded === total`, не по таймеру. Отказ показывается
+   * тостом, не в самой зоне — так же, как уже решено в 006 для сбоя конвертера,
+   * в отличие от отказа при выборе файла (см. `select()`).
    */
   private runConversion(): void {
     const file = this.file();
@@ -235,15 +225,35 @@ export class Dropzone {
     this.convertSubscription = this.convertApi
       .convert(file, { target: this.direction().target })
       .subscribe({
-        next: (blob) => {
-          this.resultBlob.set(blob);
-          this.phase.set('done');
-        },
+        next: (event) => this.handleConvertEvent(event),
         error: (error: AppError) => {
           this.phase.set('idle');
           this.toast.show('danger', error.message);
         },
       });
+  }
+
+  private handleConvertEvent(event: HttpEvent<Blob>): void {
+    switch (event.type) {
+      case HttpEventType.UploadProgress: {
+        const total = event.total;
+        if (total === undefined) {
+          return;
+        }
+        const percent = Math.round((event.loaded / total) * 100);
+        this.progress.set(percent);
+        if (percent >= 100 && this.phase() === 'uploading') {
+          this.phase.set('converting');
+        }
+        break;
+      }
+      case HttpEventType.Response:
+        this.resultBlob.set(event.body);
+        this.phase.set('done');
+        break;
+      default:
+        break;
+    }
   }
 
   private select(files: FileList | null): void {
@@ -278,15 +288,7 @@ export class Dropzone {
     };
   }
 
-  private stopUploadTimer(): void {
-    if (this.uploadTimer !== null) {
-      clearInterval(this.uploadTimer);
-      this.uploadTimer = null;
-    }
-  }
-
-  private stopTimers(): void {
-    this.stopUploadTimer();
+  private stopConversion(): void {
     if (this.convertSubscription !== null) {
       this.convertSubscription.unsubscribe();
       this.convertSubscription = null;
