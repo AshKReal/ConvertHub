@@ -90,6 +90,9 @@ pnpm lint
 | `SMTP_PORT` | **да** | `1025` | Старт падает: нечисловое/неположительное значение не проходит схему |
 | `SMTP_SECURE` | нет | `false` | По умолчанию `false` — так принимает MailHog; реальному провайдеру на 465/587 понадобится `true` |
 | `SMTP_FROM` | **да** | `noreply@convert-hub.local` | Старт падает: схема требует валидный email |
+| `GOOGLE_CLIENT_ID` | **да** | `xxx.apps.googleusercontent.com` | Старт падает: `GoogleOauthService` (спека 008) не может собрать authorize URL |
+| `GOOGLE_CLIENT_SECRET` | **да** | из Google Cloud Console | Старт падает: без него не пройдёт обмен `code` на токен |
+| `GOOGLE_REDIRECT_URI` | **да** | `http://localhost:3000/v1/auth/google/callback` | Старт падает: схема требует валидный URL. Должен буквально совпадать с authorized redirect URI в настройках Client ID — иначе Google отказывает с `redirect_uri_mismatch`, не наш код |
 
 ## Где смотреть письма
 
@@ -105,13 +108,15 @@ pnpm lint
 ## OAuth credentials
 
 **Решение владельца (`AUTH-RULES.md` §5): пока реализуется только Google**, Telegram отложен, GitHub не
-рассматривается. Ни одной OAuth-переменной и ни одного callback-маршрута в коде нет, поэтому redirect URI назвать
-нельзя: он определяется маршрутом, которого ещё не существует. Раздел заполняется в рамках спеки 008 одновременно
-с кодом, по правилу из `AUTH-RULES.md`: новая переменная окружения — обновление `.env.example` и этого файла тем
-же изменением.
+рассматривается. Спека 008: Google — OAuth 2.0 Authorization Code с PKCE, идентификация по `sub`, не по email.
+Контракт Telegram Login Widget описан в `TECH-SPEC.md` §8.3 на будущее, но не реализуется, пока спека к нему не
+вернётся.
 
-Что известно из `TECH-SPEC.md` §8.3 уже сейчас: Google — OAuth 2.0 Authorization Code с PKCE, идентификация по
-`sub`. Контракт Telegram Login Widget там же описан на будущее, но не реализуется, пока спека к нему не вернётся.
+Настоящий Client ID заводится в [Google Cloud Console](https://console.cloud.google.com/apis/credentials) →
+Create OAuth client ID → Web application. Authorized redirect URI — буквально значение `GOOGLE_REDIRECT_URI` выше
+(`http://localhost:3000/v1/auth/google/callback` локально). `apps/api/.env` без реального `GOOGLE_CLIENT_ID`/
+`GOOGLE_CLIENT_SECRET` (только placeholder) запускает приложение, но сам вход через Google возвращает ошибку от
+Google (`invalid_client`), не `500` у нас — это ожидаемо, не баг.
 
 ## Чего ещё нет
 

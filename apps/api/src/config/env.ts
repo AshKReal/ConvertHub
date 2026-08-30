@@ -33,6 +33,11 @@ const envSchema = z.object({
     .default('false')
     .transform((value) => value === 'true'),
   SMTP_FROM: z.string().email(),
+  /** Спека 008. Google Cloud Console → OAuth 2.0 Client ID (Web application). Без дефолта, как остальные секреты. */
+  GOOGLE_CLIENT_ID: z.string().min(1),
+  GOOGLE_CLIENT_SECRET: z.string().min(1),
+  /** Полный абсолютный URL callback-маршрута (`/v1/auth/google/callback`) — должен совпадать с authorized redirect URI в Google Cloud Console. */
+  GOOGLE_REDIRECT_URI: z.string().url(),
 });
 
 export type Env = z.infer<typeof envSchema>;
