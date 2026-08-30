@@ -22,6 +22,7 @@
       "@parcel/watcher",
       "@prisma/client",
       "@prisma/engines",
+      "argon2",
       "esbuild",
       "lmdb",
       "msgpackr-extract",
