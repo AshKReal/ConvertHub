@@ -4,12 +4,14 @@ import {
   Delete,
   Get,
   HttpCode,
+  Param,
   Patch,
   Post,
   Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { IdentityProvider } from '@prisma/client';
 import {
   AUTH_RATE_LIMIT_MAX,
   AUTH_RATE_LIMIT_WINDOW_SECONDS,
@@ -17,12 +19,14 @@ import {
   changePasswordRequestSchema,
   forgotPasswordRequestSchema,
   loginRequestSchema,
+  oauthProviderSchema,
   resetPasswordRequestSchema,
   type AuthResponse,
   type AuthUser,
   type ChangePasswordRequest,
   type ForgotPasswordRequest,
   type LoginRequest,
+  type OauthProvider,
   type RegisterRequest,
   type ResetPasswordRequest,
   registerRequestSchema,
@@ -30,7 +34,10 @@ import {
 import type { Request, Response } from 'express';
 import { hashIp } from '../../common/util/hash-ip';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { AppException } from '../../common/exceptions/app.exception';
+import {
+  AppException,
+  type AppExceptionBody,
+} from '../../common/exceptions/app.exception';
 import { JwtGuard } from '../../common/guards/jwt.guard';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import {
@@ -42,13 +49,19 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AccountService } from './account.service';
 import {
   AuthService,
+  PROVIDER_FROM_PUBLIC,
   PROVIDER_LABELS,
   type IssuedSession,
 } from './auth.service';
+import { GoogleOauthService } from './google-oauth.service';
+import { OAUTH_STATE_TTL_MS, OauthStateService } from './oauth-state.service';
 
 const REFRESH_COOKIE_NAME = 'refresh_token';
 /** Кука нужна только эндпоинтам этого контроллера — не отправляется на остальной API (defence in depth). */
 const REFRESH_COOKIE_PATH = '/v1/auth';
+/** Спека 008. Уже своим `Path` — не отправляется даже на остальные `/v1/auth/*`, только на сам OAuth-поток. */
+const OAUTH_STATE_COOKIE_NAME = 'oauth_state';
+const OAUTH_STATE_COOKIE_PATH = '/v1/auth/google';
 const AUTH_RATE_LIMIT: ConsumeOptions = {
   max: AUTH_RATE_LIMIT_MAX,
   windowSeconds: AUTH_RATE_LIMIT_WINDOW_SECONDS,
@@ -67,6 +80,8 @@ export class AuthController {
     private readonly accountService: AccountService,
     private readonly rateLimiter: FixedWindowRateLimiterService,
     private readonly prisma: PrismaService,
+    private readonly google: GoogleOauthService,
+    private readonly oauthState: OauthStateService,
   ) {}
 
   @Post('register')
@@ -124,6 +139,68 @@ export class AuthController {
       await this.authService.logout(rawToken);
     }
     res.clearCookie(REFRESH_COOKIE_NAME, { path: REFRESH_COOKIE_PATH });
+  }
+
+  /**
+   * Полная навигация браузера, не XHR — `oauth-buttons.html` (008) ссылка
+   * `<a href>`, не `HttpClient`. `@Res()` без `passthrough` (как `files.controller.ts#download`,
+   * спека 003) — ответ здесь редирект, не JSON-тело.
+   */
+  @Get('google/start')
+  googleStart(@Res() res: Response): void {
+    const { state, codeChallenge } = this.oauthState.issue();
+    res.cookie(OAUTH_STATE_COOKIE_NAME, state, {
+      httpOnly: true,
+      secure: env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: OAUTH_STATE_COOKIE_PATH,
+      maxAge: OAUTH_STATE_TTL_MS,
+    });
+    res.redirect(302, this.google.buildAuthorizeUrl(state, codeChallenge));
+  }
+
+  /**
+   * Google приводит сюда браузер сам — маршрут не JSON API, отдать
+   * `application/problem+json` через полную навигацию нечем. Поэтому,
+   * в отличие от всех остальных маршрутов, все исключения ловятся здесь
+   * же и превращаются в редирект с `?oauthError=...`, не летят в
+   * `AllExceptionsFilter` (`docs/SECURITY.md`, единственное оправданное
+   * отступление от «не ловить, если нечего делать», `backend.md`).
+   */
+  @Get('google/callback')
+  async googleCallback(
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    res.clearCookie(OAUTH_STATE_COOKIE_NAME, { path: OAUTH_STATE_COOKIE_PATH });
+    try {
+      const session = await this.resolveGoogleCallback(req);
+      this.setRefreshCookie(res, session);
+      res.redirect(302, env.CORS_ORIGIN);
+    } catch (error) {
+      const isConflict =
+        error instanceof AppException &&
+        (error.getResponse() as AppExceptionBody).code ===
+          'OAUTH_ACCOUNT_CONFLICT';
+      res.redirect(
+        302,
+        `${env.CORS_ORIGIN}/login?oauthError=${isConflict ? 'conflict' : 'failed'}`,
+      );
+    }
+  }
+
+  @Delete('identities/:provider')
+  @UseGuards(JwtGuard)
+  @HttpCode(204)
+  async unlinkIdentity(
+    @CurrentUser() userId: string,
+    @Param('provider', new ZodValidationPipe(oauthProviderSchema))
+    provider: OauthProvider,
+  ): Promise<void> {
+    await this.authService.unlinkIdentity(
+      userId,
+      PROVIDER_FROM_PUBLIC[provider],
+    );
   }
 
   @Post('forgot-password')
@@ -218,6 +295,12 @@ export class AuthController {
   }
 
   private respond(res: Response, session: IssuedSession): AuthResponse {
+    this.setRefreshCookie(res, session);
+    return { accessToken: session.accessToken, user: session.user };
+  }
+
+  /** Вынесено из `respond()` — `google/callback` тоже ставит эту куку, но отвечает редиректом, не JSON-телом. */
+  private setRefreshCookie(res: Response, session: IssuedSession): void {
     res.cookie(REFRESH_COOKIE_NAME, session.refreshToken.raw, {
       httpOnly: true,
       // `Secure` только в production (docs/SECURITY.md) — на `http://localhost`
@@ -228,7 +311,47 @@ export class AuthController {
       path: REFRESH_COOKIE_PATH,
       maxAge: JWT_REFRESH_TTL_SECONDS * 1000,
     });
-    return { accessToken: session.accessToken, user: session.user };
+  }
+
+  /**
+   * `state` сверяется прямым `===`, не `timingSafeEqual` — это anti-CSRF
+   * nonce, эхом возвращённый самим Google открытым текстом в query, не
+   * секрет, сверяемый с секретом атакующего (`docs/SECURITY.md`).
+   */
+  private async resolveGoogleCallback(req: Request): Promise<IssuedSession> {
+    const query = req.query as Record<string, string | undefined>;
+    if (query['error'] !== undefined) {
+      // Пользователь отменил на экране согласия Google, либо иной отказ провайдера.
+      throw new Error(`Google returned an error: ${query['error']}`);
+    }
+
+    const code = query['code'];
+    const state = query['state'];
+    const cookies = req.cookies as
+      Record<string, string | undefined> | undefined;
+    const cookieState = cookies?.[OAUTH_STATE_COOKIE_NAME];
+    if (
+      code === undefined ||
+      state === undefined ||
+      cookieState === undefined ||
+      state !== cookieState
+    ) {
+      throw new Error('OAuth state missing or mismatched');
+    }
+
+    const codeVerifier = this.oauthState.consume(state);
+    if (codeVerifier === null) {
+      throw new Error('OAuth state not found or expired');
+    }
+
+    const accessToken = await this.google.exchangeCode(code, codeVerifier);
+    const profile = await this.google.fetchProfile(accessToken);
+    return this.authService.loginOrLinkIdentity(
+      IdentityProvider.GOOGLE,
+      profile.sub,
+      profile.email,
+      profile.emailVerified,
+    );
   }
 }
 

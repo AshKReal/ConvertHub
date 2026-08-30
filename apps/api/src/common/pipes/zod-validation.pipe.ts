@@ -14,7 +14,12 @@ export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {
   transform(value: unknown): T {
     const result = this.schema.safeParse(value);
     if (!result.success) {
-      const field = result.error.issues[0]?.path.join('.');
+      // На объекте `path` — имя поля (`email`, `password`, ...). На
+      // скалярном значении (спека 008, `:provider` в пути) `path` пуст —
+      // `join('.')` даёт `''`, не `undefined`; без этой проверки в `detail`
+      // подставлялось бы пустое "field: ".
+      const path = result.error.issues[0]?.path.join('.');
+      const field = path === undefined || path === '' ? undefined : path;
       throw new AppException(
         'INVALID_PARAMETER',
         field === undefined ? undefined : { field },

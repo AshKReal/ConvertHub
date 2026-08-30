@@ -43,6 +43,11 @@ export const PROVIDER_LABELS: Record<IdentityProvider, OauthProvider> = {
   [IdentityProvider.GOOGLE]: 'google',
 };
 
+/** Обратное направление — `auth.controller.ts` принимает публичное имя провайдера из URL/query, отвечает Prisma-энумом. */
+export const PROVIDER_FROM_PUBLIC: Record<OauthProvider, IdentityProvider> = {
+  google: IdentityProvider.GOOGLE,
+};
+
 /**
  * Форма пользователя сразу после аутентификации, ДО того как известны его
  * привязанные идентичности — `hasPassword` каждый вызывающий уже знает из

@@ -7,6 +7,8 @@ import { StorageModule } from '../storage/storage.module';
 import { AccountService } from './account.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { GoogleOauthService } from './google-oauth.service';
+import { OauthStateService } from './oauth-state.service';
 import { TokenService } from './token.service';
 
 /**
@@ -19,6 +21,8 @@ import { TokenService } from './token.service';
  * аккаунта чистит файлы в `Storage`, сброс/смена пароля шлют письма через
  * `MailService` — первый реальный потребитель `MailModule` с момента, когда
  * он появился в кодовой базе (мейл-инфраструктура, предыдущая сессия).
+ * `GoogleOauthService`/`OauthStateService` (008) — только `AuthController`
+ * этого же модуля их вызывает, `exports` не нужен (`backend.md`).
  */
 @Module({
   imports: [JwtModule.register({}), StorageModule, MailModule],
@@ -27,6 +31,8 @@ import { TokenService } from './token.service';
     AuthService,
     AccountService,
     TokenService,
+    GoogleOauthService,
+    OauthStateService,
     FixedWindowRateLimiterService,
     JwtGuard,
   ],

@@ -1,7 +1,8 @@
 import { createHash, randomBytes } from 'crypto';
 import { Injectable } from '@nestjs/common';
 
-const STATE_TTL_MS = 10 * 60 * 1000;
+/** Экспортирован — `auth.controller.ts` ставит куку `oauth_state` с тем же `maxAge`, одно число, не два. */
+export const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 
 interface PendingState {
   readonly codeVerifier: string;
@@ -44,7 +45,10 @@ export class OauthStateService {
   consume(state: string): string | null {
     const entry = this.pending.get(state);
     this.pending.delete(state);
-    if (entry === undefined || Date.now() - entry.createdAt > STATE_TTL_MS) {
+    if (
+      entry === undefined ||
+      Date.now() - entry.createdAt > OAUTH_STATE_TTL_MS
+    ) {
       return null;
     }
     return entry.codeVerifier;
@@ -53,7 +57,7 @@ export class OauthStateService {
   private purgeExpired(): void {
     const now = Date.now();
     for (const [state, entry] of this.pending) {
-      if (now - entry.createdAt > STATE_TTL_MS) {
+      if (now - entry.createdAt > OAUTH_STATE_TTL_MS) {
         this.pending.delete(state);
       }
     }
