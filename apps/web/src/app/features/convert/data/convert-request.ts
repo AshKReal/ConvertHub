@@ -5,7 +5,8 @@ import type { ConvertRequest } from '@convert-hub/shared';
  * браузер сам проставит `multipart/form-data` вместе с boundary, а заголовок,
  * выставленный руками, boundary теряет — сервер не разберёт тело (ARCHITECTURE.md §6.3).
  *
- * Сам запрос отправляется в спеке 005; здесь фиксируются имена полей.
+ * Сам запрос отправляется через `convert.api.ts` (026); прогресс по реальным
+ * событиям загрузки и обрыв через настоящий HTTP — 005.
  */
 export function buildConvertFormData(file: File, request: ConvertRequest): FormData {
   const form = new FormData();

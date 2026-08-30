@@ -14,14 +14,16 @@ import {
   USER_STORAGE_QUOTA_BYTES,
   acceptAttribute,
   type ConversionDirection,
-  type ErrorCode,
 } from '@convert-hub/shared';
+
+import type { Subscription } from 'rxjs';
 
 import type { AppError } from '../../../../core/interceptors/error-interceptor';
 import { ERROR_MESSAGE_KEYS } from '../../../../core/i18n/messages';
 import { I18nService } from '../../../../core/services/i18n';
 import { ToastService } from '../../../../core/services/toast';
 import { Button } from '../../../../shared/ui/button/button';
+import { injectConvertApi } from '../../data/convert.api';
 import type { DropzoneState, DropzoneStateKind } from '../../model/dropzone-state';
 
 const ZONE_BASE =
@@ -52,15 +54,13 @@ const ICON_BY_KIND: Partial<Record<DropzoneStateKind, string>> = {
 };
 
 /**
- * Мок-заготовка для 006: реальный расчёт занятого места — 010, реальный исход
- * конвертации — 005/026. Значения меняются только руками, для ручной приёмки.
+ * Мок-заготовка для 006: реальный расчёт занятого места — 010.
+ * Значение меняется только руками, для ручной приёмки.
  */
 const MOCK_STORAGE_USED_BYTES = 0;
-const MOCK_FORCE_CONVERSION_ERROR = false;
 
 const UPLOAD_TICK_MS = 150;
 const UPLOAD_STEP = 20;
-const CONVERTING_DELAY_MS = 900;
 
 @Component({
   selector: 'app-dropzone',
@@ -79,10 +79,12 @@ export class Dropzone {
 
   protected readonly i18n = inject(I18nService);
   private readonly toast = inject(ToastService);
+  private readonly convertApi = injectConvertApi();
 
   private readonly picker = viewChild.required<ElementRef<HTMLInputElement>>('picker');
 
   private readonly file = signal<File | null>(null);
+  private readonly resultBlob = signal<Blob | null>(null);
 
   /**
    * Счётчик, а не флаг: `dragleave` срабатывает при переходе курсора на дочерний
@@ -95,7 +97,7 @@ export class Dropzone {
   private readonly error = signal<AppError | null>(null);
 
   private uploadTimer: ReturnType<typeof setInterval> | null = null;
-  private convertTimer: ReturnType<typeof setTimeout> | null = null;
+  private convertSubscription: Subscription | null = null;
 
   /** `ARCHITECTURE.md` §6.4: выставляется до выбора файла, по данным `['me']` — здесь на моке. */
   protected readonly quotaFull = MOCK_STORAGE_USED_BYTES >= USER_STORAGE_QUOTA_BYTES;
@@ -138,6 +140,7 @@ export class Dropzone {
   protected clear(): void {
     this.stopTimers();
     this.file.set(null);
+    this.resultBlob.set(null);
     this.phase.set('idle');
     this.progress.set(0);
     this.error.set(null);
@@ -185,7 +188,7 @@ export class Dropzone {
         this.progress.set(100);
         this.stopUploadTimer();
         this.phase.set('converting');
-        this.convertTimer = setTimeout(() => this.finishConversion(), CONVERTING_DELAY_MS);
+        this.runConversion();
         return;
       }
       this.progress.set(next);
@@ -203,12 +206,12 @@ export class Dropzone {
 
   protected download(): void {
     const current = this.state();
-    if (current.kind !== 'done') {
+    const blob = this.resultBlob();
+    if (current.kind !== 'done' || blob === null) {
       return;
     }
 
-    // Мок отдаёт исходные байты под именем результата — настоящий файл отдаёт 003/005.
-    const url = URL.createObjectURL(current.file);
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = resultFileName(current.file.name, this.direction().target);
@@ -216,16 +219,31 @@ export class Dropzone {
     URL.revokeObjectURL(url);
   }
 
-  private finishConversion(): void {
-    this.convertTimer = null;
-
-    if (MOCK_FORCE_CONVERSION_ERROR) {
-      this.phase.set('idle');
-      this.toast.show('danger', this.messageFor('CONVERSION_FAILED'));
+  /**
+   * Реальный `POST /v1/convert` (026) — прогресс выше остаётся имитацией
+   * (настоящие события загрузки и обрыв через HTTP — 005), меняется только
+   * источник итога: раньше сфабрикованный в браузере, теперь ответ сервера.
+   * Отказ показывается тостом, не в самой зоне — так же, как уже решено в 006
+   * для сбоя конвертера, в отличие от отказа при выборе файла (см. `select()`).
+   */
+  private runConversion(): void {
+    const file = this.file();
+    if (file === null) {
       return;
     }
 
-    this.phase.set('done');
+    this.convertSubscription = this.convertApi
+      .convert(file, { target: this.direction().target })
+      .subscribe({
+        next: (blob) => {
+          this.resultBlob.set(blob);
+          this.phase.set('done');
+        },
+        error: (error: AppError) => {
+          this.phase.set('idle');
+          this.toast.show('danger', error.message);
+        },
+      });
   }
 
   private select(files: FileList | null): void {
@@ -260,10 +278,6 @@ export class Dropzone {
     };
   }
 
-  private messageFor(code: ErrorCode): string {
-    return this.i18n.t(ERROR_MESSAGE_KEYS[code]);
-  }
-
   private stopUploadTimer(): void {
     if (this.uploadTimer !== null) {
       clearInterval(this.uploadTimer);
@@ -273,9 +287,9 @@ export class Dropzone {
 
   private stopTimers(): void {
     this.stopUploadTimer();
-    if (this.convertTimer !== null) {
-      clearTimeout(this.convertTimer);
-      this.convertTimer = null;
+    if (this.convertSubscription !== null) {
+      this.convertSubscription.unsubscribe();
+      this.convertSubscription = null;
     }
   }
 }
