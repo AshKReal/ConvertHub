@@ -30,3 +30,33 @@ export const SIGNED_URL_TTL_SECONDS = 15 * 60;
 
 /** Срок жизни сохранённого файла гостя (не авторизован) — TECH-SPEC.md §11. */
 export const GUEST_FILE_TTL_SECONDS = 60 * 60;
+
+/** Спека 007. Access-токен — TECH-SPEC.md §8.2. */
+export const JWT_ACCESS_TTL_SECONDS = 15 * 60;
+
+/** Спека 007. Refresh-токен, хранится в cookie — TECH-SPEC.md §8.2. */
+export const JWT_REFRESH_TTL_SECONDS = 30 * 24 * 60 * 60;
+
+/**
+ * Спека 007. Окно терпимости на повторное предъявление непосредственно
+ * предыдущего (уже заменённого) refresh-токена — решение владельца против
+ * гонки из ARCHITECTURE.md §7 (несколько вкладок обновляются одновременно).
+ * Вне этого окна или не на непосредственном предшественнике — кража,
+ * `auth.service.ts#refresh` завершает все сессии пользователя.
+ */
+export const REFRESH_REUSE_GRACE_SECONDS = 10;
+
+/**
+ * Спека 007. Была заглушкой в `apps/web` (019) с комментарием «настоящую
+ * политику задаёт 007» — теперь источник один, серверная Zod-схема и
+ * клиентская подсказка читают отсюда.
+ */
+export const MIN_PASSWORD_LENGTH = 8;
+
+/**
+ * Спека 007. Временный in-memory лимитер на login/register (не Redis —
+ * тот резервируется под 012, AUTH-RULES.md §2 требует rate limit здесь
+ * уже сейчас). Считается и по хешу IP, и по email — см. `auth.controller.ts`.
+ */
+export const AUTH_RATE_LIMIT_MAX = 10;
+export const AUTH_RATE_LIMIT_WINDOW_SECONDS = 10 * 60;

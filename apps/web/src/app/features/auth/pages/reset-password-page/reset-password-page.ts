@@ -3,7 +3,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { RouterLink } from '@angular/router';
 
 import { I18nService } from '../../../../core/services/i18n';
-import { MIN_PASSWORD_LENGTH } from '../../../../shared/constants/password-policy';
+import { MIN_PASSWORD_LENGTH } from '@convert-hub/shared';
 import { Button } from '../../../../shared/ui/button/button';
 import { Input } from '../../../../shared/ui/input/input';
 

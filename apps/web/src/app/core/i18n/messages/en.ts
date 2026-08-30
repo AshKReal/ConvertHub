@@ -68,6 +68,7 @@ export const EN_MESSAGES = {
   'auth.error.emailInvalid': 'Enter a valid email',
   'auth.error.passwordRequired': 'Enter your password',
   'auth.error.passwordTooShort': 'Password must be at least {min} characters',
+  'auth.error.emailTaken': 'This email is already registered',
   'auth.oauth.google': 'Continue with Google',
   'auth.oauth.telegram': 'Continue with Telegram',
   'auth.forgotPassword.title': 'Reset your password',
@@ -135,6 +136,7 @@ export const EN_MESSAGES = {
   'error.storageUnavailable': 'Storage is temporarily unavailable. Try again shortly.',
   'error.conversionTimeout':
     'Conversion took too long and was stopped. Try again with a smaller file.',
+  'error.unauthenticated': 'Your session expired. Signing you in again…',
 
   'files.title': 'My files',
   'files.quota.label': '{used} of {total} used',

@@ -5,8 +5,14 @@
  */
 export const ERROR_CODES = {
   INVALID_API_KEY: { status: 401, retryable: false },
+  /** Логин: неизвестный email, неверный пароль — одно и то же наружу (спека 007, AUTH-RULES.md §2). */
+  INVALID_CREDENTIALS: { status: 401, retryable: false },
+  /** Access-токен отсутствует/просрочен/невалиден на защищённом маршруте (спека 007) — интерцептор фронта обязан повторить запрос после refresh, отсюда retryable. */
+  UNAUTHENTICATED: { status: 401, retryable: true },
   EMAIL_NOT_VERIFIED: { status: 403, retryable: false },
   FILE_NOT_FOUND: { status: 404, retryable: false },
+  /** Регистрация: email уже занят (спека 007) — в отличие от логина/сброса пароля, здесь раскрытие существования аккаунта не запрещено (AUTH-RULES.md §2 перечисляет только логин и восстановление). */
+  EMAIL_ALREADY_REGISTERED: { status: 409, retryable: false },
   FILE_TOO_LARGE: { status: 413, retryable: false },
   UNSUPPORTED_FILE_TYPE: { status: 415, retryable: false },
   FILE_TYPE_MISMATCH: { status: 415, retryable: false },

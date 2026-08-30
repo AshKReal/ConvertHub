@@ -64,6 +64,7 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'auth.error.emailInvalid': 'Введіть коректний email',
   'auth.error.passwordRequired': 'Введіть пароль',
   'auth.error.passwordTooShort': 'Пароль має бути не коротшим за {min} символів',
+  'auth.error.emailTaken': 'Цей email вже зареєстровано',
   'auth.oauth.google': 'Увійти через Google',
   'auth.oauth.telegram': 'Увійти через Telegram',
   'auth.forgotPassword.title': 'Відновлення пароля',
@@ -132,6 +133,7 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'error.storageUnavailable': 'Сховище тимчасово недоступне. Спробуйте трохи пізніше.',
   'error.conversionTimeout':
     'Конвертація тривала задовго і була зупинена. Спробуйте з меншим файлом.',
+  'error.unauthenticated': 'Сесія закінчилася. Повторний вхід…',
 
   'files.title': 'Мої файли',
   'files.quota.label': '{used} з {total}',

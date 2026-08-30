@@ -64,6 +64,7 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'auth.error.emailInvalid': 'Введите корректный email',
   'auth.error.passwordRequired': 'Введите пароль',
   'auth.error.passwordTooShort': 'Пароль должен быть не короче {min} символов',
+  'auth.error.emailTaken': 'Этот email уже зарегистрирован',
   'auth.oauth.google': 'Войти через Google',
   'auth.oauth.telegram': 'Войти через Telegram',
   'auth.forgotPassword.title': 'Восстановление пароля',
@@ -133,6 +134,7 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'error.storageUnavailable': 'Хранилище временно недоступно. Попробуйте немного позже.',
   'error.conversionTimeout':
     'Конвертация заняла слишком много времени и была остановлена. Попробуйте с файлом поменьше.',
+  'error.unauthenticated': 'Сессия истекла. Повторный вход…',
 
   'files.title': 'Мои файлы',
   'files.quota.label': '{used} из {total}',

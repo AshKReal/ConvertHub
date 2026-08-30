@@ -7,7 +7,7 @@ import { I18nService } from '../../../../core/services/i18n';
 import { LOGIN_PROVIDER_LABEL_KEYS } from '../../../../core/i18n/messages';
 import { ModalService } from '../../../../core/services/modal';
 import { ToastService } from '../../../../core/services/toast';
-import { MIN_PASSWORD_LENGTH } from '../../../../shared/constants/password-policy';
+import { MIN_PASSWORD_LENGTH } from '@convert-hub/shared';
 import { Button } from '../../../../shared/ui/button/button';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog/confirm-dialog';
 import { Input } from '../../../../shared/ui/input/input';

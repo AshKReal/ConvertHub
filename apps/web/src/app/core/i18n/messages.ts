@@ -33,8 +33,14 @@ export const DIRECTION_DESCRIPTION_KEYS: Record<ConversionDirectionId, MessageKe
  */
 export const ERROR_MESSAGE_KEYS: Record<ErrorCode, MessageKey> = {
   INVALID_API_KEY: 'error.invalidApiKey',
+  // Тот же текст, что уже показывает login-page (019) инлайн над формой —
+  // сюда он попадёт, только если INVALID_CREDENTIALS придёт с эндпоинта,
+  // который не разбирает код сам (errorInterceptor не знает, откуда запрос).
+  INVALID_CREDENTIALS: 'auth.login.error',
+  UNAUTHENTICATED: 'error.unauthenticated',
   EMAIL_NOT_VERIFIED: 'error.emailNotVerified',
   FILE_NOT_FOUND: 'error.fileNotFound',
+  EMAIL_ALREADY_REGISTERED: 'auth.error.emailTaken',
   FILE_TOO_LARGE: 'error.fileTooLarge',
   UNSUPPORTED_FILE_TYPE: 'error.unsupportedFileType',
   FILE_TYPE_MISMATCH: 'error.fileTypeMismatch',

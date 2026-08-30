@@ -10,10 +10,15 @@ type Meta = Readonly<Record<string, string | number>> | undefined;
  */
 const ERROR_DETAILS: Record<ErrorCode, (meta: Meta) => string> = {
   INVALID_API_KEY: () => 'The provided API key is invalid or has been revoked.',
+  INVALID_CREDENTIALS: () => 'Email or password is incorrect.',
+  UNAUTHENTICATED: () =>
+    'The access token is missing, invalid, or has expired.',
   EMAIL_NOT_VERIFIED: () =>
     "The account's email address has not been verified yet.",
   FILE_NOT_FOUND: () =>
     'The requested file does not exist or is no longer available.',
+  EMAIL_ALREADY_REGISTERED: () =>
+    'An account with this email address already exists.',
   FILE_TOO_LARGE: (meta) =>
     `Uploaded file is ${meta?.['actual_size_bytes'] ?? '?'} bytes, maximum allowed is ${meta?.['max_size_bytes'] ?? '?'}.`,
   UNSUPPORTED_FILE_TYPE: () =>
