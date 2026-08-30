@@ -1,5 +1,5 @@
 import sharp from 'sharp';
-import { MAX_IMAGE_PIXELS } from '@convert-hub/shared';
+import { MAX_IMAGE_PIXELS, type ConversionTarget } from '@convert-hub/shared';
 import type { ConversionEngine } from './engine.interface';
 import type { ConvertOptions } from '../models/convert-options.model';
 
@@ -8,11 +8,20 @@ const SUPPORTED_FORMATS = new Set(['JPG', 'PNG']);
 /**
  * Фиксированная сигнатура `convert()` не несёт MIME результата — вызывающий
  * код берёт его отдельно, по той же `target`, что была передана в опциях.
+ * Принимает полный `ConversionTarget`, а не только `'png'|'jpg'`, чтобы
+ * вызывающему сервису не нужен был приводящий тип каст на границе.
  */
 export function imageOutputMime(
-  target: 'png' | 'jpg',
+  target: ConversionTarget,
 ): 'image/png' | 'image/jpeg' {
-  return target === 'png' ? 'image/png' : 'image/jpeg';
+  switch (target) {
+    case 'png':
+      return 'image/png';
+    case 'jpg':
+      return 'image/jpeg';
+    default:
+      throw new Error(`ImageEngine cannot produce target "${target}"`);
+  }
 }
 
 export class ImageEngine implements ConversionEngine {
