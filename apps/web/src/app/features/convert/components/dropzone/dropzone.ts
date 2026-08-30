@@ -233,6 +233,16 @@ export class Dropzone {
       });
   }
 
+  /**
+   * На быстрой (в т.ч. локальной) сети браузер не обязан присылать ни одного
+   * промежуточного `UploadProgress` — тело может уйти в сокет раньше первого
+   * тика прогресса, и следующим событием сразу приходит `ResponseHeader`.
+   * Обнаружено ручной проверкой через `HttpEvent`-поток напрямую, не по
+   * документации. Раз сервер уже отвечает — значит отправка гарантированно
+   * завершена, поэтому переход в `converting` также страхуется здесь, не
+   * только по `UploadProgress` со `100%` (спека 005: «по 100% загрузки, не по
+   * Response» — `ResponseHeader`, не тело ответа, этому не противоречит).
+   */
   private handleConvertEvent(event: HttpEvent<Blob>): void {
     switch (event.type) {
       case HttpEventType.UploadProgress: {
@@ -242,17 +252,27 @@ export class Dropzone {
         }
         const percent = Math.round((event.loaded / total) * 100);
         this.progress.set(percent);
-        if (percent >= 100 && this.phase() === 'uploading') {
-          this.phase.set('converting');
+        if (percent >= 100) {
+          this.markUploadDone();
         }
         break;
       }
+      case HttpEventType.ResponseHeader:
+        this.markUploadDone();
+        break;
       case HttpEventType.Response:
         this.resultBlob.set(event.body);
         this.phase.set('done');
         break;
       default:
         break;
+    }
+  }
+
+  private markUploadDone(): void {
+    if (this.phase() === 'uploading') {
+      this.progress.set(100);
+      this.phase.set('converting');
     }
   }
 
