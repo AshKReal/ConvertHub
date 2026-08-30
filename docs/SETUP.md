@@ -9,7 +9,7 @@
 | Компонент | Состояние |
 |---|---|
 | `apps/web` — Angular 22, Tailwind 4 | Главная и страница конвертации на моках, тема, три языка |
-| `apps/api` — NestJS 11 | `POST /v1/convert` (`JPG⇄PNG`, `PNG→JPG`, `PDF→DOCX`; 002, 005), `GET /v1/files/{id}/download` (003), единый формат ошибок (026) |
+| `apps/api` — NestJS 11 | `POST /v1/convert` (`JPG⇄PNG`, `PNG→JPG`, `PDF→DOCX`; 002, 005), `GET /v1/files/{id}/download` (003), единый формат ошибок (026), `/v1/auth/{register,login,refresh,logout,me}` — email+пароль, JWT access+refresh (007, `docs/AUTH.md`) |
 | `apps/api` — Prisma 6 / PostgreSQL | Схема `users`/`files`/`conversions`, миграции в `apps/api/src/prisma/migrations/` (спека 003) |
 | `packages/shared` | Реестр направлений конвертации, коды ошибок, лимиты; собирается в `dist/` |
 | `docker-compose.yml` | `postgres:17-alpine`, `redis:7-alpine` — оба с healthcheck |
@@ -83,6 +83,7 @@ pnpm lint
 | `DATABASE_URL` | **да** | `postgresql://convert_hub:change-me@localhost:5432/convert_hub` | Старт падает: схема требует валидный URL. Читает Prisma (спека 003) |
 | `SIGNED_URL_SECRET` | **да** | 32+ случайных символа | Старт падает: подпись ссылок на скачивание (`LocalDiskStorage.getSignedUrl`, спека 003) без секрета невозможна — дефолта нет намеренно |
 | `LOCAL_STORAGE_DIR` | **да** | `E:\convertedHub-local-storage` (абсолютный путь вне репозитория) | Старт падает: `LocalDiskStorage` явно проверяет, что путь не лежит внутри репозитория (спека 003) |
+| `JWT_SECRET` | **да** | 32+ случайных символа | Старт падает: подпись access-JWT (`TokenService`, спека 007) без секрета невозможна — дефолта нет намеренно |
 
 ## Где смотреть письма
 
@@ -106,7 +107,8 @@ GitHub в спецификации не значится.
 | Сиды | Отдельного решения нет; сущностей для сида пока не существует |
 | `GET /v1/files` (список, пагинация), квота, автоснятие `save` | Спека 010 |
 | Реальное объектное хранилище вместо `LocalDiskStorage` | Спека 016 |
-| Аутентификация: эндпоинты, guard'ы, JWT, cookie | Спеки 007–009, инварианты — `AUTH-RULES.md` |
+| OAuth (Google, Telegram), 2FA | Спека 008, инварианты — `AUTH-RULES.md` |
+| Восстановление пароля, удаление аккаунта | Спека 009, инварианты — `AUTH-RULES.md` |
 | Почта и MailHog | Спека 009, канал доставки не выбран |
 | Сервисы `api` и `web` в `docker-compose.yml`, Dockerfile | Спека 016 |
 | Gotenberg и MinIO | Спека 016 |
