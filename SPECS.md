@@ -56,7 +56,7 @@
 | 002 | 🔒 `convert-jpg-png` — magic bytes, защита от бомб, конвертация | 5 | 001, 004 | 5.2, 9.5 | — |
 | 003 | 🔒 `file-storage` — интерфейс Storage, подписанные ссылки, `files` и `conversions` | 5 | 002 | 7, 8.2 | ~ (код написан, приёмка владельцем не пройдена) |
 | 004 | `error-contract` — `packages/shared`, i18n-словарь, клиентский `errorInterceptor`/`AppError` | 1 | — | 6.6, 12.5 | ✓ |
-| 005 | `conversion-engines` — `PNG→JPG` и `PDF→DOCX` через `ConversionEngine`, подключение 006 к реальным ответам | 6 | 003, 026, 006 | 2 | — |
+| 005 | `conversion-engines` — `PNG→JPG` и `PDF→DOCX` через `ConversionEngine`, подключение 006 к реальным ответам | 6 | 003, 026, 006 | 2 | ~ (код написан, приёмка владельцем не пройдена) |
 | 006 | `dropzone-full-states` — все восемь состояний на моках, полное покрытие кодов из 004 | 1 | 001, 004 | 12.3, 5.2 | ✓ |
 | 007 | 🔒 `auth-native` — регистрация, вход, JWT + refresh с ротацией, подключение 019 | 7 | 026, 019 | 3.1–3.4 | — |
 | 008 | 🔒 `auth-providers` — Google OAuth с PKCE, Telegram Login, связывание | 7 | 007 | 3.2.2–3.2.4 | — |
