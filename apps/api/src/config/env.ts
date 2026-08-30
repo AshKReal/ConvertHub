@@ -12,6 +12,8 @@ const envSchema = z.object({
   SIGNED_URL_SECRET: z.string().min(32),
   /** Спека 003. Папка `LocalDiskStorage` — без дефолта, обязана лежать вне репозитория. */
   LOCAL_STORAGE_DIR: z.string().min(1),
+  /** Спека 007. Подпись access-JWT (`TokenService`) — без дефолта, как остальные секреты. */
+  JWT_SECRET: z.string().min(32),
 });
 
 export type Env = z.infer<typeof envSchema>;

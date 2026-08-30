@@ -7,5 +7,5 @@ import type { Request } from 'express';
  * существующее (там его в рантайме и нет).
  */
 export interface AuthenticatedRequest extends Request {
-  readonly userId: string;
+  userId: string;
 }

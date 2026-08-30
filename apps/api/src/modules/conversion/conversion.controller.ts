@@ -13,7 +13,9 @@ import type { ConvertRequest } from '@convert-hub/shared';
 import type { Request, Response } from 'express';
 import { hashIp } from '../../common/util/hash-ip';
 import { AppException } from '../../common/exceptions/app.exception';
+import { extractBearerToken } from '../../common/guards/extract-bearer-token';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
+import { TokenService } from '../auth/token.service';
 import { ConversionService } from './conversion.service';
 import { createConvertFileInterceptor } from './convert-file.interceptor';
 import { convertFormSchema } from './dto/convert-form.schema';
@@ -29,7 +31,10 @@ import { ConversionFailureFilter } from './filters/conversion-failure.filter';
 @Controller('v1/convert')
 @UseFilters(ConversionFailureFilter)
 export class ConversionController {
-  constructor(private readonly conversionService: ConversionService) {}
+  constructor(
+    private readonly conversionService: ConversionService,
+    private readonly tokenService: TokenService,
+  ) {}
 
   @Post()
   @HttpCode(200) // Nest иначе шлёт дефолтный статус POST (201) даже при @Res(); ничего не "создаётся"
@@ -44,8 +49,13 @@ export class ConversionController {
       throw new AppException('INVALID_PARAMETER', { field: 'file' });
     }
 
-    // TODO(007): реальный id из сессии/API-ключа вместо гостевого null
-    const userId: string | null = null;
+    // Гостевой маршрут (001/005) — невалидный/просроченный токен тихо даёт
+    // `null`, не 401: здесь нечего блокировать, `verifyAccessToken` для
+    // этого и не бросает (спека 007, `token.service.ts`).
+    const userId =
+      this.tokenService.verifyAccessToken(
+        extractBearerToken(req.headers.authorization),
+      )?.userId ?? null;
     // Ключ лимита одновременности (спека 005) — тот же паттерн анонимной
     // идентичности, что и лимит частоты гостя (TECH-SPEC.md §6): хеш IP, пока
     // нет настоящего пользователя.

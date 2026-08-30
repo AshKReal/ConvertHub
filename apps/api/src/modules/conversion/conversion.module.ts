@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
 import { FilesModule } from '../files/files.module';
 import { ConcurrencyLimiterService } from './concurrency-limiter.service';
 import { ConversionController } from './conversion.controller';
@@ -11,7 +12,7 @@ import { ConversionFailureFilter } from './filters/conversion-failure.filter';
 import { MulterExceptionFilter } from './filters/multer-exception.filter';
 
 @Module({
-  imports: [FilesModule],
+  imports: [FilesModule, AuthModule],
   controllers: [ConversionController],
   providers: [
     ImageEngine,
