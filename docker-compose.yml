@@ -17,6 +17,10 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      # Спека 015 (частично) — создаёт convert_hub_test на СВЕЖЕМ volume;
+      # уже существующий volume не трогает (официальное поведение образа),
+      # там БД создаётся вручную один раз (docs/SETUP.md).
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
