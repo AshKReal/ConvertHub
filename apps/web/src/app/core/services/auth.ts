@@ -1,7 +1,14 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
-import type { AuthResponse, LoginRequest, RegisterRequest } from '@convert-hub/shared';
-import { catchError, finalize, map, of, shareReplay, type Observable } from 'rxjs';
+import type {
+  AuthResponse,
+  ChangePasswordRequest,
+  ForgotPasswordRequest,
+  LoginRequest,
+  RegisterRequest,
+  ResetPasswordRequest,
+} from '@convert-hub/shared';
+import { catchError, finalize, map, of, shareReplay, tap, type Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 
@@ -114,6 +121,42 @@ export class AuthService {
         );
     }
     return this.refreshInFlight$;
+  }
+
+  /** Ответ у сервера один и тот же независимо от результата (`TECH-SPEC.md` §8.5) — здесь просто нечего разбирать. */
+  requestPasswordReset(email: string): Observable<void> {
+    const body: ForgotPasswordRequest = { email };
+    return this.http.post<void>(`${AUTH_BASE}/forgot-password`, body, { withCredentials: true });
+  }
+
+  /** Не логинит автоматически — 020 уже показывает экран успеха со ссылкой на `/login`. */
+  resetPassword(token: string, password: string): Observable<void> {
+    const body: ResetPasswordRequest = { token, password };
+    return this.http.post<void>(`${AUTH_BASE}/reset-password`, body, { withCredentials: true });
+  }
+
+  /**
+   * Сервер уже отзывает все сессии на успехе — здесь только сам запрос;
+   * локальный сброс сигналов делает вызывающий (`profile-page.ts`) через
+   * уже существующий `logout()`, как в моке 020.
+   */
+  changePassword(currentPassword: string, newPassword: string): Observable<void> {
+    const body: ChangePasswordRequest = { currentPassword, newPassword };
+    return this.http.patch<void>(`${AUTH_BASE}/password`, body, { withCredentials: true });
+  }
+
+  /**
+   * В отличие от `logout()` — без отдельного вызова `/logout`: сервер уже
+   * чистит cookie в ответе на `DELETE`, аккаунта для второго запроса просто
+   * не существует.
+   */
+  deleteAccount(): Observable<void> {
+    return this.http.delete<void>(`${AUTH_BASE}/account`, { withCredentials: true }).pipe(
+      tap(() => {
+        this.accessToken = null;
+        this.user.set(null);
+      }),
+    );
   }
 
   currentAccessToken(): string | null {
