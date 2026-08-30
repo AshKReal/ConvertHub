@@ -28,6 +28,13 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
+      // Параметр интерфейса, который эта реализация не использует (пример:
+      // `mime` в LocalDiskStorage.put — на диске нет слота под content-type),
+      // — не то же самое, что мёртвая переменная.
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_' },
+      ],
       "prettier/prettier": ["error", { endOfLine: "auto" }],
     },
   },
