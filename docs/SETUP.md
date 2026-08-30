@@ -14,6 +14,7 @@
 | `packages/shared` | Реестр направлений конвертации, коды ошибок, лимиты; собирается в `dist/` |
 | `docker-compose.yml` | `postgres:17-alpine`, `redis:7-alpine` (оба с healthcheck), `mailhog/mailhog:v1.0.1` (без — образ минимальный, нечем его написать) |
 | Тесты (Vitest, спека 015 частично) | Юнит во всех трёх пакетах + e2e в `apps/api` против реальной `convert_hub_test` — раздел «Тесты» ниже |
+| CI (`.github/workflows/ci.yml`) | `typecheck`/`lint`/`test` (юнит) на push/PR в `main`/`backend` — без внешних сервисов, e2e в CI пока нет |
 
 ## Требования
 

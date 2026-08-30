@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main, backend]
+  pull_request:
+    branches: [main, backend]
+
+# Только typecheck/lint/юнит-тесты (pnpm test — без внешних сервисов,
+# specs/015-testing.md). e2e (pnpm test:e2e) требует Postgres — отдельный
+# шаг на будущее, не в этом простом пайплайне.
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      # Тот же .env.example, что первый локальный запуск с нуля
+      # (docs/SETUP.md) — до install: postinstall Prisma (prisma generate,
+      # onlyBuiltDependencies в корневом package.json) сам читает
+      # DATABASE_URL из .env. Значения из .env.example — placeholder-формы,
+      # не секреты: юнит-тестам живая БД не нужна (TokenService/hash-ip.spec.ts
+      # Prisma не трогают), env.ts проверяет форму значений, не подключение.
+      - run: cp apps/api/.env.example apps/api/.env
+
+      - run: pnpm install --frozen-lockfile
+
+      # apps/api и apps/web резолвят @convert-hub/shared через
+      # package.json#main/#types из dist/, не исходники напрямую
+      # (.claude/rules/shared-package.md) — без сборки тайпчек не найдёт типы.
+      - run: pnpm --filter @convert-hub/shared build
+
+      # Типы @prisma/client генерируются из schema.prisma — без этого шага
+      # тайпчек apps/api не увидит актуальные модели (например Identity, 008).
+      - run: pnpm --filter api db:generate
+
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
