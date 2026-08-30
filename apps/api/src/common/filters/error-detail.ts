@@ -33,6 +33,8 @@ const ERROR_DETAILS: Record<ErrorCode, (meta: Meta) => string> = {
       : 'One of the request parameters is invalid.',
   RATE_LIMIT_EXCEEDED: () =>
     'Too many requests. Retry after the indicated interval.',
+  CONCURRENCY_LIMIT_EXCEEDED: (meta) =>
+    `This client already has ${meta?.['limit'] ?? '?'} conversions running. Wait for one to finish and try again.`,
   CONVERSION_FAILED: () => 'The conversion failed unexpectedly.',
   SERVICE_OVERLOADED: () => 'The conversion service is temporarily overloaded.',
   STORAGE_UNAVAILABLE: () => 'Storage is temporarily unavailable.',

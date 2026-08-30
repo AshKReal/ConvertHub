@@ -16,6 +16,8 @@ export const ERROR_CODES = {
   TOO_MANY_PAGES: { status: 422, retryable: false },
   INVALID_PARAMETER: { status: 422, retryable: false },
   RATE_LIMIT_EXCEEDED: { status: 429, retryable: true },
+  /** Одновременных запросов от одного клиента больше лимита (спека 005) — счётчик "сейчас", не по времени, как RATE_LIMIT_EXCEEDED. */
+  CONCURRENCY_LIMIT_EXCEEDED: { status: 429, retryable: true },
   CONVERSION_FAILED: { status: 500, retryable: true },
   /** Фолбэк для непредвиденных ошибок вне доменных кодов (спека 026) — не только конвертация. */
   INTERNAL_ERROR: { status: 500, retryable: true },

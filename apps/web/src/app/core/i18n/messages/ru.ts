@@ -122,6 +122,8 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'error.invalidParameter':
     'Один из параметров запроса некорректен. Проверьте значение и попробуйте снова.',
   'error.rateLimitExceeded': 'Слишком много запросов. Попробуйте через минуту.',
+  'error.concurrencyLimitExceeded':
+    'У вас уже 3 конвертации в процессе. Дождитесь завершения одной и попробуйте снова.',
   'error.conversionFailed':
     'Конвертация неожиданно завершилась ошибкой. Попробуйте снова — если повторится, напишите в поддержку.',
   'error.internalError':

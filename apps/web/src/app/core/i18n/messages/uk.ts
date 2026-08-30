@@ -122,6 +122,8 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'error.invalidParameter':
     'Один із параметрів запиту некоректний. Перевірте значення і спробуйте ще раз.',
   'error.rateLimitExceeded': 'Забагато запитів. Спробуйте за хвилину.',
+  'error.concurrencyLimitExceeded':
+    'У вас вже 3 конвертації в процесі. Зачекайте завершення однієї та спробуйте ще раз.',
   'error.conversionFailed':
     'Конвертація несподівано завершилася помилкою. Спробуйте ще раз — якщо повториться, напишіть у підтримку.',
   'error.internalError':

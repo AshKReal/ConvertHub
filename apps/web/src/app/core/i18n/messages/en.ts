@@ -125,6 +125,8 @@ export const EN_MESSAGES = {
   'error.invalidParameter':
     'One of the request parameters is invalid. Check the value and try again.',
   'error.rateLimitExceeded': 'Too many requests. Try again in a minute.',
+  'error.concurrencyLimitExceeded':
+    'You already have 3 conversions running. Wait for one to finish and try again.',
   'error.conversionFailed':
     'Conversion failed unexpectedly. Try again — contact support if it keeps happening.',
   'error.internalError': 'Something went wrong. Try again — contact support if it keeps happening.',

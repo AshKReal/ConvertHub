@@ -44,6 +44,7 @@ export const ERROR_MESSAGE_KEYS: Record<ErrorCode, MessageKey> = {
   TOO_MANY_PAGES: 'error.tooManyPages',
   INVALID_PARAMETER: 'error.invalidParameter',
   RATE_LIMIT_EXCEEDED: 'error.rateLimitExceeded',
+  CONCURRENCY_LIMIT_EXCEEDED: 'error.concurrencyLimitExceeded',
   CONVERSION_FAILED: 'error.conversionFailed',
   INTERNAL_ERROR: 'error.internalError',
   SERVICE_OVERLOADED: 'error.serviceOverloaded',
