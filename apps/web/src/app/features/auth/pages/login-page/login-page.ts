@@ -2,18 +2,13 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
-import { AuthService, type LoginProvider } from '../../../../core/services/auth';
+import type { AppError } from '../../../../core/interceptors/error-interceptor';
+import { AuthService } from '../../../../core/services/auth';
 import { I18nService } from '../../../../core/services/i18n';
+import { ToastService } from '../../../../core/services/toast';
 import { Button } from '../../../../shared/ui/button/button';
 import { Input } from '../../../../shared/ui/input/input';
 import { OauthButtons, type OauthProvider } from '../../components/oauth-buttons/oauth-buttons';
-
-/**
- * Мок для ручной приёмки: переключить на `false`, чтобы увидеть единое
- * сообщение об ошибке входа (`AUTH-RULES.md`: одно сообщение на любую причину
- * отказа). Настоящая проверка учётных данных — бэкенд, спека 007.
- */
-const MOCK_LOGIN_SUCCEEDS = true;
 
 @Component({
   selector: 'app-login-page',
@@ -24,6 +19,7 @@ const MOCK_LOGIN_SUCCEEDS = true;
 export class LoginPage {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
   protected readonly i18n = inject(I18nService);
 
   protected readonly form = new FormGroup({
@@ -35,6 +31,8 @@ export class LoginPage {
   });
 
   protected readonly showError = signal(false);
+  /** Против двойного клика: реальный запрос, не мок — второй клик до ответа первого не должен слать второй. */
+  protected readonly submitting = signal(false);
 
   protected get emailError(): string | null {
     const control = this.form.controls.email;
@@ -55,25 +53,29 @@ export class LoginPage {
 
   protected submit(): void {
     this.form.markAllAsTouched();
-    if (this.form.invalid) {
-      return;
-    }
-
-    this.tryLogin(this.form.controls.email.value);
-  }
-
-  protected onOauth(provider: OauthProvider): void {
-    this.tryLogin('demo@convert-hub.io', provider);
-  }
-
-  private tryLogin(email: string, provider: LoginProvider = 'password'): void {
-    if (!MOCK_LOGIN_SUCCEEDS) {
-      this.showError.set(true);
+    if (this.form.invalid || this.submitting()) {
       return;
     }
 
     this.showError.set(false);
-    this.auth.login(email, provider);
+    this.submitting.set(true);
+    this.auth.login(this.form.controls.email.value, this.form.controls.password.value).subscribe({
+      next: () => this.router.navigateByUrl('/'),
+      error: (error: AppError) => {
+        this.submitting.set(false);
+        // Единое сообщение под формой (AUTH-RULES.md §2) — прочие коды
+        // (rate limit и т.п.) тостом, как решено для остальных отказов (026).
+        if (error.code === 'INVALID_CREDENTIALS') {
+          this.showError.set(true);
+        } else {
+          this.toast.show('danger', error.message);
+        }
+      },
+    });
+  }
+
+  protected onOauth(provider: OauthProvider): void {
+    this.auth.loginAsMockOAuth('demo@convert-hub.io', provider);
     this.router.navigateByUrl('/');
   }
 }

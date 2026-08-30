@@ -20,7 +20,7 @@
       [errorMessage]="passwordError"
       autocomplete="new-password"
     />
-    <app-button type="submit">{{ i18n.t('auth.register.submit') }}</app-button>
+    <app-button type="submit" [disabled]="submitting()">{{ i18n.t('auth.register.submit') }}</app-button>
   </form>
 
   <div class="flex items-center gap-3 text-caption text-text-muted" aria-hidden="true">
