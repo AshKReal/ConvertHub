@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  HttpCode,
   Post,
   Res,
   UploadedFile,
@@ -27,6 +28,7 @@ export class ConversionController {
   constructor(private readonly conversionService: ConversionService) {}
 
   @Post()
+  @HttpCode(200) // Nest иначе шлёт дефолтный статус POST (201) даже при @Res(); ничего не "создаётся"
   @UseInterceptors(createConvertFileInterceptor())
   async convert(
     @UploadedFile() file: Express.Multer.File | undefined,

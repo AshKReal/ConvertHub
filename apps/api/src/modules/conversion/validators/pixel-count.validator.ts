@@ -12,7 +12,13 @@ export async function assertWithinPixelLimit(filePath: string): Promise<void> {
   let height: number | undefined;
 
   try {
-    ({ width, height } = await sharp(filePath).metadata());
+    // limitInputPixels отключён только для этого чтения заголовка: metadata()
+    // не декодирует пиксели, поэтому здесь это безопасно, а sharp иначе сам
+    // отказывает уже на этом шаге (лимит по умолчанию ~268 Мп) до того, как
+    // наша проверка успеет отличить decompression bomb от честного большого фото.
+    ({ width, height } = await sharp(filePath, {
+      limitInputPixels: false,
+    }).metadata());
   } catch {
     throw new AppException('FILE_CORRUPTED');
   }

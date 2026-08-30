@@ -51,16 +51,16 @@
 
 ## Критерии приёмки
 
-- [ ] Настоящий JPG, цель — второй формат → 200, тело — валидный файл второго формата
-- [ ] Настоящий файл с прозрачностью, цель — формат без альфа-канала, указан цвет фона → прозрачные пиксели становятся этим цветом
-- [ ] Файл одного формата, переименованный в расширение другого, с целью, совпадающей с расширением → отказ `FILE_TYPE_MISMATCH`
-- [ ] Файл постороннего формата, переименованный в поддерживаемое расширение → отказ `UNSUPPORTED_FILE_TYPE`
-- [ ] Файл на 1 байт больше предельного размера → отказ `FILE_TOO_LARGE`, временных файлов на диске не осталось
-- [ ] Файл с заведомо огромным заявленным разрешением → отказ `IMAGE_TOO_LARGE`, ответ быстрый, полный разбор содержимого не происходит
-- [ ] Обрезанный/повреждённый файл → отказ `FILE_CORRUPTED`
-- [ ] `pnpm --filter api typecheck` и `pnpm --filter api lint` зелёные
-- [ ] `any` в диффе отсутствует
-- [ ] Секретов в диффе нет (цвет фона по умолчанию — обычное значение параметра, не токен дизайна и не HEX в разметке — правило DESIGN.md к бэкенду не относится)
+- [x] Настоящий JPG, цель — второй формат → 200, тело — валидный файл второго формата
+- [x] Настоящий файл с прозрачностью, цель — формат без альфа-канала, указан цвет фона → прозрачные пиксели становятся этим цветом
+- [x] Файл одного формата, переименованный в расширение другого, с целью, совпадающей с расширением → отказ `FILE_TYPE_MISMATCH`
+- [x] Файл постороннего формата, переименованный в поддерживаемое расширение → отказ `UNSUPPORTED_FILE_TYPE`
+- [x] Файл на 1 байт больше предельного размера → отказ `FILE_TOO_LARGE`, временных файлов на диске не осталось
+- [x] Файл с заведомо огромным заявленным разрешением → отказ `IMAGE_TOO_LARGE`, ответ быстрый, полный разбор содержимого не происходит
+- [x] Обрезанный/повреждённый файл → отказ `FILE_CORRUPTED`
+- [x] `pnpm --filter api typecheck` и `pnpm --filter api lint` зелёные
+- [x] `any` в диффе отсутствует
+- [x] Секретов в диффе нет (цвет фона по умолчанию — обычное значение параметра, не токен дизайна и не HEX в разметке — правило DESIGN.md к бэкенду не относится)
 
 ---
 
@@ -109,6 +109,12 @@
 | Глобальный (не по пользователю) семафор параллельных конвертаций | Не различает одного злоумышленника и много легитимных анонимных клиентов; станет мёртвым кодом, когда появится персональный семафор в 005 | 005 (по пользователю), 012 (ограничение частоты) |
 | Ошибки без собственного типизированного исключения — falling back на стандартный формат Nest | Формат по умолчанию не совпадает с тем, что уже ждёт клиентский перехватчик ошибок — точная причина отказа терялась бы | — |
 
+### Найдено ручной проверкой, не было видно по чтению документации
+
+- `@nestjs/platform-express`'s `FileInterceptor` сам перехватывает сырой `multer.MulterError` и превращает `LIMIT_FILE_SIZE` в свой `PayloadTooLargeException` (`multer.utils.js`, `transformException`) прежде, чем ошибка доходит до `MulterExceptionFilter` — сырой `MulterError` туда не долетает никогда. Фильтр изначально проверял `instanceof MulterError`, не срабатывал, и клиенту уходил дефолтный формат Nest (`{message, error, statusCode}`), не контрактный `{code, meta}`. Исправлено: фильтр проверяет `instanceof PayloadTooLargeException`.
+- `sharp(path).metadata()` без опций сама отказывает уже на заголовке, если заявленное разрешение превышает **собственный** лимит sharp по умолчанию (~268 Мп) — на файле 20000×20000 (400 Мп) это происходило раньше, чем наша проверка успевала отличить decompression bomb (`IMAGE_TOO_LARGE`, с числами) от повреждённого файла: `metadata()` бросала исключение, и оно попадало в тот же `catch`, что и настоящая порча (`FILE_CORRUPTED`). Исправлено: `limitInputPixels: false` именно на этом чтении заголовка — `metadata()` не декодирует пиксели, это безопасно; решающий лимит — наша собственная проверка сразу после.
+- `@Res()`-обработчик получает от Nest статус по умолчанию для метода (`POST` → 201), даже когда ответ формируется вручную. Успешная конвертация ничего не «создаёт» — добавлен явный `@HttpCode(200)`.
+
 ### Риски и границы транзакций
 
 БД не участвует, транзакций нет. Риски:
@@ -133,17 +139,17 @@
 
 ## Чек-лист
 
-- [ ] `packages/shared`: `MAX_IMAGE_PIXELS`
-- [ ] Зависимости `apps/api` (`sharp`, `file-type`, `multer`, `@types/multer`), установка проверена
-- [ ] `common/exceptions/app.exception.ts`, `common/pipes/zod-validation.pipe.ts`
-- [ ] `modules/conversion/engines/engine.interface.ts`, `models/convert-options.model.ts`
-- [ ] `modules/conversion/engines/image.engine.ts`
-- [ ] `modules/conversion/validators/*` (magic bytes, направление, пиксельный лимит)
-- [ ] `modules/conversion/convert-file.interceptor.ts`, `filters/multer-exception.filter.ts`
-- [ ] `modules/conversion/dto/convert-form.schema.ts`
-- [ ] `modules/conversion/conversion.service.ts`
-- [ ] `modules/conversion/conversion.controller.ts`, `conversion.module.ts`, подключение в `app.module.ts`
-- [ ] Ручная проверка всех тест-кейсов прямыми HTTP-запросами
+- [x] `packages/shared`: `MAX_IMAGE_PIXELS`
+- [x] Зависимости `apps/api` (`sharp`, `file-type`, `multer`, `@types/multer`), установка проверена (`pnpm audit` чист)
+- [x] `common/exceptions/app.exception.ts`, `common/pipes/zod-validation.pipe.ts`
+- [x] `modules/conversion/engines/engine.interface.ts`, `models/convert-options.model.ts`
+- [x] `modules/conversion/engines/image.engine.ts`
+- [x] `modules/conversion/validators/*` (magic bytes, направление, пиксельный лимит)
+- [x] `modules/conversion/convert-file.interceptor.ts`, `filters/multer-exception.filter.ts`
+- [x] `modules/conversion/dto/convert-form.schema.ts`
+- [x] `modules/conversion/conversion.service.ts`
+- [x] `modules/conversion/conversion.controller.ts`, `conversion.module.ts`, подключение в `app.module.ts`
+- [x] Ручная проверка всех тест-кейсов прямыми HTTP-запросами (curl, реальный `nest start`, реальные файлы из 000) — 7 из 8 сценариев прогнаны и прошли (JPG→PNG, альфа→JPG с фоном/качеством, несовпадение типа, неподдерживаемый тип, повреждённый файл, decompression bomb, превышение размера); обрыв соединения посреди приёма не воспроизведён — не автоматизировал за разумное время, честно не отмечаю как проверенное
 
 ### Приёмка
 
