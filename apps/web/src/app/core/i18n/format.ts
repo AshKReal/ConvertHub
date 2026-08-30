@@ -19,6 +19,14 @@ export function formatBytes(bytes: number, locale: Locale): string {
   return withUnit(bytes / MEGABYTE, 'megabyte', 1, locale);
 }
 
+export function formatDate(iso: string, locale: Locale): string {
+  return new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(iso));
+}
+
 function withUnit(
   value: number,
   unit: string,

@@ -1,0 +1,93 @@
+<div class="mx-auto flex max-w-[840px] flex-col gap-10 px-6 py-16">
+  <header class="flex flex-col gap-3">
+    <h1 class="font-heading text-heading text-text">{{ i18n.t('apiDocs.title') }}</h1>
+    <p class="text-body-sm text-text-secondary">{{ i18n.t('apiDocs.intro') }}</p>
+  </header>
+
+  <section class="flex flex-col gap-3">
+    <h2 class="font-heading text-heading-sm text-text">{{ i18n.t('apiDocs.auth.title') }}</h2>
+    <p class="text-body-sm text-text-secondary">{{ i18n.t('apiDocs.auth.description') }}</p>
+    <app-code-block [code]="authExample" />
+  </section>
+
+  <section class="flex flex-col gap-3">
+    <h2 class="font-heading text-heading-sm text-text">{{ i18n.t('apiDocs.endpoints.title') }}</h2>
+    <div class="overflow-x-auto rounded-lg border border-hairline bg-surface">
+      <table class="w-full text-left text-body-sm">
+        <tbody>
+          @for (endpoint of endpoints; track endpoint.id) {
+            <tr class="border-b border-hairline last:border-b-0">
+              <td class="whitespace-nowrap px-4 py-3 font-mono text-caption text-text-secondary">
+                {{ endpoint.method }}
+              </td>
+              <td class="whitespace-nowrap px-4 py-3 font-mono text-body-sm text-text">
+                {{ endpoint.path }}
+              </td>
+              <td class="px-4 py-3 text-text-secondary">
+                {{ i18n.t(endpointDescriptionKeys[endpoint.id]) }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="flex flex-col gap-3">
+    <h2 class="font-heading text-heading-sm text-text">{{ i18n.t('apiDocs.limits.title') }}</h2>
+    <ul class="flex list-disc flex-col gap-1.5 pl-5 text-body-sm text-text-secondary">
+      <li>{{ i18n.t('apiDocs.limits.fileSize', { value: i18n.formatBytes(maxFileSizeBytes) }) }}</li>
+      <li>{{ i18n.t('apiDocs.limits.quota', { value: i18n.formatBytes(storageQuotaBytes) }) }}</li>
+      <li>{{ i18n.t('apiDocs.limits.rateLimit') }}</li>
+      <li>{{ i18n.t('apiDocs.limits.userDaily') }}</li>
+      <li>{{ i18n.t('apiDocs.limits.guestHourly') }}</li>
+      <li>{{ i18n.t('apiDocs.limits.pdfPages') }}</li>
+    </ul>
+  </section>
+
+  <section class="flex flex-col gap-3">
+    <h2 class="font-heading text-heading-sm text-text">{{ i18n.t('apiDocs.errors.title') }}</h2>
+    <p class="text-body-sm text-text-secondary">{{ i18n.t('apiDocs.errors.description') }}</p>
+    <div class="overflow-x-auto rounded-lg border border-hairline bg-surface">
+      <table class="w-full text-left text-body-sm">
+        <tbody>
+          @for (entry of errorEntries; track entry.code) {
+            <tr class="border-b border-hairline last:border-b-0">
+              <td class="whitespace-nowrap px-4 py-3 font-mono text-caption text-text">
+                {{ entry.code }}
+              </td>
+              <td class="tnum whitespace-nowrap px-4 py-3 font-mono text-caption text-text-secondary">
+                {{ entry.status }}
+              </td>
+              <td class="whitespace-nowrap px-4 py-3">
+                <span
+                  class="rounded-full px-2.5 py-[3px] text-caption"
+                  [class]="
+                    entry.retryable ? 'bg-success-subtle text-success' : 'bg-surface-muted text-text-secondary'
+                  "
+                >
+                  {{ entry.retryable ? i18n.t('apiDocs.errors.retryable') : i18n.t('apiDocs.errors.notRetryable') }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-text-secondary">{{ i18n.t(errorMessageKeys[entry.code]) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="flex flex-col gap-6">
+    <h2 class="font-heading text-heading-sm text-text">{{ i18n.t('apiDocs.examples.title') }}</h2>
+
+    <div class="flex flex-col gap-2">
+      <p class="text-body-sm text-text-secondary">{{ i18n.t('apiDocs.examples.convert') }}</p>
+      <app-code-block [code]="convertExample" />
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <p class="text-body-sm text-text-secondary">{{ i18n.t('apiDocs.examples.listFiles') }}</p>
+      <app-code-block [code]="listFilesExample" />
+    </div>
+  </section>
+</div>

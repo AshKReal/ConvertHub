@@ -1,0 +1,25 @@
+<div class="flex h-16 items-center gap-3 border-b border-hairline px-4 last:border-b-0">
+  <div class="min-w-0 flex-1">
+    <p class="truncate font-mono text-heading-sm text-text">{{ maskedValue() }}</p>
+    <p class="tnum truncate font-mono text-caption text-text-muted">
+      {{ createdLabel() }} · {{ lastUsedLabel() }}
+    </p>
+  </div>
+
+  <div class="flex shrink-0 items-center gap-3">
+    <button
+      type="button"
+      class="text-label text-text-secondary underline decoration-strong underline-offset-2 transition-colors duration-150 hover:text-text hover:decoration-accent-hover"
+      (click)="reissue.emit()"
+    >
+      {{ i18n.t('apiKeys.row.reissue') }}
+    </button>
+    <button
+      type="button"
+      class="text-label text-danger underline decoration-danger underline-offset-2"
+      (click)="revoke.emit()"
+    >
+      {{ i18n.t('apiKeys.row.revoke') }}
+    </button>
+  </div>
+</div>

@@ -28,6 +28,13 @@
       autocomplete="current-password"
     />
     <app-button type="submit">{{ i18n.t('auth.login.submit') }}</app-button>
+
+    <a
+      routerLink="/forgot-password"
+      class="text-center text-body-sm text-text-secondary no-underline hover:text-text"
+    >
+      {{ i18n.t('auth.login.forgotPassword') }}
+    </a>
   </form>
 
   <div class="flex items-center gap-3 text-caption text-text-muted" aria-hidden="true">
@@ -36,7 +43,7 @@
     <span class="h-px flex-1 bg-hairline"></span>
   </div>
 
-  <app-oauth-buttons (chosen)="onOauth()" />
+  <app-oauth-buttons (chosen)="onOauth($event)" />
 
   <p class="text-center text-body-sm text-text-secondary">
     {{ i18n.t('auth.login.noAccount') }}

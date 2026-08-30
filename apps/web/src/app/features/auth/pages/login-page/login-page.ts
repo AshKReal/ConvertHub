@@ -2,11 +2,11 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
-import { AuthService } from '../../../../core/services/auth';
+import { AuthService, type LoginProvider } from '../../../../core/services/auth';
 import { I18nService } from '../../../../core/services/i18n';
 import { Button } from '../../../../shared/ui/button/button';
 import { Input } from '../../../../shared/ui/input/input';
-import { OauthButtons } from '../../components/oauth-buttons/oauth-buttons';
+import { OauthButtons, type OauthProvider } from '../../components/oauth-buttons/oauth-buttons';
 
 /**
  * Мок для ручной приёмки: переключить на `false`, чтобы увидеть единое
@@ -62,18 +62,18 @@ export class LoginPage {
     this.tryLogin(this.form.controls.email.value);
   }
 
-  protected onOauth(): void {
-    this.tryLogin('demo@convert-hub.io');
+  protected onOauth(provider: OauthProvider): void {
+    this.tryLogin('demo@convert-hub.io', provider);
   }
 
-  private tryLogin(email: string): void {
+  private tryLogin(email: string, provider: LoginProvider = 'password'): void {
     if (!MOCK_LOGIN_SUCCEEDS) {
       this.showError.set(true);
       return;
     }
 
     this.showError.set(false);
-    this.auth.login(email);
+    this.auth.login(email, provider);
     this.router.navigateByUrl('/');
   }
 }

@@ -2,17 +2,12 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
-import { AuthService } from '../../../../core/services/auth';
+import { AuthService, type LoginProvider } from '../../../../core/services/auth';
 import { I18nService } from '../../../../core/services/i18n';
+import { MIN_PASSWORD_LENGTH } from '../../../../shared/constants/password-policy';
 import { Button } from '../../../../shared/ui/button/button';
 import { Input } from '../../../../shared/ui/input/input';
-import { OauthButtons } from '../../components/oauth-buttons/oauth-buttons';
-
-/**
- * Минимальная длина пароля нигде не зафиксирована (`AUTH-RULES.md` §5) —
- * 8 здесь заглушка для клиентской подсказки, настоящую политику задаёт 007.
- */
-const MIN_PASSWORD_LENGTH = 8;
+import { OauthButtons, type OauthProvider } from '../../components/oauth-buttons/oauth-buttons';
 
 @Component({
   selector: 'app-register-page',
@@ -65,12 +60,12 @@ export class RegisterPage {
     this.register(this.form.controls.email.value);
   }
 
-  protected onOauth(): void {
-    this.register('demo@convert-hub.io');
+  protected onOauth(provider: OauthProvider): void {
+    this.register('demo@convert-hub.io', provider);
   }
 
-  private register(email: string): void {
-    this.auth.login(email);
+  private register(email: string, provider: LoginProvider = 'password'): void {
+    this.auth.login(email, provider);
     this.router.navigateByUrl('/');
   }
 }

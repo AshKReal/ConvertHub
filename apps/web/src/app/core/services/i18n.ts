@@ -1,6 +1,6 @@
 import { Injectable, effect, signal } from '@angular/core';
 
-import { formatBytes } from '../i18n/format';
+import { formatBytes, formatDate } from '../i18n/format';
 import { MESSAGES, type MessageKey } from '../i18n/messages';
 import { type Locale, detectLocale, storeLocale } from '../i18n/locale';
 
@@ -30,6 +30,10 @@ export class I18nService {
 
   formatBytes(bytes: number): string {
     return formatBytes(bytes, this.locale());
+  }
+
+  formatDate(iso: string): string {
+    return formatDate(iso, this.locale());
   }
 }
 
