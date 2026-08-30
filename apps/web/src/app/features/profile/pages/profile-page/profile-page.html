@@ -42,7 +42,9 @@
           [errorMessage]="confirmPasswordError"
           autocomplete="new-password"
         />
-        <app-button type="submit">{{ i18n.t('profile.changePassword.submit') }}</app-button>
+        <app-button type="submit" [disabled]="submitting()">
+          {{ i18n.t('profile.changePassword.submit') }}
+        </app-button>
       </form>
     </section>
 
