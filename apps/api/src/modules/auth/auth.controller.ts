@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
+  Patch,
   Post,
   Req,
   Res,
@@ -12,11 +14,17 @@ import {
   AUTH_RATE_LIMIT_MAX,
   AUTH_RATE_LIMIT_WINDOW_SECONDS,
   JWT_REFRESH_TTL_SECONDS,
+  changePasswordRequestSchema,
+  forgotPasswordRequestSchema,
   loginRequestSchema,
+  resetPasswordRequestSchema,
   type AuthResponse,
   type AuthUser,
+  type ChangePasswordRequest,
+  type ForgotPasswordRequest,
   type LoginRequest,
   type RegisterRequest,
+  type ResetPasswordRequest,
   registerRequestSchema,
 } from '@convert-hub/shared';
 import type { Request, Response } from 'express';
@@ -31,6 +39,7 @@ import {
 } from '../../common/rate-limit/fixed-window-rate-limiter.service';
 import { env } from '../../config/env';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AccountService } from './account.service';
 import { AuthService, type IssuedSession } from './auth.service';
 
 const REFRESH_COOKIE_NAME = 'refresh_token';
@@ -51,6 +60,7 @@ const AUTH_RATE_LIMIT: ConsumeOptions = {
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    private readonly accountService: AccountService,
     private readonly rateLimiter: FixedWindowRateLimiterService,
     private readonly prisma: PrismaService,
   ) {}
@@ -112,13 +122,73 @@ export class AuthController {
     res.clearCookie(REFRESH_COOKIE_NAME, { path: REFRESH_COOKIE_PATH });
   }
 
+  @Post('forgot-password')
+  @HttpCode(200)
+  async forgotPassword(
+    @Body(new ZodValidationPipe(forgotPasswordRequestSchema))
+    body: ForgotPasswordRequest,
+    @Req() req: Request,
+  ): Promise<void> {
+    this.rateLimiter.consume(this.ipKey(req), AUTH_RATE_LIMIT);
+    this.rateLimiter.consume(
+      `forgot-password:${body.email.trim().toLowerCase()}`,
+      AUTH_RATE_LIMIT,
+    );
+    // Ответ один и тот же независимо от результата (TECH-SPEC.md §8.5) —
+    // `requestPasswordReset` никогда не бросает из-за "email не найден",
+    // здесь просто нечего условно ветвить.
+    await this.accountService.requestPasswordReset(body.email);
+  }
+
+  @Post('reset-password')
+  @HttpCode(200)
+  async resetPassword(
+    @Body(new ZodValidationPipe(resetPasswordRequestSchema))
+    body: ResetPasswordRequest,
+    @Req() req: Request,
+  ): Promise<void> {
+    this.rateLimiter.consume(this.ipKey(req), AUTH_RATE_LIMIT);
+    // Не логинит автоматически — 020 уже показывает экран успеха со ссылкой
+    // на `/login`, менять готовый UX незачем; сама `resetPassword` уже
+    // отозвала все сессии пользователя (включая гипотетическую текущую).
+    await this.accountService.resetPassword(body.token, body.password);
+  }
+
+  @Patch('password')
+  @UseGuards(JwtGuard)
+  @HttpCode(204)
+  async changePassword(
+    @CurrentUser() userId: string,
+    @Body(new ZodValidationPipe(changePasswordRequestSchema))
+    body: ChangePasswordRequest,
+  ): Promise<void> {
+    await this.accountService.changePassword(
+      userId,
+      body.currentPassword,
+      body.newPassword,
+    );
+  }
+
+  @Delete('account')
+  @UseGuards(JwtGuard)
+  @HttpCode(204)
+  async deleteAccount(
+    @CurrentUser() userId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<void> {
+    await this.accountService.deleteAccount(userId);
+    res.clearCookie(REFRESH_COOKIE_NAME, { path: REFRESH_COOKIE_PATH });
+  }
+
   @Get('me')
   @UseGuards(JwtGuard)
   async me(@CurrentUser() userId: string): Promise<AuthUser> {
     // `findUniqueOrThrow` — пользователь с валидным access-токеном не может
-    // не существовать в течение жизни этого токена, кроме как после удаления
-    // аккаунта (009, ещё не реализовано). Риск принят осознанно: если он
-    // когда-нибудь случится раньше отзыва токенов, это всплывёт как
+    // не существовать в течение жизни этого токена: удаление аккаунта (009)
+    // не отзывает уже выданные access-токены (они самодостаточный JWT, TTL 15 мин —
+    // тот же принятый компромисс, что для logout, docs/SECURITY.md), так что
+    // окно между `deleteAccount` и естественным истечением токена реально.
+    // Риск принят осознанно: если он случится, это всплывёт как
     // `INTERNAL_ERROR` (026), не тихо.
     return this.prisma.user.findUniqueOrThrow({
       where: { id: userId },

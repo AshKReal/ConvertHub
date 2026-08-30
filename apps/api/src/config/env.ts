@@ -17,8 +17,21 @@ const envSchema = z.object({
   /** Спека 009. Локально — MailHog (`docker-compose.yml`), в проде — любой SMTP-провайдер, код `MailService` не меняется. */
   SMTP_HOST: z.string().min(1),
   SMTP_PORT: z.coerce.number().int().positive(),
-  /** MailHog принимает и без TLS; `true` понадобится реальному провайдеру на 465/587 — дефолт под локальную разработку, не под прод. */
-  SMTP_SECURE: z.coerce.boolean().default(false),
+  /**
+   * MailHog принимает и без TLS; `true` понадобится реальному провайдеру на
+   * 465/587 — дефолт под локальную разработку, не под прод.
+   *
+   * НЕ `z.coerce.boolean()` — тот коэрсит через `Boolean(value)`, а
+   * `Boolean('false') === true` (непустая строка): `SMTP_SECURE=false` в
+   * `.env` включил бы TLS, а не выключил. Найдено реальным вызовом
+   * `MailService` (SSL-ошибка от MailHog, который TLS не поддерживает
+   * вообще), не тайпчеком — `z.coerce.boolean()` типизируется как `boolean`
+   * правильно, ошибка чисто в рантайм-семантике.
+   */
+  SMTP_SECURE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   SMTP_FROM: z.string().email(),
 });
 
