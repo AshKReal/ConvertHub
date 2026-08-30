@@ -13,3 +13,13 @@ export const USER_STORAGE_QUOTA_BYTES = 300 * 1024 * 1024;
  * до декодирования пикселей (TECH-SPEC.md §6, §9; specs/002-convert-jpg-png.md).
  */
 export const MAX_IMAGE_PIXELS = 50_000_000;
+
+/**
+ * Спека 003. TTL подписанной ссылки на скачивание — время между `302` на
+ * `GET /v1/files/{id}/download` и обращением по самой ссылке, не срок жизни
+ * самого файла (тот — `GUEST_FILE_TTL_SECONDS`/бессрочно, ARCHITECTURE.md §11).
+ */
+export const SIGNED_URL_TTL_SECONDS = 15 * 60;
+
+/** Срок жизни сохранённого файла гостя (не авторизован) — TECH-SPEC.md §11. */
+export const GUEST_FILE_TTL_SECONDS = 60 * 60;
