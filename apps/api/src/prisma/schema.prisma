@@ -7,20 +7,54 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Минимальная таблица (спека 003, решение владельца): только то, что нужно
-/// для транзакции квоты-бухгалтерии. email/пароль/OAuth и т.д. добавляет
-/// спека 007 собственной миграцией — не трогать эту модель вне 003/007
-/// без согласования.
+/// Минимальная таблица (спека 003) расширена спекой 007: email/passwordHash.
+/// OAuth-идентичности (`identities`, provider/provider_uid) — спека 008,
+/// отдельной таблицей, не сюда.
 model User {
-  id               String   @id @db.VarChar(26)
+  id           String @id @db.VarChar(26)
+  /// Спека 007. Хранится и сравнивается в нижнем регистре — нормализация
+  /// на входе (`auth.service.ts`), не в БД.
+  email        String @unique
+  /// argon2id (`AUTH-RULES.md` §2). Nullable не нужен в 007 — паролем
+  /// обзаводится каждый пользователь; 008 сделает nullable под чисто-OAuth.
+  passwordHash String @map("password_hash")
+
   storageUsedBytes Int      @default(0) @map("storage_used_bytes")
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  files       File[]
-  conversions Conversion[]
+  files         File[]
+  conversions   Conversion[]
+  refreshTokens RefreshToken[]
 
   @@map("users")
+}
+
+/// Спека 007. Опаковый токен, не JWT: нужна возможность мгновенно отозвать
+/// всю цепочку при обнаруженной краже (`AUTH-RULES.md` §2) — у
+/// самоподписанного JWT такой возможности нет без отдельного blocklist, а
+/// раз БД всё равно нужна, опаковый токен + хеш проще.
+model RefreshToken {
+  id     String @id @db.VarChar(26)
+  userId String @map("user_id") @db.VarChar(26)
+  /// SHA-256 (не argon2) — токен генерируется системой, 256 бит энтропии,
+  /// не пароль; тот же довод, что для API-ключей (`AUTH-RULES.md` §2).
+  tokenHash String   @unique @map("token_hash")
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+  /// Момент ротации (эта запись обменяна на новую). NULL — ещё активна.
+  usedAt DateTime? @map("used_at")
+  /// Куда указывает цепочка после ротации — звено, по которому окно
+  /// терпимости (`auth.service.ts#refresh`) находит актуальный токен.
+  replacedById String? @map("replaced_by_id") @db.VarChar(26)
+  /// Логаут или обнаруженная кража — обе причины схлопываются в одно
+  /// поле, различать их дальше незачем: и то и то "эта запись мертва".
+  revokedAt DateTime? @map("revoked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@map("refresh_tokens")
 }
 
 /// TECH-SPEC.md §4: в истории конвертаций нет состояния "в процессе",
