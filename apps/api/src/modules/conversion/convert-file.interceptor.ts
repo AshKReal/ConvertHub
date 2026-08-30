@@ -10,6 +10,10 @@ import { MAX_FILE_SIZE_BYTES } from '@convert-hub/shared';
 declare module 'express' {
   interface Request {
     convertTempDir?: string;
+    /** Отметка начала приёма файла — длительность неуспешной конвертации
+     * меряется на HTTP-слое (`ConversionFailureFilter`, спека 003), т.к.
+     * сервис для отказа до входа в него ничего не пишет в историю сам. */
+    convertStartedAt?: number;
   }
 }
 
@@ -24,6 +28,7 @@ export function createConvertFileInterceptor() {
   return FileInterceptor('file', {
     storage: diskStorage({
       destination: (req, _file, callback) => {
+        req.convertStartedAt = Date.now();
         const dir = join(tmpdir(), 'convert-hub', randomUUID());
         mkdirSync(dir, { recursive: true });
         req.convertTempDir = dir;
