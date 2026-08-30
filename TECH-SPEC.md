@@ -248,6 +248,7 @@ GET /v1/files?limit=25&cursor=file_01J8XKQ2M9
 |---|---|---|
 | `INVALID_API_KEY` | 401 | нет |
 | `EMAIL_NOT_VERIFIED` | 403 | нет |
+| `FILE_NOT_FOUND` | 404 | нет |
 | `FILE_TOO_LARGE` | 413 | нет |
 | `UNSUPPORTED_FILE_TYPE` | 415 | нет |
 | `FILE_TYPE_MISMATCH` | 415 | нет |
@@ -258,6 +259,7 @@ GET /v1/files?limit=25&cursor=file_01J8XKQ2M9
 | `INVALID_PARAMETER` | 422 | нет |
 | `RATE_LIMIT_EXCEEDED` | 429 | да, после `Retry-After` |
 | `CONVERSION_FAILED` | 500 | однократно |
+| `INTERNAL_ERROR` | 500 | да |
 | `SERVICE_OVERLOADED` | 503 | да |
 | `STORAGE_UNAVAILABLE` | 503 | да |
 | `CONVERSION_TIMEOUT` | 504 | да |
