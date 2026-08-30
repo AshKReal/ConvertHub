@@ -2,9 +2,11 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
 import type {
   AuthResponse,
+  AuthUser,
   ChangePasswordRequest,
   ForgotPasswordRequest,
   LoginRequest,
+  OauthProvider,
   RegisterRequest,
   ResetPasswordRequest,
 } from '@convert-hub/shared';
@@ -12,13 +14,20 @@ import { catchError, finalize, map, of, shareReplay, tap, type Observable } from
 
 import { environment } from '../../../environments/environment';
 
+/**
+ * Спека 008. `password` — не элемент `OauthProvider` (`packages/shared`,
+ * пока только `google`) — общий вид строки в профиле (`LOGIN_PROVIDER_LABEL_KEYS`,
+ * `core/i18n/messages.ts`) для label'а, не для `AuthUser.providers`.
+ */
 export type LoginProvider = 'password' | 'google' | 'telegram';
 
-export interface SessionUser {
-  readonly id: string;
-  readonly email: string;
-  readonly provider: LoginProvider;
-}
+/**
+ * Форма пользователя сессии — ровно `AuthUser` (`packages/shared`): реальный
+ * список привязанных способов входа (`providers`), не единственный метод
+ * ТЕКУЩЕЙ сессии — до 008 сессия могла быть только паролем, разницы не было
+ * видно, теперь аккаунт может быть привязан к паролю и Google одновременно.
+ */
+export type SessionUser = AuthUser;
 
 const AUTH_BASE = `${environment.apiUrl}/v1/auth`;
 
@@ -57,13 +66,45 @@ export class AuthService {
   }
 
   /**
-   * Кнопки Google/Telegram (019) остаются визуальной заглушкой до 008 —
-   * настоящий OAuth-поток появится там, не в 007. Синтетический `id`:
-   * реальной учётной записи за этим входом нет, на сервер он не уходит.
+   * Кнопка Telegram (019) остаётся визуальной заглушкой — спека 008 сузила
+   * OAuth до Google (`AUTH-RULES.md` §5), настоящий поток для Telegram ждёт
+   * отдельного номера спеки. Синтетический `id`: реальной учётной записи за
+   * этим входом нет, на сервер ничего не уходит.
    */
-  loginAsMockOAuth(email: string, provider: Exclude<LoginProvider, 'password'>): void {
+  loginAsMockOAuth(email: string): void {
     this.accessToken = null;
-    this.user.set({ id: `mock-${provider}-${Date.now()}`, email, provider });
+    this.user.set({
+      id: `mock-telegram-${Date.now()}`,
+      email,
+      hasPassword: false,
+      providers: [],
+    });
+  }
+
+  /** Спека 008. Полная навигация браузера — `href` кнопки Google, не `HttpClient`: колбэк отвечает редиректом, не JSON. */
+  googleStartUrl(): string {
+    return `${AUTH_BASE}/google/start`;
+  }
+
+  /**
+   * Спека 008. Сервер идемпотентен (уже не привязан — тоже `204`) — здесь
+   * только сам запрос и локальное обновление `user()`, чтобы профиль не
+   * ждал отдельного `GET /me` ради одной строки списка.
+   */
+  unlinkIdentity(provider: OauthProvider): Observable<void> {
+    return this.http
+      .delete<void>(`${AUTH_BASE}/identities/${provider}`, { withCredentials: true })
+      .pipe(
+        tap(() => {
+          const current = this.user();
+          if (current !== null) {
+            this.user.set({
+              ...current,
+              providers: current.providers.filter((linked) => linked !== provider),
+            });
+          }
+        }),
+      );
   }
 
   logout(): void {
@@ -165,6 +206,6 @@ export class AuthService {
 
   private applySession(response: AuthResponse): void {
     this.accessToken = response.accessToken;
-    this.user.set({ ...response.user, provider: 'password' });
+    this.user.set(response.user);
   }
 }
