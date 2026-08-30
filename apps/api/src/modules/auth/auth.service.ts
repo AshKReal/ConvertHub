@@ -10,8 +10,12 @@ import { AppException } from '../../common/exceptions/app.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 import { hashOpaqueToken, TokenService } from './token.service';
 
-/** OWASP-минимум для argon2id — `AUTH-RULES.md` называет алгоритм, не параметры (docs/SECURITY.md). */
-const ARGON2_OPTIONS = {
+/**
+ * OWASP-минимум для argon2id — `AUTH-RULES.md` называет алгоритм, не
+ * параметры (docs/SECURITY.md). Экспортирован — `account.service.ts` (009)
+ * хеширует новый пароль теми же параметрами при сбросе/смене.
+ */
+export const ARGON2_OPTIONS = {
   type: argon2.argon2id,
   memoryCost: 19456,
   timeCost: 2,
@@ -234,6 +238,7 @@ export class AuthService {
   }
 }
 
-function normalizeEmail(email: string): string {
+/** Экспортирован — `account.service.ts` (009) нормализует email тем же приёмом при запросе сброса пароля. */
+export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
