@@ -22,6 +22,7 @@
       "@parcel/watcher",
       "@prisma/client",
       "@prisma/engines",
+      "@swc/core",
       "argon2",
       "esbuild",
       "lmdb",
