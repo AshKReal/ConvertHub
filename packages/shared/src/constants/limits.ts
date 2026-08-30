@@ -7,3 +7,9 @@ export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 /** Реальный расчёт занятого места — спека 010; здесь только предел (AGENTS.md). */
 export const USER_STORAGE_QUOTA_BYTES = 300 * 1024 * 1024;
+
+/**
+ * Decompression bomb: заявленное в заголовке изображения разрешение проверяется
+ * до декодирования пикселей (TECH-SPEC.md §6, §9; specs/002-convert-jpg-png.md).
+ */
+export const MAX_IMAGE_PIXELS = 50_000_000;
