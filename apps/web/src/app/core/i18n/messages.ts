@@ -32,6 +32,9 @@ export const DIRECTION_DESCRIPTION_KEYS: Record<ConversionDirectionId, MessageKe
  * потребует перевод, а не молча подставит `undefined`.
  */
 export const ERROR_MESSAGE_KEYS: Record<ErrorCode, MessageKey> = {
+  // Тот же ключ, что reset-password-page (009) показывает напрямую в
+  // состоянии «ссылка недействительна» — тот же приём, что INVALID_CREDENTIALS/auth.login.error.
+  INVALID_RESET_TOKEN: 'auth.resetPassword.invalidToken',
   INVALID_API_KEY: 'error.invalidApiKey',
   // Тот же текст, что уже показывает login-page (019) инлайн над формой —
   // сюда он попадёт, только если INVALID_CREDENTIALS придёт с эндпоинта,

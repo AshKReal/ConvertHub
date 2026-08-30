@@ -9,6 +9,8 @@ type Meta = Readonly<Record<string, string | number>> | undefined;
  * всегда на английском, независимо от локали запроса.
  */
 const ERROR_DETAILS: Record<ErrorCode, (meta: Meta) => string> = {
+  INVALID_RESET_TOKEN: () =>
+    'The password reset link is invalid, already used, or has expired.',
   INVALID_API_KEY: () => 'The provided API key is invalid or has been revoked.',
   INVALID_CREDENTIALS: () => 'Email or password is incorrect.',
   UNAUTHENTICATED: () =>

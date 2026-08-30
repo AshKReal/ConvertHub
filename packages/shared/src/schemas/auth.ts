@@ -43,3 +43,30 @@ export const authResponseSchema = z.object({
 });
 
 export type AuthResponse = z.infer<typeof authResponseSchema>;
+
+/** Спека 009. Ответ на этот запрос одинаков независимо от результата — сама схема этого не выражает, только форму входа. */
+export const forgotPasswordRequestSchema = z.object({
+  email: z.string().email(),
+});
+
+export type ForgotPasswordRequest = z.infer<typeof forgotPasswordRequestSchema>;
+
+/** Спека 009. `token` — сырое значение из `/reset-password/:token`, не хеш. */
+export const resetPasswordRequestSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(MIN_PASSWORD_LENGTH),
+});
+
+export type ResetPasswordRequest = z.infer<typeof resetPasswordRequestSchema>;
+
+/**
+ * Спека 009. `currentPassword` без `.min(MIN_PASSWORD_LENGTH)` — та же причина,
+ * что у `loginRequestSchema`: неверный текущий пароль это `INVALID_CREDENTIALS`,
+ * не ошибка формата.
+ */
+export const changePasswordRequestSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(MIN_PASSWORD_LENGTH),
+});
+
+export type ChangePasswordRequest = z.infer<typeof changePasswordRequestSchema>;

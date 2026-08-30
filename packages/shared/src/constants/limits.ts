@@ -60,3 +60,6 @@ export const MIN_PASSWORD_LENGTH = 8;
  */
 export const AUTH_RATE_LIMIT_MAX = 10;
 export const AUTH_RATE_LIMIT_WINDOW_SECONDS = 10 * 60;
+
+/** Спека 009. Ссылка сброса пароля — TECH-SPEC.md §8.5. */
+export const PASSWORD_RESET_TOKEN_TTL_SECONDS = 30 * 60;

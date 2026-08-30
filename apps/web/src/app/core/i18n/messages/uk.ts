@@ -82,12 +82,17 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'auth.resetPassword.mismatch': 'Паролі не збігаються',
   'auth.resetPassword.successTitle': 'Пароль оновлено',
   'auth.resetPassword.successMessage': 'Тепер ви можете увійти з новим паролем.',
+  'auth.resetPassword.invalidTokenTitle': 'Посилання недійсне',
+  'auth.resetPassword.invalidToken':
+    'Це посилання для скидання пароля недійсне або застаріло. Запросіть нове.',
+  'auth.resetPassword.requestNewLink': 'Запросити нове посилання',
 
   'profile.title': 'Профіль',
   'profile.changePassword.title': 'Зміна пароля',
   'profile.changePassword.currentPassword': 'Поточний пароль',
   'profile.changePassword.submit': 'Змінити пароль',
   'profile.changePassword.success': 'Пароль змінено, увійдіть знову',
+  'profile.changePassword.wrongCurrent': 'Поточний пароль невірний',
   'profile.providers.title': 'Способи входу',
   'profile.providers.password': 'Пароль',
   'profile.providers.google': 'Google',

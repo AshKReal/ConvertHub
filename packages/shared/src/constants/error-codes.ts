@@ -4,6 +4,8 @@
  * повторять ли запрос — отсюда `retryable` рядом со `status`.
  */
 export const ERROR_CODES = {
+  /** Ссылка сброса пароля не существует/использована/просрочена (спека 009). 400, не 401 — не про сессию, про одноразовое действие. */
+  INVALID_RESET_TOKEN: { status: 400, retryable: false },
   INVALID_API_KEY: { status: 401, retryable: false },
   /** Логин: неизвестный email, неверный пароль — одно и то же наружу (спека 007, AUTH-RULES.md §2). */
   INVALID_CREDENTIALS: { status: 401, retryable: false },

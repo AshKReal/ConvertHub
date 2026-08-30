@@ -82,12 +82,17 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'auth.resetPassword.mismatch': 'Пароли не совпадают',
   'auth.resetPassword.successTitle': 'Пароль обновлён',
   'auth.resetPassword.successMessage': 'Теперь вы можете войти с новым паролем.',
+  'auth.resetPassword.invalidTokenTitle': 'Ссылка недействительна',
+  'auth.resetPassword.invalidToken':
+    'Эта ссылка для сброса пароля недействительна или истекла. Запросите новую.',
+  'auth.resetPassword.requestNewLink': 'Запросить новую ссылку',
 
   'profile.title': 'Профиль',
   'profile.changePassword.title': 'Смена пароля',
   'profile.changePassword.currentPassword': 'Текущий пароль',
   'profile.changePassword.submit': 'Сменить пароль',
   'profile.changePassword.success': 'Пароль изменён, войдите заново',
+  'profile.changePassword.wrongCurrent': 'Текущий пароль неверен',
   'profile.providers.title': 'Способы входа',
   'profile.providers.password': 'Пароль',
   'profile.providers.google': 'Google',

@@ -85,12 +85,17 @@ export const EN_MESSAGES = {
   'auth.resetPassword.mismatch': "Passwords don't match",
   'auth.resetPassword.successTitle': 'Password updated',
   'auth.resetPassword.successMessage': 'You can now log in with your new password.',
+  'auth.resetPassword.invalidTokenTitle': 'Link expired',
+  'auth.resetPassword.invalidToken':
+    'This password reset link is invalid or has expired. Request a new one.',
+  'auth.resetPassword.requestNewLink': 'Request a new link',
 
   'profile.title': 'Profile',
   'profile.changePassword.title': 'Change password',
   'profile.changePassword.currentPassword': 'Current password',
   'profile.changePassword.submit': 'Change password',
   'profile.changePassword.success': 'Password changed — log in again',
+  'profile.changePassword.wrongCurrent': 'Current password is incorrect',
   'profile.providers.title': 'Connected sign-in methods',
   'profile.providers.password': 'Password',
   'profile.providers.google': 'Google',
