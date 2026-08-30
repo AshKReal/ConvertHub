@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import * as argon2 from 'argon2';
-import { Prisma } from '@prisma/client';
+import { IdentityProvider, Prisma } from '@prisma/client';
 import { ulid } from 'ulid';
 import {
   JWT_REFRESH_TTL_SECONDS,
   REFRESH_REUSE_GRACE_SECONDS,
+  type OauthProvider,
 } from '@convert-hub/shared';
 import { AppException } from '../../common/exceptions/app.exception';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -33,16 +34,39 @@ export const ARGON2_OPTIONS = {
 const DUMMY_PASSWORD_HASH =
   '$argon2id$v=19$m=19456,p=1,t=2$xW7V0tPUTV2jYNJBCx/TyA$ZIk4jH422Ca5UpkeqWwinDa5wAqNIlYUHkWotNazjuQ';
 
-/** Дальше сокращённая форма пользователя, которую отдаём наружу — не Prisma-объект (`backend.md`). */
+/**
+ * Спека 008. `IdentityProvider` из Prisma (`GOOGLE`) → публичное значение
+ * (`google`, `packages/shared`) — единая точка перевода, не разбрасывать
+ * `.toLowerCase()`-касты по коду. Растёт вместе с `IdentityProvider` enum.
+ */
+export const PROVIDER_LABELS: Record<IdentityProvider, OauthProvider> = {
+  [IdentityProvider.GOOGLE]: 'google',
+};
+
+/**
+ * Форма пользователя сразу после аутентификации, ДО того как известны его
+ * привязанные идентичности — `hasPassword` каждый вызывающий уже знает из
+ * своего собственного запроса (не отдельный запрос ради одного поля).
+ */
 export interface AuthUserRecord {
   readonly id: string;
   readonly email: string;
+  readonly hasPassword: boolean;
+}
+
+/**
+ * Дальше сокращённая форма пользователя, которую отдаём наружу — не Prisma-
+ * объект (`backend.md`). `providers` не `readonly` — форма совпадает с
+ * `AuthUser` (`packages/shared`, `z.array(...)` инферит мутируемый массив).
+ */
+export interface SessionUser extends AuthUserRecord {
+  readonly providers: OauthProvider[];
 }
 
 export interface IssuedSession {
   readonly accessToken: string;
   readonly refreshToken: { readonly raw: string; readonly expiresAt: Date };
-  readonly user: AuthUserRecord;
+  readonly user: SessionUser;
 }
 
 const MAX_GRACE_HOPS = 5;
@@ -70,7 +94,9 @@ export class AuthService {
         data: { id: ulid(), email, passwordHash },
         select: { id: true, email: true },
       });
-      return this.issueSession(user);
+      // Только что создан с паролем и без единой идентичности — тривиально,
+      // без отдельного запроса.
+      return this.issueSession({ ...user, hasPassword: true });
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -102,13 +128,17 @@ export class AuthService {
       throw new AppException('INVALID_CREDENTIALS');
     }
 
-    // Явно {id, email}, не весь `user` из Prisma — тот несёт `passwordHash`
-    // (нужен только что для `argon2.verify` выше). `AuthUserRecord` как ТИП
-    // параметра `issueSession` этого не ловит: TS не проверяет лишние поля
-    // на переменной, только на литерале — рантайм сериализовал бы хеш
+    // Явно {id, email, hasPassword}, не весь `user` из Prisma — тот несёт
+    // `passwordHash` (нужен только что для `argon2.verify` выше). `AuthUserRecord`
+    // как ТИП параметра `issueSession` этого не ловит: TS не проверяет лишние
+    // поля на переменной, только на литерале — рантайм сериализовал бы хеш
     // пароля прямо в тело ответа. Найдено ручным curl-тестом, не тайпчеком
     // (`AUTH-RULES.md` §2 — тут и обещано, что так поймают).
-    return this.issueSession({ id: user.id, email: user.email });
+    return this.issueSession({
+      id: user.id,
+      email: user.email,
+      hasPassword: user.passwordHash !== null,
+    });
   }
 
   async refresh(rawToken: string): Promise<IssuedSession> {
@@ -192,7 +222,7 @@ export class AuthService {
       });
       return tx.user.findUniqueOrThrow({
         where: { id: token.userId },
-        select: { id: true, email: true },
+        select: { id: true, email: true, passwordHash: true },
       });
     });
 
@@ -204,13 +234,22 @@ export class AuthService {
       return this.resolveRefresh(tokenHash, 0);
     }
 
+    // Актуальное состояние на момент обновления, не то, что было при
+    // исходном входе — пользователь мог привязать/отвязать Google в другой
+    // вкладке между двумя `refresh`.
+    const sessionUser = await this.withProviders({
+      id: user.id,
+      email: user.email,
+      hasPassword: user.passwordHash !== null,
+    });
+
     return {
       accessToken: this.tokenService.signAccessToken({
-        userId: user.id,
-        email: user.email,
+        userId: sessionUser.id,
+        email: sessionUser.email,
       }),
       refreshToken: { raw: next.raw, expiresAt },
-      user,
+      user: sessionUser,
     };
   }
 
@@ -222,6 +261,7 @@ export class AuthService {
   }
 
   private async issueSession(user: AuthUserRecord): Promise<IssuedSession> {
+    const sessionUser = await this.withProviders(user);
     const refresh = this.tokenService.generateRefreshToken();
     const expiresAt = new Date(Date.now() + JWT_REFRESH_TTL_SECONDS * 1000);
     await this.prisma.refreshToken.create({
@@ -229,11 +269,25 @@ export class AuthService {
     });
     return {
       accessToken: this.tokenService.signAccessToken({
-        userId: user.id,
-        email: user.email,
+        userId: sessionUser.id,
+        email: sessionUser.email,
       }),
       refreshToken: { raw: refresh.raw, expiresAt },
-      user,
+      user: sessionUser,
+    };
+  }
+
+  /** Спека 008. Единственное место, где список привязанных провайдеров запрашивается у БД. */
+  private async withProviders(user: AuthUserRecord): Promise<SessionUser> {
+    const identities = await this.prisma.identity.findMany({
+      where: { userId: user.id },
+      select: { provider: true },
+    });
+    return {
+      ...user,
+      providers: identities.map(
+        (identity) => PROVIDER_LABELS[identity.provider],
+      ),
     };
   }
 }

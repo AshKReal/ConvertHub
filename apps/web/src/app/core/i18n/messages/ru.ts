@@ -67,6 +67,9 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'auth.error.emailTaken': 'Этот email уже зарегистрирован',
   'auth.oauth.google': 'Войти через Google',
   'auth.oauth.telegram': 'Войти через Telegram',
+  'auth.oauth.conflictError':
+    'Этот email от Google уже зарегистрирован. Войдите паролем, затем привяжите Google из профиля.',
+  'auth.oauth.failedError': 'Не получилось войти через Google. Попробуйте ещё раз.',
   'auth.forgotPassword.title': 'Восстановление пароля',
   'auth.forgotPassword.hint':
     'Введите email, указанный при регистрации, — пришлём ссылку для сброса пароля.',
@@ -93,12 +96,16 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'profile.changePassword.submit': 'Сменить пароль',
   'profile.changePassword.success': 'Пароль изменён, войдите заново',
   'profile.changePassword.wrongCurrent': 'Текущий пароль неверен',
+  'profile.changePassword.noPassword': 'У этого аккаунта ещё нет пароля.',
+  'profile.changePassword.setPasswordLink': 'Задать пароль',
   'profile.providers.title': 'Способы входа',
   'profile.providers.password': 'Пароль',
   'profile.providers.google': 'Google',
   'profile.providers.telegram': 'Telegram',
   'profile.providers.connected': 'Подключён',
   'profile.providers.notConnected': 'Не подключён',
+  'profile.providers.unlink': 'Отвязать',
+  'profile.providers.unlinkBlocked': 'Нельзя отвязать единственный способ входа',
   'profile.deleteAccount.title': 'Удаление аккаунта',
   'profile.deleteAccount.description':
     'Это необратимо. Вы будете разлогинены и сразу потеряете доступ.',

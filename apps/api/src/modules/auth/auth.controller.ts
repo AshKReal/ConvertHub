@@ -40,7 +40,11 @@ import {
 import { env } from '../../config/env';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AccountService } from './account.service';
-import { AuthService, type IssuedSession } from './auth.service';
+import {
+  AuthService,
+  PROVIDER_LABELS,
+  type IssuedSession,
+} from './auth.service';
 
 const REFRESH_COOKIE_NAME = 'refresh_token';
 /** Кука нужна только эндпоинтам этого контроллера — не отправляется на остальной API (defence in depth). */
@@ -190,10 +194,23 @@ export class AuthController {
     // окно между `deleteAccount` и естественным истечением токена реально.
     // Риск принят осознанно: если он случится, это всплывёт как
     // `INTERNAL_ERROR` (026), не тихо.
-    return this.prisma.user.findUniqueOrThrow({
+    const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { id: true, email: true },
+      select: {
+        id: true,
+        email: true,
+        passwordHash: true,
+        identities: { select: { provider: true } },
+      },
     });
+    return {
+      id: user.id,
+      email: user.email,
+      hasPassword: user.passwordHash !== null,
+      providers: user.identities.map(
+        (identity) => PROVIDER_LABELS[identity.provider],
+      ),
+    };
   }
 
   private ipKey(req: Request): string {

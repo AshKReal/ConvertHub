@@ -28,10 +28,22 @@ export const loginRequestSchema = z.object({
 
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
 
-/** Общая форма пользователя в ответах `register`/`login`/`refresh`/`me`. */
+/** Спека 008. Пока один провайдер (`AUTH-RULES.md` §5) — enum растёт, когда/если Telegram вернётся в план. */
+export const oauthProviderSchema = z.enum(['google']);
+
+export type OauthProvider = z.infer<typeof oauthProviderSchema>;
+
+/**
+ * Общая форма пользователя в ответах `register`/`login`/`refresh`/`me`.
+ * `hasPassword`/`providers` — спека 008: для нативной регистрации (007)
+ * тривиально `{hasPassword: true, providers: []}`, других способов входа
+ * тогда ещё не существует.
+ */
 export const authUserSchema = z.object({
   id: z.string(),
   email: z.string(),
+  hasPassword: z.boolean(),
+  providers: z.array(oauthProviderSchema),
 });
 
 export type AuthUser = z.infer<typeof authUserSchema>;

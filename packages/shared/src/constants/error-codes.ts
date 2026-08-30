@@ -15,6 +15,10 @@ export const ERROR_CODES = {
   FILE_NOT_FOUND: { status: 404, retryable: false },
   /** Регистрация: email уже занят (спека 007) — в отличие от логина/сброса пароля, здесь раскрытие существования аккаунта не запрещено (AUTH-RULES.md §2 перечисляет только логин и восстановление). */
   EMAIL_ALREADY_REGISTERED: { status: 409, retryable: false },
+  /** Google вернул email другого существующего аккаунта, но не подтвердил владение им (спека 008) — автолинковка запрещена (AUTH-RULES.md, OAuth), второй аккаунт с тем же email завести нельзя (User.email уникален). */
+  OAUTH_ACCOUNT_CONFLICT: { status: 409, retryable: false },
+  /** Попытка отвязать единственный оставшийся способ входа (спека 008, AUTH-RULES.md: «НИКОГДА не разрешать отвязку последнего способа входа»). */
+  LAST_LOGIN_METHOD: { status: 409, retryable: false },
   FILE_TOO_LARGE: { status: 413, retryable: false },
   UNSUPPORTED_FILE_TYPE: { status: 415, retryable: false },
   FILE_TYPE_MISMATCH: { status: 415, retryable: false },

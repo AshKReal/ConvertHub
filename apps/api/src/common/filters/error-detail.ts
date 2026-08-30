@@ -21,6 +21,10 @@ const ERROR_DETAILS: Record<ErrorCode, (meta: Meta) => string> = {
     'The requested file does not exist or is no longer available.',
   EMAIL_ALREADY_REGISTERED: () =>
     'An account with this email address already exists.',
+  OAUTH_ACCOUNT_CONFLICT: () =>
+    'This email is already registered to a different account, and the provider did not confirm ownership of it.',
+  LAST_LOGIN_METHOD: () =>
+    'This is the only remaining sign-in method for the account and cannot be unlinked.',
   FILE_TOO_LARGE: (meta) =>
     `Uploaded file is ${meta?.['actual_size_bytes'] ?? '?'} bytes, maximum allowed is ${meta?.['max_size_bytes'] ?? '?'}.`,
   UNSUPPORTED_FILE_TYPE: () =>

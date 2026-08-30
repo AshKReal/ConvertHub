@@ -67,6 +67,9 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'auth.error.emailTaken': 'Цей email вже зареєстровано',
   'auth.oauth.google': 'Увійти через Google',
   'auth.oauth.telegram': 'Увійти через Telegram',
+  'auth.oauth.conflictError':
+    'Цей email від Google вже зареєстровано. Увійдіть паролем, потім прив’яжіть Google з профілю.',
+  'auth.oauth.failedError': 'Не вдалося увійти через Google. Спробуйте ще раз.',
   'auth.forgotPassword.title': 'Відновлення пароля',
   'auth.forgotPassword.hint':
     'Введіть email, вказаний під час реєстрації — надішлемо посилання для скидання пароля.',
@@ -93,12 +96,16 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'profile.changePassword.submit': 'Змінити пароль',
   'profile.changePassword.success': 'Пароль змінено, увійдіть знову',
   'profile.changePassword.wrongCurrent': 'Поточний пароль невірний',
+  'profile.changePassword.noPassword': 'У цього акаунта ще немає пароля.',
+  'profile.changePassword.setPasswordLink': 'Задати пароль',
   'profile.providers.title': 'Способи входу',
   'profile.providers.password': 'Пароль',
   'profile.providers.google': 'Google',
   'profile.providers.telegram': 'Telegram',
   'profile.providers.connected': 'Підключено',
   'profile.providers.notConnected': 'Не підключено',
+  'profile.providers.unlink': "Відв'язати",
+  'profile.providers.unlinkBlocked': "Не можна відв'язати єдиний спосіб входу",
   'profile.deleteAccount.title': 'Видалення акаунта',
   'profile.deleteAccount.description':
     'Це незворотно. Вас буде розлогінено і ви одразу втратите доступ.',
