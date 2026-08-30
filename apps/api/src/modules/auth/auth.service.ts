@@ -145,6 +145,112 @@ export class AuthService {
     return this.resolveRefresh(hashOpaqueToken(rawToken), 0);
   }
 
+  /**
+   * Спека 008. Вход или привязка внешней идентичности — единая точка для
+   * OAuth-колбэка (`auth.controller.ts`). Идентификация по `providerUid`
+   * (`sub` провайдера), не по email (`AUTH-RULES.md`: email на стороне
+   * провайдера может смениться).
+   */
+  async loginOrLinkIdentity(
+    provider: IdentityProvider,
+    providerUid: string,
+    email: string,
+    emailVerified: boolean,
+  ): Promise<IssuedSession> {
+    const identity = await this.findIdentity(provider, providerUid);
+    if (identity !== null) {
+      return this.issueSession(identity);
+    }
+
+    const normalizedEmail = normalizeEmail(email);
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true, email: true, passwordHash: true },
+    });
+
+    try {
+      if (existingUser === null) {
+        // Новый email — коллизии по `User.email` нет, привязывать не к чему.
+        const created = await this.prisma.$transaction(async (tx) => {
+          const user = await tx.user.create({
+            data: { id: ulid(), email: normalizedEmail, passwordHash: null },
+            select: { id: true, email: true },
+          });
+          await tx.identity.create({
+            data: { id: ulid(), userId: user.id, provider, providerUid },
+          });
+          return user;
+        });
+        return this.issueSession({ ...created, hasPassword: false });
+      }
+
+      if (!emailVerified) {
+        // AUTH-RULES.md: привязка только при подтверждённом провайдером
+        // email — иначе вектор захвата чужого аккаунта. Второй аккаунт с
+        // тем же email тоже не завести (`User.email` уникален) — явная
+        // ошибка, не тихий отказ.
+        throw new AppException('OAUTH_ACCOUNT_CONFLICT');
+      }
+
+      await this.prisma.identity.create({
+        data: { id: ulid(), userId: existingUser.id, provider, providerUid },
+      });
+      return this.issueSession({
+        id: existingUser.id,
+        email: existingUser.email,
+        hasPassword: existingUser.passwordHash !== null,
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        // Гонка: параллельный колбэк с тем же `providerUid` уже создал
+        // identity между `findIdentity()` выше и этим `create()` — не
+        // ошибка пользователя (двойной клик/две вкладки), не кража. Читаем,
+        // что победило, и выдаём сессию на него.
+        const winner = await this.findIdentity(provider, providerUid);
+        if (winner !== null) {
+          return this.issueSession(winner);
+        }
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Спека 008. Идемпотентно, как `logout()` — уже не привязан не считается
+   * ошибкой вызывающего. `AUTH-RULES.md`: НИКОГДА не разрешать отвязку
+   * последнего способа входа.
+   */
+  async unlinkIdentity(
+    userId: string,
+    provider: IdentityProvider,
+  ): Promise<void> {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: {
+        passwordHash: true,
+        identities: { select: { provider: true } },
+      },
+    });
+
+    const isLinked = user.identities.some(
+      (identity) => identity.provider === provider,
+    );
+    if (!isLinked) {
+      return;
+    }
+
+    const remainingMethods =
+      (user.passwordHash !== null ? 1 : 0) + (user.identities.length - 1);
+    if (remainingMethods === 0) {
+      throw new AppException('LAST_LOGIN_METHOD');
+    }
+
+    await this.prisma.identity.deleteMany({ where: { userId, provider } });
+  }
+
   /** Идемпотентно — токен уже не найден/отозван не считается ошибкой вызывающего. */
   async logout(rawToken: string): Promise<void> {
     await this.prisma.refreshToken.updateMany({
@@ -275,6 +381,26 @@ export class AuthService {
       refreshToken: { raw: refresh.raw, expiresAt },
       user: sessionUser,
     };
+  }
+
+  /** Спека 008. `null` — идентичность с таким `provider`+`providerUid` ещё никем не привязана. */
+  private async findIdentity(
+    provider: IdentityProvider,
+    providerUid: string,
+  ): Promise<AuthUserRecord | null> {
+    const identity = await this.prisma.identity.findUnique({
+      where: { provider_providerUid: { provider, providerUid } },
+      select: {
+        user: { select: { id: true, email: true, passwordHash: true } },
+      },
+    });
+    return identity === null
+      ? null
+      : {
+          id: identity.user.id,
+          email: identity.user.email,
+          hasPassword: identity.user.passwordHash !== null,
+        };
   }
 
   /** Спека 008. Единственное место, где список привязанных провайдеров запрашивается у БД. */
