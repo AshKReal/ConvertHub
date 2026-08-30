@@ -1,7 +1,7 @@
 import { HttpErrorResponse, type HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { ERROR_CODES, type ErrorCode } from '@convert-hub/shared';
-import { catchError, throwError } from 'rxjs';
+import { catchError, from, switchMap, throwError } from 'rxjs';
 
 import { ERROR_MESSAGE_KEYS } from '../i18n/messages';
 import { I18nService, type MessageParams } from '../services/i18n';
@@ -26,8 +26,7 @@ interface ProblemDetails {
 const FALLBACK_CODE: ErrorCode = 'CONVERSION_FAILED';
 
 /**
- * Заготовка под 026: реального `problem+json` от бэкенда пока нет, поэтому
- * маппинг не подключён к `provideHttpClient` — подключается вместе с ним.
+ * Подключён в `app.config.ts` вместе с первым реальным сетевым вызовом (026).
  */
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const i18n = inject(I18nService);
@@ -38,13 +37,24 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         return throwError(() => error);
       }
 
-      return throwError(() => toAppError(error, i18n));
+      // `responseType: 'blob'` (нужен для бинарного результата конвертации)
+      // заставляет Angular трактовать ЛЮБОЕ тело ответа как `Blob` — включая
+      // тело ошибки. Без этой ветки `problem+json` никогда бы не читался:
+      // ниже `asProblemDetails` увидел бы объект `Blob`, не нашёл в нём
+      // `code` и молча откатился на запасной код для абсолютно любой ошибки.
+      if (error.error instanceof Blob) {
+        return from(error.error.text()).pipe(
+          switchMap((text) => throwError(() => toAppError(error, i18n, parseJsonSafely(text)))),
+        );
+      }
+
+      return throwError(() => toAppError(error, i18n, error.error));
     }),
   );
 };
 
-function toAppError(response: HttpErrorResponse, i18n: I18nService): AppError {
-  const problem = asProblemDetails(response.error);
+function toAppError(response: HttpErrorResponse, i18n: I18nService, body: unknown): AppError {
+  const problem = asProblemDetails(body);
   const code = asErrorCode(problem?.code) ?? FALLBACK_CODE;
 
   return {
@@ -81,4 +91,12 @@ function asErrorCode(value: string | undefined): ErrorCode | undefined {
 
 function asProblemDetails(value: unknown): ProblemDetails | undefined {
   return typeof value === 'object' && value !== null ? (value as ProblemDetails) : undefined;
+}
+
+function parseJsonSafely(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
 }
