@@ -8,7 +8,7 @@ import {
 } from '@convert-hub/shared';
 import { AppException } from '../../common/exceptions/app.exception';
 import { PrismaService } from '../../prisma/prisma.service';
-import { hashRefreshToken, TokenService } from './token.service';
+import { hashOpaqueToken, TokenService } from './token.service';
 
 /** OWASP-минимум для argon2id — `AUTH-RULES.md` называет алгоритм, не параметры (docs/SECURITY.md). */
 const ARGON2_OPTIONS = {
@@ -108,13 +108,13 @@ export class AuthService {
   }
 
   async refresh(rawToken: string): Promise<IssuedSession> {
-    return this.resolveRefresh(hashRefreshToken(rawToken), 0);
+    return this.resolveRefresh(hashOpaqueToken(rawToken), 0);
   }
 
   /** Идемпотентно — токен уже не найден/отозван не считается ошибкой вызывающего. */
   async logout(rawToken: string): Promise<void> {
     await this.prisma.refreshToken.updateMany({
-      where: { tokenHash: hashRefreshToken(rawToken), revokedAt: null },
+      where: { tokenHash: hashOpaqueToken(rawToken), revokedAt: null },
       data: { revokedAt: new Date() },
     });
   }

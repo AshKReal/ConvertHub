@@ -9,7 +9,7 @@ export interface AccessTokenPayload {
   readonly email: string;
 }
 
-export interface GeneratedRefreshToken {
+export interface GeneratedOpaqueToken {
   readonly raw: string;
   readonly hash: string;
 }
@@ -55,19 +55,29 @@ export class TokenService {
     }
   }
 
-  generateRefreshToken(): GeneratedRefreshToken {
-    const raw = randomBytes(32).toString('base64url');
-    return { raw, hash: hashRefreshToken(raw) };
+  /** Refresh-токен (007) — семантическая обёртка над общей генерацией ниже. */
+  generateRefreshToken(): GeneratedOpaqueToken {
+    return generateOpaqueToken();
   }
+}
+
+/**
+ * Общая генерация опакового токена — refresh-токен (007) и токен сброса
+ * пароля (009, `AccountService`) устроены одинаково: случайные байты +
+ * SHA-256 хеш в БД. Свободная функция, не метод `TokenService`: обеим
+ * сторонам (генерация здесь, поиск по хешу в `AuthService`/`AccountService`)
+ * нужна одна и та же арифметика без разницы, кто её вызывает.
+ */
+export function generateOpaqueToken(): GeneratedOpaqueToken {
+  const raw = randomBytes(32).toString('base64url');
+  return { raw, hash: hashOpaqueToken(raw) };
 }
 
 /**
  * SHA-256, не argon2 (`AUTH-RULES.md` §2) — токен генерируется системой,
  * 256 бит энтропии, не подбираемый секрет вроде пароля; тот же довод, что
- * для API-ключей и Telegram HMAC. Отдельная функция, не метод: и
- * `TokenService.generateRefreshToken`, и `AuthService` (при поиске
- * предъявленного токена по хешу) считают его одинаково.
+ * для API-ключей и Telegram HMAC.
  */
-export function hashRefreshToken(raw: string): string {
+export function hashOpaqueToken(raw: string): string {
   return createHash('sha256').update(raw).digest('hex');
 }
