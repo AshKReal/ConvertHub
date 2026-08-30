@@ -128,10 +128,11 @@
   - [x] Транзакция: insert `files` + update `users.storage_used_bytes`
   - [x] `GET /v1/files/{id}/download` → `302` на подписанную ссылку (TTL 15 мин)
   - [ ] Приёмка владельцем: критерии из спеки руками, враждебное второе мнение
-- [ ] **026** `error-contract-backend`
-  - [ ] `AllExceptionsFilter` → `problem+json` + `request_id`, коды из `packages/shared` (004)
-  - [ ] Подключить `errorInterceptor` (004) к реальным ответам API
-  - [ ] Приёмка: зона загрузки (001/006) показывает настоящие коды ошибок, не моковые
+- [ ] **026** `error-contract-backend` — `specs/026-error-contract-backend.md`
+  - [x] `AllExceptionsFilter` → `problem+json` + `request_id`, коды из `packages/shared` (004)
+  - [x] Подключить `errorInterceptor` (004) к реальным ответам API
+  - [x] Приёмка: зона загрузки (001/006) показывает настоящие коды ошибок, не моковые
+  - [ ] Приёмка владельцем: критерии из спеки руками, враждебное второе мнение
 
 ## Стадия 6 — остальные направления, подключение зоны загрузки
 
