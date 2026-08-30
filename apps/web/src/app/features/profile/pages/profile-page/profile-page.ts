@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import type { AppError } from '../../../../core/interceptors/error-interceptor';
-import { AuthService, type LoginProvider } from '../../../../core/services/auth';
+import { AuthService } from '../../../../core/services/auth';
 import { I18nService } from '../../../../core/services/i18n';
 import { LOGIN_PROVIDER_LABEL_KEYS } from '../../../../core/i18n/messages';
 import { ModalService } from '../../../../core/services/modal';
@@ -13,11 +13,9 @@ import { Button } from '../../../../shared/ui/button/button';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog/confirm-dialog';
 import { Input } from '../../../../shared/ui/input/input';
 
-const PROVIDERS: readonly LoginProvider[] = ['password', 'google', 'telegram'];
-
 @Component({
   selector: 'app-profile-page',
-  imports: [ReactiveFormsModule, Button, Input],
+  imports: [ReactiveFormsModule, RouterLink, Button, Input],
   templateUrl: './profile-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -29,7 +27,6 @@ export class ProfilePage {
   protected readonly i18n = inject(I18nService);
 
   protected readonly user = this.auth.user;
-  protected readonly providers = PROVIDERS;
   protected readonly providerLabelKeys = LOGIN_PROVIDER_LABEL_KEYS;
 
   protected readonly form = new FormGroup({
@@ -50,6 +47,7 @@ export class ProfilePage {
   protected readonly wrongCurrentPassword = signal(false);
   protected readonly submitting = signal(false);
   protected readonly deleting = signal(false);
+  protected readonly unlinking = signal(false);
 
   protected get currentPasswordError(): string | null {
     // Серверная ошибка в том же слоте, что клиентская валидация — тот же
@@ -86,8 +84,45 @@ export class ProfilePage {
       : null;
   }
 
-  protected isConnected(provider: LoginProvider): boolean {
-    return this.user()?.provider === provider;
+  /** Спека 008. Реальный список привязанных способов входа — не единственный метод текущей сессии, как в 020. */
+  protected hasPassword(): boolean {
+    return this.user()?.hasPassword ?? false;
+  }
+
+  protected isGoogleLinked(): boolean {
+    return this.user()?.providers.includes('google') ?? false;
+  }
+
+  /**
+   * Тот же расчёт, что серверный `AuthService.unlinkIdentity` (`AUTH-RULES.md`:
+   * запрет отвязки последнего способа входа) — предупреждает до запроса
+   * (кнопка задизейблена), не только после отказа сервера.
+   */
+  protected canUnlinkGoogle(): boolean {
+    const current = this.user();
+    if (current === null) {
+      return false;
+    }
+    const remainingAfterUnlink = (current.hasPassword ? 1 : 0) + (current.providers.length - 1);
+    return remainingAfterUnlink > 0;
+  }
+
+  protected unlinkGoogle(): void {
+    if (this.unlinking() || !this.canUnlinkGoogle()) {
+      return;
+    }
+    this.unlinking.set(true);
+    this.auth.unlinkIdentity('google').subscribe({
+      next: () => this.unlinking.set(false),
+      error: (error: AppError) => {
+        this.unlinking.set(false);
+        // LAST_LOGIN_METHOD сюда обычно не должен доходить — кнопка уже
+        // задизейблена `canUnlinkGoogle()`; если всё же гонка (второй способ
+        // входа отвязан параллельно в другой вкладке), тот же текст, что
+        // тултип disabled-кнопки (ERROR_MESSAGE_KEYS, core/i18n/messages.ts).
+        this.toast.show('danger', error.message);
+      },
+    });
   }
 
   /** `AUTH-RULES.md` §2: смена пароля инвалидирует все сессии и уведомляет — сервер уже сделал это на успехе. */

@@ -17,57 +17,80 @@
       <h2 class="font-heading text-heading-sm text-text">
         {{ i18n.t('profile.changePassword.title') }}
       </h2>
-      <form [formGroup]="form" (ngSubmit)="changePassword()" class="flex flex-col gap-4" novalidate>
-        <app-input
-          fieldId="profile-current-password"
-          [label]="i18n.t('profile.changePassword.currentPassword')"
-          type="password"
-          [control]="form.controls.currentPassword"
-          [errorMessage]="currentPasswordError"
-          autocomplete="current-password"
-        />
-        <app-input
-          fieldId="profile-new-password"
-          [label]="i18n.t('auth.resetPassword.newPassword')"
-          type="password"
-          [control]="form.controls.newPassword"
-          [errorMessage]="newPasswordError"
-          autocomplete="new-password"
-        />
-        <app-input
-          fieldId="profile-confirm-password"
-          [label]="i18n.t('auth.resetPassword.confirmPassword')"
-          type="password"
-          [control]="form.controls.confirmPassword"
-          [errorMessage]="confirmPasswordError"
-          autocomplete="new-password"
-        />
-        <app-button type="submit" [disabled]="submitting()">
-          {{ i18n.t('profile.changePassword.submit') }}
-        </app-button>
-      </form>
+      @if (hasPassword()) {
+        <form [formGroup]="form" (ngSubmit)="changePassword()" class="flex flex-col gap-4" novalidate>
+          <app-input
+            fieldId="profile-current-password"
+            [label]="i18n.t('profile.changePassword.currentPassword')"
+            type="password"
+            [control]="form.controls.currentPassword"
+            [errorMessage]="currentPasswordError"
+            autocomplete="current-password"
+          />
+          <app-input
+            fieldId="profile-new-password"
+            [label]="i18n.t('auth.resetPassword.newPassword')"
+            type="password"
+            [control]="form.controls.newPassword"
+            [errorMessage]="newPasswordError"
+            autocomplete="new-password"
+          />
+          <app-input
+            fieldId="profile-confirm-password"
+            [label]="i18n.t('auth.resetPassword.confirmPassword')"
+            type="password"
+            [control]="form.controls.confirmPassword"
+            [errorMessage]="confirmPasswordError"
+            autocomplete="new-password"
+          />
+          <app-button type="submit" [disabled]="submitting()">
+            {{ i18n.t('profile.changePassword.submit') }}
+          </app-button>
+        </form>
+      } @else {
+        <!-- Спека 008: чисто-Google аккаунт без пароля — "сменить" нечего, форма с полем
+             "текущий пароль" была бы структурно нечестной (не существует значения,
+             которое его заполнит верно). "Забыли пароль" (009) уже умеет задавать
+             пароль впервые — тот же email-flow, новый backend-путь не нужен. -->
+        <p class="text-body-sm text-text-secondary">{{ i18n.t('profile.changePassword.noPassword') }}</p>
+        <a routerLink="/forgot-password" class="text-label text-text underline decoration-strong underline-offset-2">
+          {{ i18n.t('profile.changePassword.setPasswordLink') }}
+        </a>
+      }
     </section>
 
     <section class="flex flex-col gap-3">
       <h2 class="font-heading text-heading-sm text-text">{{ i18n.t('profile.providers.title') }}</h2>
       <ul class="flex flex-col gap-2">
-        @for (provider of providers; track provider) {
-          <li
-            class="flex items-center justify-between rounded-lg border border-hairline bg-surface px-4 py-3"
-          >
-            <span class="text-body-sm text-text">{{ i18n.t(providerLabelKeys[provider]) }}</span>
-            <span
-              class="text-label"
-              [class]="isConnected(provider) ? 'text-success' : 'text-text-muted'"
-            >
-              {{
-                i18n.t(
-                  isConnected(provider) ? 'profile.providers.connected' : 'profile.providers.notConnected'
-                )
-              }}
-            </span>
-          </li>
-        }
+        <li class="flex items-center justify-between rounded-lg border border-hairline bg-surface px-4 py-3">
+          <span class="text-body-sm text-text">{{ i18n.t(providerLabelKeys.password) }}</span>
+          <span class="text-label" [class]="hasPassword() ? 'text-success' : 'text-text-muted'">
+            {{ i18n.t(hasPassword() ? 'profile.providers.connected' : 'profile.providers.notConnected') }}
+          </span>
+        </li>
+        <li class="flex items-center justify-between rounded-lg border border-hairline bg-surface px-4 py-3">
+          <span class="text-body-sm text-text">{{ i18n.t(providerLabelKeys.google) }}</span>
+          @if (isGoogleLinked()) {
+            <div class="flex items-center gap-3">
+              <span class="text-label text-success">{{ i18n.t('profile.providers.connected') }}</span>
+              <button
+                type="button"
+                class="text-label text-danger underline decoration-danger underline-offset-2 disabled:cursor-not-allowed disabled:text-text-muted disabled:no-underline"
+                [disabled]="!canUnlinkGoogle() || unlinking()"
+                [title]="canUnlinkGoogle() ? '' : i18n.t('profile.providers.unlinkBlocked')"
+                (click)="unlinkGoogle()"
+              >
+                {{ i18n.t('profile.providers.unlink') }}
+              </button>
+            </div>
+          } @else {
+            <span class="text-label text-text-muted">{{ i18n.t('profile.providers.notConnected') }}</span>
+          }
+        </li>
+        <li class="flex items-center justify-between rounded-lg border border-hairline bg-surface px-4 py-3">
+          <span class="text-body-sm text-text">{{ i18n.t(providerLabelKeys.telegram) }}</span>
+          <span class="text-label text-text-muted">{{ i18n.t('profile.providers.notConnected') }}</span>
+        </li>
       </ul>
     </section>
 
