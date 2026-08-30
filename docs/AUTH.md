@@ -1,10 +1,10 @@
 # AUTH.md
 
-Реальные auth-эндпоинты (спека 007). Инварианты, которым код обязан соответствовать при любой правке —
+Реальные auth-эндпоинты (спеки 007, 009). Инварианты, которым код обязан соответствовать при любой правке —
 `AUTH-RULES.md` в корне репозитория, обязателен к прочтению целиком перед правками в `modules/auth/**`.
 
-Пока покрыто: email + пароль (007). OAuth (Google, Telegram — 008) и восстановление пароля/удаление аккаунта
-(009) — отдельные спеки, эндпоинтов ниже для них ещё нет.
+Пока покрыто: email + пароль, сессия (007); восстановление и смена пароля, удаление аккаунта (009). OAuth
+(пока только Google — `AUTH-RULES.md` §5, спека 008) — отдельной спекой, эндпоинтов ниже для него ещё нет.
 
 ## Эндпоинты
 
@@ -17,14 +17,38 @@
 | `POST` | `/login` | `{email, password}` | `{accessToken, user: {id, email}}` | — | `INVALID_PARAMETER` (422), `INVALID_CREDENTIALS` (401 — единое сообщение на любую причину отказа), `RATE_LIMIT_EXCEEDED` (429) |
 | `POST` | `/refresh` | — (refresh-токен из cookie) | `{accessToken, user: {id, email}}` | refresh-cookie | `UNAUTHENTICATED` (401) |
 | `POST` | `/logout` | — (refresh-токен из cookie, опционально) | — (`204`) | — | — (идемпотентно, всегда `204`) |
+| `POST` | `/forgot-password` | `{email}` | — (`200`, всегда одно и то же тело) | — | `INVALID_PARAMETER` (422), `RATE_LIMIT_EXCEEDED` (429) |
+| `POST` | `/reset-password` | `{token, password}` | — (`200`) | — | `INVALID_PARAMETER` (422), `INVALID_RESET_TOKEN` (400), `RATE_LIMIT_EXCEEDED` (429) |
+| `PATCH` | `/password` | `{currentPassword, newPassword}` | — (`204`) | `Authorization: Bearer <accessToken>` | `INVALID_PARAMETER` (422), `INVALID_CREDENTIALS` (401 — неверный текущий пароль), `UNAUTHENTICATED` (401) |
+| `DELETE` | `/account` | — | — (`204`) | `Authorization: Bearer <accessToken>` | `UNAUTHENTICATED` (401) |
 | `GET` | `/me` | — | `{id, email}` | `Authorization: Bearer <accessToken>` | `UNAUTHENTICATED` (401) |
 
 `register`/`login`/`refresh` дополнительно выставляют `Set-Cookie: refresh_token=...` (`HttpOnly`, `SameSite=Lax`,
 `Secure` только при `NODE_ENV=production` — см. `docs/SECURITY.md`, `Path=/v1/auth` — кука не уходит на остальной
-API). `logout` чистит её (`Max-Age=0`).
+API). `logout` и `DELETE /account` чистят её (`Max-Age=0`).
 
-`register`/`login` рассчитывают лимит частоты (`FixedWindowRateLimiterService`, временно in-memory — 012 заменит
-Redis-версией): по хешу IP на обоих, дополнительно по нормализованному email на `login` (`AUTH-RULES.md` §2).
+`register`/`login`/`forgot-password` рассчитывают лимит частоты (`FixedWindowRateLimiterService`, временно
+in-memory — 012 заменит Redis-версией): по хешу IP на всех трёх, дополнительно по нормализованному email на
+`login`/`forgot-password` (`AUTH-RULES.md` §2). `change-password`/`delete-account` — без отдельного лимита: оба
+уже за `JwtGuard`, брute-force имеет смысл только с украденным валидным токеном, а не с чистого листа.
+
+## Восстановление и смена пароля, удаление аккаунта (009)
+
+`forgot-password`/`reset-password` — тот же опаковый токен + SHA-256-хеш приём, что refresh-токен (007), своя
+таблица `password_reset_tokens`, TTL 30 минут (`PASSWORD_RESET_TOKEN_TTL_SECONDS`), одноразовый. Запрос нового
+токена гасит все ещё не использованные токены того же пользователя — живой ссылки на аккаунт не больше одной.
+Письмо со ссылкой (`${CORS_ORIGIN}/reset-password/<token>`) уходит через `MailService`, не дожидаясь ответа
+клиенту (`docs/SECURITY.md` п. 5). Успешный `reset-password` не логинит автоматически — фронт (020) показывает
+экран успеха со ссылкой на `/login`.
+
+И `reset-password`, и `PATCH /password` отзывают ВСЕ refresh-токены пользователя (`AUTH-RULES.md` §2) и шлют
+письмо-уведомление о смене пароля. Уже выданные access-токены при этом не отзываются (см. риск logout в
+`docs/SECURITY.md` — тот же 15-минутный компромисс).
+
+`DELETE /account` удаляет аккаунт полностью и необратимо: сохранённые файлы стираются из `Storage` (реальные
+байты, не только строки в БД), история конвертаций и refresh-токены исчезают каскадом вместе со строкой `users`.
+Подтверждение пароля не требуется — решение владельца, спека 009: `JwtGuard` уже гарантирует действующую сессию,
+020 предусматривает только модалку подтверждения.
 
 ## `GET /v1/convert`, `GET /v1/files/{id}/download` — опциональная авторизация
 

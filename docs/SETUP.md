@@ -9,7 +9,7 @@
 | Компонент | Состояние |
 |---|---|
 | `apps/web` — Angular 22, Tailwind 4 | Главная и страница конвертации на моках, тема, три языка |
-| `apps/api` — NestJS 11 | `POST /v1/convert` (`JPG⇄PNG`, `PNG→JPG`, `PDF→DOCX`; 002, 005), `GET /v1/files/{id}/download` (003), единый формат ошибок (026), `/v1/auth/{register,login,refresh,logout,me}` — email+пароль, JWT access+refresh (007, `docs/AUTH.md`) |
+| `apps/api` — NestJS 11 | `POST /v1/convert` (`JPG⇄PNG`, `PNG→JPG`, `PDF→DOCX`; 002, 005), `GET /v1/files/{id}/download` (003), единый формат ошибок (026), `/v1/auth/*` — email+пароль, JWT access+refresh (007), восстановление/смена пароля, удаление аккаунта (009, `docs/AUTH.md`) |
 | `apps/api` — Prisma 6 / PostgreSQL | Схема `users`/`files`/`conversions`, миграции в `apps/api/src/prisma/migrations/` (спека 003) |
 | `packages/shared` | Реестр направлений конвертации, коды ошибок, лимиты; собирается в `dist/` |
 | `docker-compose.yml` | `postgres:17-alpine`, `redis:7-alpine` (оба с healthcheck), `mailhog/mailhog:v1.0.1` (без — образ минимальный, нечем его написать) |
@@ -97,9 +97,8 @@ pnpm lint
 `SMTP_HOST:SMTP_PORT` (по умолчанию — сам MailHog, `localhost:1025`), веб-интерфейс с входящими —
 [http://localhost:8025](http://localhost:8025). Никуда наружу ничего не уходит.
 
-Транспорт (`apps/api/src/modules/mail/{mail.service,mail.module}.ts`) готов и проверен вручную, но пока не
-подключён в `AppModule`: ни один эндпоинт ещё не отправляет писем — первый реальный вызов `MailService.send()`
-появится вместе со спекой 009.
+Первый реальный отправитель — `AccountService` (спека 009): восстановление/смена пароля шлют письма через
+`MailModule` (`apps/api/src/modules/auth/auth.module.ts` его импортирует).
 
 В проде — любой SMTP-провайдер через те же четыре переменные, конкретный выбор — спека 017 (deployment).
 
@@ -122,7 +121,6 @@ pnpm lint
 | `GET /v1/files` (список, пагинация), квота, автоснятие `save` | Спека 010 |
 | Реальное объектное хранилище вместо `LocalDiskStorage` | Спека 016 |
 | OAuth (Google) | Спека 008, инварианты — `AUTH-RULES.md`. 2FA и GitHub — решено не делать (`AUTH-RULES.md` §5) |
-| Восстановление пароля, удаление аккаунта | Спека 009, инварианты — `AUTH-RULES.md`. Канал доставки (MailHog/SMTP) уже настроен, см. «Где смотреть письма» |
 | Сервисы `api` и `web` в `docker-compose.yml`, Dockerfile | Спека 016 |
 | Gotenberg и MinIO | Спека 016 |
 | Тесты и тестовый раннер | Спека 015 |
