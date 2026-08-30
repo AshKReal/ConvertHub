@@ -2,7 +2,8 @@ import { Injectable, signal } from '@angular/core';
 
 export type Theme = 'light' | 'dark';
 
-const STORAGE_KEY = 'convert-hub-theme';
+/** Экспортирован — `theme.spec.ts` проверяет persist без дублирования строкового литерала. */
+export const THEME_STORAGE_KEY = 'convert-hub-theme';
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
@@ -15,7 +16,7 @@ export class ThemeService {
   setTheme(theme: Theme): void {
     this.theme.set(theme);
     document.documentElement.classList.toggle('dark', theme === 'dark');
-    localStorage.setItem(STORAGE_KEY, theme);
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
   }
 
   private readAppliedTheme(): Theme {

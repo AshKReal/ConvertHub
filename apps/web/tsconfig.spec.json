@@ -1,0 +1,11 @@
+/* Спека 015 (частично). `@angular/build:unit-test` по умолчанию ждёт именно
+   этот файл (`tsConfig: "tsconfig.spec.json"`) — раньше на него ссылался
+   мёртвый karma-конфиг, физически файла не было (`ng test` падал бы). */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/spec",
+    "types": []
+  },
+  "include": ["src/**/*.spec.ts", "src/**/*.d.ts"]
+}

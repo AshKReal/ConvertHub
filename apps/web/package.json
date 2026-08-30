@@ -7,8 +7,10 @@
     "dev": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json",
-    "lint": "ng lint"
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.spec.json",
+    "lint": "ng lint",
+    "test": "ng test --no-watch",
+    "test:watch": "ng test"
   },
   "prettier": {
     "printWidth": 100,
@@ -47,10 +49,12 @@
     "eslint": "^9.39.1",
     "eslint-plugin-prettier": "^5.2.2",
     "istanbul-lib-instrument": "^6.0.3",
+    "jsdom": "^30.0.1",
     "postcss": "^8.4.49",
     "prettier": "^3.4.2",
     "tailwindcss": "^4.0.0",
     "typescript": "~6.0.3",
-    "typescript-eslint": "8.67.0"
+    "typescript-eslint": "8.67.0",
+    "vitest": "^4.1.11"
   }
 }
