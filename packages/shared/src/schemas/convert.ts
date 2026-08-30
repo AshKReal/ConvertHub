@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { CONVERSION_TARGETS } from '../constants/formats';
+import { CONVERSION_TARGETS } from '../constants/formats.js';
 
 /**
  * Поля `POST /v1/convert` кроме самого файла: он передаётся частью `multipart/form-data`
