@@ -1,8 +1,9 @@
 import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
-import { isAbsolute, join, resolve, sep } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { env } from '../../config/env';
 import { computeSignedUrlSignature } from './signed-url.util';
+import { resolveStorageKeyPath } from './storage-path.util';
 import type { Storage } from './storage.interface';
 
 /**
@@ -57,13 +58,7 @@ export class LocalDiskStorage implements Storage {
   }
 
   private resolveKey(key: string): string {
-    if (key.includes('..') || isAbsolute(key)) {
-      // `key` всегда генерируется приложением (ULID + расширение), никогда
-      // не приходит от клиента как есть — проверка защитная, на случай
-      // ошибки выше по цепочке, не потому что здесь ожидается недоверенный ввод.
-      throw new Error(`Небезопасный storage key: ${key}`);
-    }
-    return join(this.baseDir, key);
+    return resolveStorageKeyPath(this.baseDir, key);
   }
 
   private async *walk(
