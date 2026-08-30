@@ -3,13 +3,15 @@ import {
   Controller,
   HttpCode,
   Post,
+  Req,
   Res,
   UploadedFile,
   UseFilters,
   UseInterceptors,
 } from '@nestjs/common';
 import type { ConvertRequest } from '@convert-hub/shared';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
+import { hashIp } from '../../common/util/hash-ip';
 import { AppException } from '../../common/exceptions/app.exception';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { ConversionService } from './conversion.service';
@@ -35,6 +37,7 @@ export class ConversionController {
   async convert(
     @UploadedFile() file: Express.Multer.File | undefined,
     @Body(new ZodValidationPipe(convertFormSchema)) body: ConvertRequest,
+    @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
     if (!file) {
@@ -43,10 +46,16 @@ export class ConversionController {
 
     // TODO(007): реальный id из сессии/API-ключа вместо гостевого null
     const userId: string | null = null;
+    // Ключ лимита одновременности (спека 005) — тот же паттерн анонимной
+    // идентичности, что и лимит частоты гостя (TECH-SPEC.md §6): хеш IP, пока
+    // нет настоящего пользователя.
+    const concurrencyKey =
+      userId ?? hashIp(req.ip ?? req.socket.remoteAddress ?? 'unknown');
     const result = await this.conversionService.convert(
       file.path,
       body,
       userId,
+      concurrencyKey,
     );
     if (result.fileId !== undefined) {
       res.setHeader('X-File-Id', result.fileId);
