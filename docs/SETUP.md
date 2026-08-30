@@ -9,7 +9,7 @@
 | Компонент | Состояние |
 |---|---|
 | `apps/web` — Angular 22, Tailwind 4 | Главная и страница конвертации на моках, тема, три языка |
-| `apps/api` — NestJS 11 | `POST /v1/convert` (JPG⇄PNG, спека 002), `GET /v1/files/{id}/download` (спека 003) |
+| `apps/api` — NestJS 11 | `POST /v1/convert` (`JPG⇄PNG`, `PNG→JPG`, `PDF→DOCX`; 002, 005), `GET /v1/files/{id}/download` (003), единый формат ошибок (026) |
 | `apps/api` — Prisma 6 / PostgreSQL | Схема `users`/`files`/`conversions`, миграции в `apps/api/src/prisma/migrations/` (спека 003) |
 | `packages/shared` | Реестр направлений конвертации, коды ошибок, лимиты; собирается в `dist/` |
 | `docker-compose.yml` | `postgres:17-alpine`, `redis:7-alpine` — оба с healthcheck |
@@ -18,6 +18,11 @@
 
 - Node.js 22 (`.nvmrc`), pnpm 10.34.5 (поле `packageManager` в корневом `package.json`)
 - Docker и Docker Compose — нужны начиная со стадии 4 (`tasks.md`); для фронтенд-стадий 0–3 не требуются
+- Python (доступен как `python` на `PATH`) + зависимости из `apps/api/python/requirements.txt` — только для
+  `PDF → DOCX` (спека 005): `pdf2docx` вызывается как дочерний процесс из `apps/api`, отдельного сервиса не поднимает
+  ```bash
+  python -m pip install -r apps/api/python/requirements.txt
+  ```
 
 ## Первый запуск
 

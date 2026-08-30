@@ -69,8 +69,9 @@ PDF описывает расположение глифов на страниц
 | Валидация | Zod | 3 |
 | Объектное хранилище | MinIO → Cloudflare R2 | — |
 | Клиент хранилища | `@aws-sdk/client-s3` | 3 |
-| Документы | Gotenberg | 8 |
-| Изображения | sharp | 0.33 |
+| Документы (`DOCX → PDF`) | Gotenberg | 8 |
+| Документы (`PDF → DOCX`) | Python + `pdf2docx`/`PyMuPDF`, дочерний процесс из `apps/api` (005, §2.2) | 0.5 / 1.28 |
+| Изображения | sharp | 0.35 |
 | Frontend | Angular (standalone) | 20 |
 | Стили | Tailwind CSS | 4 |
 | Компоненты | Angular CDK + Spartan UI | — |
