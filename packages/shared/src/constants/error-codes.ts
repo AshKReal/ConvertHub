@@ -17,6 +17,8 @@ export const ERROR_CODES = {
   INVALID_PARAMETER: { status: 422, retryable: false },
   RATE_LIMIT_EXCEEDED: { status: 429, retryable: true },
   CONVERSION_FAILED: { status: 500, retryable: true },
+  /** Фолбэк для непредвиденных ошибок вне доменных кодов (спека 026) — не только конвертация. */
+  INTERNAL_ERROR: { status: 500, retryable: true },
   SERVICE_OVERLOADED: { status: 503, retryable: true },
   STORAGE_UNAVAILABLE: { status: 503, retryable: true },
   CONVERSION_TIMEOUT: { status: 504, retryable: true },

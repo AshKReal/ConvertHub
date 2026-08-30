@@ -45,6 +45,7 @@ export const ERROR_MESSAGE_KEYS: Record<ErrorCode, MessageKey> = {
   INVALID_PARAMETER: 'error.invalidParameter',
   RATE_LIMIT_EXCEEDED: 'error.rateLimitExceeded',
   CONVERSION_FAILED: 'error.conversionFailed',
+  INTERNAL_ERROR: 'error.internalError',
   SERVICE_OVERLOADED: 'error.serviceOverloaded',
   STORAGE_UNAVAILABLE: 'error.storageUnavailable',
   CONVERSION_TIMEOUT: 'error.conversionTimeout',

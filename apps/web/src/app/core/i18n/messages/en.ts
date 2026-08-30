@@ -127,6 +127,7 @@ export const EN_MESSAGES = {
   'error.rateLimitExceeded': 'Too many requests. Try again in a minute.',
   'error.conversionFailed':
     'Conversion failed unexpectedly. Try again — contact support if it keeps happening.',
+  'error.internalError': 'Something went wrong. Try again — contact support if it keeps happening.',
   'error.serviceOverloaded':
     'The conversion service is busy right now. Try again in a few minutes.',
   'error.storageUnavailable': 'Storage is temporarily unavailable. Try again shortly.',

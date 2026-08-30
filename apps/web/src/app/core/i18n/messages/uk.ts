@@ -124,6 +124,8 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'error.rateLimitExceeded': 'Забагато запитів. Спробуйте за хвилину.',
   'error.conversionFailed':
     'Конвертація несподівано завершилася помилкою. Спробуйте ще раз — якщо повториться, напишіть у підтримку.',
+  'error.internalError':
+    'Щось пішло не так. Спробуйте ще раз — якщо повториться, напишіть у підтримку.',
   'error.serviceOverloaded': 'Сервіс конвертації зараз перевантажений. Спробуйте за кілька хвилин.',
   'error.storageUnavailable': 'Сховище тимчасово недоступне. Спробуйте трохи пізніше.',
   'error.conversionTimeout':
