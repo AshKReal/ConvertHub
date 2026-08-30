@@ -12,7 +12,7 @@
 | `apps/api` — NestJS 11 | `POST /v1/convert` (`JPG⇄PNG`, `PNG→JPG`, `PDF→DOCX`; 002, 005), `GET /v1/files/{id}/download` (003), единый формат ошибок (026), `/v1/auth/{register,login,refresh,logout,me}` — email+пароль, JWT access+refresh (007, `docs/AUTH.md`) |
 | `apps/api` — Prisma 6 / PostgreSQL | Схема `users`/`files`/`conversions`, миграции в `apps/api/src/prisma/migrations/` (спека 003) |
 | `packages/shared` | Реестр направлений конвертации, коды ошибок, лимиты; собирается в `dist/` |
-| `docker-compose.yml` | `postgres:17-alpine`, `redis:7-alpine` — оба с healthcheck |
+| `docker-compose.yml` | `postgres:17-alpine`, `redis:7-alpine` (оба с healthcheck), `mailhog/mailhog:v1.0.1` (без — образ минимальный, нечем его написать) |
 
 ## Требования
 
@@ -37,7 +37,7 @@ pnpm dev:web                              # http://localhost:4200
 Бэкенд и базы поднимаются отдельно и на текущем этапе не нужны фронтенду — сеть в стадиях 0–3 не используется:
 
 ```bash
-docker compose up -d                      # postgres, redis
+docker compose up -d                      # postgres, redis, mailhog
 pnpm --filter api exec prisma migrate dev # применить миграции к пустой БД (спека 003)
 pnpm dev:api                              # http://localhost:3000
 ```
@@ -66,6 +66,8 @@ pnpm lint
 | `POSTGRES_DB` | да | `convert_hub` | то же |
 | `POSTGRES_PORT` | нет | `5432` | по умолчанию `5432`; менять при занятом порте (на некоторых машинах Windows + Docker Desktop порт 5432 сам по себе ненадёжен для Prisma — см. `docker-compose.yml`) |
 | `REDIS_PORT` | нет | `6379` | по умолчанию `6379` |
+| `MAILHOG_SMTP_PORT` | нет | `1025` | по умолчанию `1025` — этот порт указывает `SMTP_HOST`/`SMTP_PORT` в `apps/api/.env` |
+| `MAILHOG_WEB_PORT` | нет | `8025` | по умолчанию `8025` — веб-интерфейс, см. «Где смотреть письма» |
 | `DATABASE_URL` | пока нет | `postgresql://convert_hub:change-me@localhost:5432/convert_hub` | Ничего: читает только `docker compose`/Prisma CLI при прямом вызове из корня; приложение и `prisma migrate` читают одноимённую переменную из `apps/api/.env` (ниже) |
 | `REDIS_URL` | пока нет | `redis://localhost:6379` | Ничего: кодом ещё не читается, объявлена под rate limit и идемпотентность (спека 012) |
 
@@ -84,21 +86,33 @@ pnpm lint
 | `SIGNED_URL_SECRET` | **да** | 32+ случайных символа | Старт падает: подпись ссылок на скачивание (`LocalDiskStorage.getSignedUrl`, спека 003) без секрета невозможна — дефолта нет намеренно |
 | `LOCAL_STORAGE_DIR` | **да** | `E:\convertedHub-local-storage` (абсолютный путь вне репозитория) | Старт падает: `LocalDiskStorage` явно проверяет, что путь не лежит внутри репозитория (спека 003) |
 | `JWT_SECRET` | **да** | 32+ случайных символа | Старт падает: подпись access-JWT (`TokenService`, спека 007) без секрета невозможна — дефолта нет намеренно |
+| `SMTP_HOST` | **да** | `localhost` | Старт падает: `MailService` (спека 009) не может создать транспорт без хоста |
+| `SMTP_PORT` | **да** | `1025` | Старт падает: нечисловое/неположительное значение не проходит схему |
+| `SMTP_SECURE` | нет | `false` | По умолчанию `false` — так принимает MailHog; реальному провайдеру на 465/587 понадобится `true` |
+| `SMTP_FROM` | **да** | `noreply@convert-hub.local` | Старт падает: схема требует валидный email |
 
 ## Где смотреть письма
 
-Отправки почты в проекте нет: SMTP-клиент не подключён, MailHog в `docker-compose.yml` отсутствует, переменных
-почты в схеме окружения нет. Канал доставки писем не выбран в `TECH-SPEC.md` — это открытый вопрос спеки 009.
+Локально — MailHog: `docker compose up -d` поднимает его вместе с остальными сервисами, `apps/api` шлёт письма на
+`SMTP_HOST:SMTP_PORT` (по умолчанию — сам MailHog, `localhost:1025`), веб-интерфейс с входящими —
+[http://localhost:8025](http://localhost:8025). Никуда наружу ничего не уходит.
+
+Транспорт (`apps/api/src/modules/mail/{mail.service,mail.module}.ts`) готов и проверен вручную, но пока не
+подключён в `AppModule`: ни один эндпоинт ещё не отправляет писем — первый реальный вызов `MailService.send()`
+появится вместе со спекой 009.
+
+В проде — любой SMTP-провайдер через те же четыре переменные, конкретный выбор — спека 017 (deployment).
 
 ## OAuth credentials
 
-Ни одной OAuth-переменной и ни одного callback-маршрута в коде нет, поэтому redirect URI назвать нельзя: он
-определяется маршрутом, которого ещё не существует. Раздел заполняется в рамках спеки 008 одновременно с кодом,
-по правилу из `AUTH-RULES.md`: новая переменная окружения — обновление `.env.example` и этого файла тем же изменением.
+**Решение владельца (`AUTH-RULES.md` §5): пока реализуется только Google**, Telegram отложен, GitHub не
+рассматривается. Ни одной OAuth-переменной и ни одного callback-маршрута в коде нет, поэтому redirect URI назвать
+нельзя: он определяется маршрутом, которого ещё не существует. Раздел заполняется в рамках спеки 008 одновременно
+с кодом, по правилу из `AUTH-RULES.md`: новая переменная окружения — обновление `.env.example` и этого файла тем
+же изменением.
 
-Что известно из `TECH-SPEC.md` §8.3 уже сейчас: провайдеров два — Google (OAuth 2.0 Authorization Code + PKCE,
-идентификация по `sub`) и Telegram Login Widget (серверная проверка HMAC-SHA256, `auth_date` не старше 24 часов).
-GitHub в спецификации не значится.
+Что известно из `TECH-SPEC.md` §8.3 уже сейчас: Google — OAuth 2.0 Authorization Code с PKCE, идентификация по
+`sub`. Контракт Telegram Login Widget там же описан на будущее, но не реализуется, пока спека к нему не вернётся.
 
 ## Чего ещё нет
 
@@ -107,9 +121,8 @@ GitHub в спецификации не значится.
 | Сиды | Отдельного решения нет; сущностей для сида пока не существует |
 | `GET /v1/files` (список, пагинация), квота, автоснятие `save` | Спека 010 |
 | Реальное объектное хранилище вместо `LocalDiskStorage` | Спека 016 |
-| OAuth (Google, Telegram), 2FA | Спека 008, инварианты — `AUTH-RULES.md` |
-| Восстановление пароля, удаление аккаунта | Спека 009, инварианты — `AUTH-RULES.md` |
-| Почта и MailHog | Спека 009, канал доставки не выбран |
+| OAuth (Google) | Спека 008, инварианты — `AUTH-RULES.md`. 2FA и GitHub — решено не делать (`AUTH-RULES.md` §5) |
+| Восстановление пароля, удаление аккаунта | Спека 009, инварианты — `AUTH-RULES.md`. Канал доставки (MailHog/SMTP) уже настроен, см. «Где смотреть письма» |
 | Сервисы `api` и `web` в `docker-compose.yml`, Dockerfile | Спека 016 |
 | Gotenberg и MinIO | Спека 016 |
 | Тесты и тестовый раннер | Спека 015 |

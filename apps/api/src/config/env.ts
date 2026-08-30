@@ -14,6 +14,12 @@ const envSchema = z.object({
   LOCAL_STORAGE_DIR: z.string().min(1),
   /** Спека 007. Подпись access-JWT (`TokenService`) — без дефолта, как остальные секреты. */
   JWT_SECRET: z.string().min(32),
+  /** Спека 009. Локально — MailHog (`docker-compose.yml`), в проде — любой SMTP-провайдер, код `MailService` не меняется. */
+  SMTP_HOST: z.string().min(1),
+  SMTP_PORT: z.coerce.number().int().positive(),
+  /** MailHog принимает и без TLS; `true` понадобится реальному провайдеру на 465/587 — дефолт под локальную разработку, не под прод. */
+  SMTP_SECURE: z.coerce.boolean().default(false),
+  SMTP_FROM: z.string().email(),
 });
 
 export type Env = z.infer<typeof envSchema>;
