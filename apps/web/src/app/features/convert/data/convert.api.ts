@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import type { ConvertRequest } from '@convert-hub/shared';
 import type { Observable } from 'rxjs';
 
+import { environment } from '../../../../environments/environment';
 import { buildConvertFormData } from './convert-request';
 
 /**
@@ -18,7 +19,7 @@ export function injectConvertApi() {
   return {
     /** Ответ — бинарный результат конвертации (ARCHITECTURE.md §7.3), не JSON. */
     convert(file: File, request: ConvertRequest): Observable<Blob> {
-      return http.post('/v1/convert', buildConvertFormData(file, request), {
+      return http.post(`${environment.apiUrl}/v1/convert`, buildConvertFormData(file, request), {
         responseType: 'blob',
       });
     },
