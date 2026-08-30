@@ -1,0 +1,9 @@
+{
+  "name": "engine-check",
+  "private": true,
+  "type": "module",
+  "description": "One-off spike scripts for specs/000-engine-quality-check.md. Not part of any workspace, not built, not typechecked.",
+  "dependencies": {
+    "sharp": "^0.35.4"
+  }
+}
