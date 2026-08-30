@@ -20,9 +20,12 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "@parcel/watcher",
+      "@prisma/client",
+      "@prisma/engines",
       "esbuild",
       "lmdb",
-      "msgpackr-extract"
+      "msgpackr-extract",
+      "prisma"
     ]
   }
 }

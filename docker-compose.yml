@@ -6,6 +6,13 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      # Prisma 6 (schema/query engine) не проходит SCRAM-SHA-256 при
+      # подключении с хоста Windows через проброс порта Docker Desktop
+      # (внутри сети контейнер-контейнер работает нормально) — только
+      # для локальной dev-БД, продовый managed Postgres (спека 017) этого
+      # не касается.
+      POSTGRES_HOST_AUTH_METHOD: md5
+      POSTGRES_INITDB_ARGS: --auth-host=md5
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:

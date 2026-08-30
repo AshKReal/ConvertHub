@@ -3,6 +3,8 @@ paths:
   - "apps/api/src/modules/auth/**"
   - "apps/api/src/modules/api-keys/**"
   - "apps/api/src/modules/conversion/validators/**"
+  - "apps/api/src/modules/files/**"
+  - "apps/api/src/modules/storage/**"
 ---
 
 # Критичные зоны

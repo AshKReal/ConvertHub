@@ -121,12 +121,13 @@
   - [x] `ConversionEngine.convert()` для sharp: `JPG↔PNG`, `quality`, `background`
   - [x] Удаление временных файлов в `finally`
   - [ ] Приёмка владельцем: критерии из спеки руками, враждебное второе мнение
-- [ ] **003** 🔒 `file-storage`
-  - [ ] Интерфейс `Storage` (`put`/`getSignedUrl`/`delete`/`list`)
-  - [ ] `LocalDiskStorage implements Storage`, папка вне репозитория
-  - [ ] Таблицы `files` и `conversions`, ULID
-  - [ ] Транзакция: insert `files` + update `users.storage_used_bytes`
-  - [ ] `GET /v1/files/{id}/download` → `302` на подписанную ссылку (TTL 15 мин)
+- [ ] **003** 🔒 `file-storage` — `specs/003-file-storage.md`
+  - [x] Интерфейс `Storage` (`put`/`getSignedUrl`/`delete`/`list`)
+  - [x] `LocalDiskStorage implements Storage`, папка вне репозитория
+  - [x] Таблицы `files` и `conversions`, ULID
+  - [x] Транзакция: insert `files` + update `users.storage_used_bytes`
+  - [x] `GET /v1/files/{id}/download` → `302` на подписанную ссылку (TTL 15 мин)
+  - [ ] Приёмка владельцем: критерии из спеки руками, враждебное второе мнение
 - [ ] **026** `error-contract-backend`
   - [ ] `AllExceptionsFilter` → `problem+json` + `request_id`, коды из `packages/shared` (004)
   - [ ] Подключить `errorInterceptor` (004) к реальным ответам API

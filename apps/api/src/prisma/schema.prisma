@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Минимальная таблица (спека 003, решение владельца): только то, что нужно
+/// для транзакции квоты-бухгалтерии. email/пароль/OAuth и т.д. добавляет
+/// спека 007 собственной миграцией — не трогать эту модель вне 003/007
+/// без согласования.
+model User {
+  id               String   @id @db.VarChar(26)
+  storageUsedBytes Int      @default(0) @map("storage_used_bytes")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  files       File[]
+  conversions Conversion[]
+
+  @@map("users")
+}
+
+/// TECH-SPEC.md §4: в истории конвертаций нет состояния "в процессе",
+/// только Completed и Failed — API синхронный.
+enum ConversionStatus {
+  COMPLETED
+  FAILED
+}
+
+model File {
+  id               String    @id @db.VarChar(26)
+  /// null — гость; спека 003 никогда не создаёт синтетическую строку в
+  /// users для гостя, лимиты гостя считаются по IP (TECH-SPEC.md §6), не
+  /// по учётной записи.
+  userId           String?   @map("user_id") @db.VarChar(26)
+  storageKey       String    @unique @map("storage_key")
+  sizeBytes        Int       @map("size_bytes")
+  mime             String
+  extension        String    @db.VarChar(8)
+  originalFilename String?   @map("original_filename")
+  /// null = бессрочно (save=true); иначе TTL из ARCHITECTURE.md §11.
+  expiresAt        DateTime? @map("expires_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  user        User?        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  conversions Conversion[]
+
+  // idx_files_expiring (WHERE expires_at IS NOT NULL, ARCHITECTURE.md §10)
+  // добавлен ВРУЧНУЮ в migrations/<ts>_init/migration.sql — частичные
+  // индексы недоступны в Prisma 6 schema DSL (preview partialIndexes
+  // только с v7.4). Здесь намеренно нет @@index([expiresAt]), чтобы Prisma
+  // не продублировала его обычным полным индексом при следующем migrate dev.
+  @@index([userId, id], map: "idx_files_user_cursor")
+  @@map("files")
+}
+
+model Conversion {
+  id          String           @id @db.VarChar(26)
+  userId      String?          @map("user_id") @db.VarChar(26)
+  target      String           @db.VarChar(8)
+  /// null, если конвертация упала до определения направления.
+  directionId String?          @map("direction_id") @db.VarChar(32)
+  status      ConversionStatus
+  errorCode   String?          @map("error_code") @db.VarChar(64)
+  durationMs  Int              @map("duration_ms")
+  /// Заполнен только при COMPLETED && save=true && персист удался.
+  fileId      String?          @map("file_id") @db.VarChar(26)
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Restrict)
+  file File? @relation(fields: [fileId], references: [id], onDelete: SetNull)
+
+  @@index([userId, id], map: "idx_conversions_user_cursor")
+  @@map("conversions")
+}

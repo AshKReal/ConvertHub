@@ -6,6 +6,7 @@
 export const ERROR_CODES = {
   INVALID_API_KEY: { status: 401, retryable: false },
   EMAIL_NOT_VERIFIED: { status: 403, retryable: false },
+  FILE_NOT_FOUND: { status: 404, retryable: false },
   FILE_TOO_LARGE: { status: 413, retryable: false },
   UNSUPPORTED_FILE_TYPE: { status: 415, retryable: false },
   FILE_TYPE_MISMATCH: { status: 415, retryable: false },

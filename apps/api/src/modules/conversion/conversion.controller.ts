@@ -15,15 +15,17 @@ import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { ConversionService } from './conversion.service';
 import { createConvertFileInterceptor } from './convert-file.interceptor';
 import { convertFormSchema } from './dto/convert-form.schema';
-import { MulterExceptionFilter } from './filters/multer-exception.filter';
+import { ConversionFailureFilter } from './filters/conversion-failure.filter';
 
 /**
  * Без логики и без Prisma (ARCHITECTURE.md §4.1) — разбирает запрос, вызывает
  * сервис, формирует ответ. `@Res()` — успешный ответ бинарный (байты файла),
- * не JSON-обёртка Nest по умолчанию.
+ * не JSON-обёртка Nest по умолчанию. Единственный зарегистрированный фильтр —
+ * `ConversionFailureFilter`; он сам вызывает `MulterExceptionFilter` изнутри
+ * (см. её докблок — у Nest не срабатывают два независимых catch-all-фильтра рядом).
  */
 @Controller('v1/convert')
-@UseFilters(MulterExceptionFilter)
+@UseFilters(ConversionFailureFilter)
 export class ConversionController {
   constructor(private readonly conversionService: ConversionService) {}
 
@@ -39,7 +41,16 @@ export class ConversionController {
       throw new AppException('INVALID_PARAMETER', { field: 'file' });
     }
 
-    const result = await this.conversionService.convert(file.path, body);
+    // TODO(007): реальный id из сессии/API-ключа вместо гостевого null
+    const userId: string | null = null;
+    const result = await this.conversionService.convert(
+      file.path,
+      body,
+      userId,
+    );
+    if (result.fileId !== undefined) {
+      res.setHeader('X-File-Id', result.fileId);
+    }
     res.setHeader('Content-Type', result.mime);
     res.send(result.buffer);
   }
