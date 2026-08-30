@@ -13,6 +13,7 @@
 | `apps/api` — Prisma 6 / PostgreSQL | Схема `users`/`files`/`conversions`, миграции в `apps/api/src/prisma/migrations/` (спека 003) |
 | `packages/shared` | Реестр направлений конвертации, коды ошибок, лимиты; собирается в `dist/` |
 | `docker-compose.yml` | `postgres:17-alpine`, `redis:7-alpine` (оба с healthcheck), `mailhog/mailhog:v1.0.1` (без — образ минимальный, нечем его написать) |
+| Тесты (Vitest, спека 015 частично) | Юнит во всех трёх пакетах + e2e в `apps/api` против реальной `convert_hub_test` — раздел «Тесты» ниже |
 
 ## Требования
 
@@ -94,6 +95,37 @@ pnpm lint
 | `GOOGLE_CLIENT_SECRET` | **да** | из Google Cloud Console | Старт падает: без него не пройдёт обмен `code` на токен |
 | `GOOGLE_REDIRECT_URI` | **да** | `http://localhost:3000/v1/auth/google/callback` | Старт падает: схема требует валидный URL. Должен буквально совпадать с authorized redirect URI в настройках Client ID — иначе Google отказывает с `redirect_uri_mismatch`, не наш код |
 
+## Тесты
+
+Спека 015 (частично — Vitest сделан, Testcontainers сознательно заменён второй БД, Playwright отложен;
+`specs/015-testing.md`). Один раннер — Vitest — во всех трёх пакетах.
+
+```
+pnpm test        юнит-тесты всех трёх пакетов, без внешних сервисов — безопасно запускать всегда
+pnpm test:e2e     apps/api против реальной convert_hub_test (см. ниже)
+```
+
+**Юнит.** `packages/shared` и `apps/web` — без внешних сервисов. `apps/api` — `unplugin-swc` (Vitest не умеет
+`emitDecoratorMetadata` через дефолтный esbuild-транспайлер, NestJS держится на декораторах) — конфиг сам грузит
+`apps/api/.env`, тот же файл, что `pnpm dev:api`.
+
+**E2E** (`apps/api` — `supertest` поверх настоящего `AppModule`) требует вторую БД `convert_hub_test` на том же
+контейнере `postgres`, что и dev (не отдельный контейнер/Testcontainers — решение владельца). Разовая настройка:
+
+```
+docker compose up -d postgres            # если ещё не поднят
+# convert_hub_test создаётся автоматически только на СВЕЖЕМ volume
+# (docker/postgres-init/01-create-test-db.sql) — на уже существующем:
+docker compose exec postgres psql -U convert_hub -d convert_hub -c "CREATE DATABASE convert_hub_test;"
+pnpm --filter api db:migrate:test        # применяет все миграции к convert_hub_test
+```
+
+Переменная `TEST_DATABASE_URL` (`apps/api/.env`, не в схеме `config/env.ts` — это тестовая инфраструктура, не
+рантайм-конфиг) — та же строка подключения, что `DATABASE_URL`, только другое имя БД. `test/setup-e2e.ts`
+подменяет `DATABASE_URL` на неё до импорта Prisma; без `TEST_DATABASE_URL` тесты падают явно, не бьют по dev-БД
+тихо. Каждый e2e-тест удаляет за собой созданные строки (`test/utils/test-db.ts#cleanupUser`) — не глобальный
+rollback транзакций.
+
 ## Где смотреть письма
 
 Локально — MailHog: `docker compose up -d` поднимает его вместе с остальными сервисами, `apps/api` шлёт письма на
@@ -127,4 +159,4 @@ Google (`invalid_client`), не `500` у нас — это ожидаемо, н�
 | Реальное объектное хранилище вместо `LocalDiskStorage` | Спека 016 |
 | Сервисы `api` и `web` в `docker-compose.yml`, Dockerfile | Спека 016 |
 | Gotenberg и MinIO | Спека 016 |
-| Тесты и тестовый раннер | Спека 015 |
+| Playwright (браузерные e2e) | Спека 015, отложено — раздел «Тесты» выше покрывает только Vitest |

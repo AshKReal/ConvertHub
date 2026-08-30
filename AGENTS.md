@@ -23,6 +23,9 @@
 docker compose up -d  postgres, redis — с бэкенд-фазы (стадия 4, tasks.md), не нужен для фронтенда
 pnpm typecheck         обязательно перед тем, как сказать «готово»
 pnpm lint
+pnpm test              юнит-тесты всех пакетов (Vitest) — без внешних сервисов, безопасно запускать всегда
+pnpm test:e2e          apps/api против реальной convert_hub_test — нужен docker compose up -d postgres
+                        (разово перед этим: pnpm --filter api db:migrate:test)
 pnpm dev:api
 pnpm dev:web
 ```
