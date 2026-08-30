@@ -106,6 +106,8 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'error.invalidApiKey': 'Ключ API недействителен или отозван. Проверьте ключ или выпустите новый.',
   'error.emailNotVerified':
     'Подтвердите email, прежде чем продолжить — проверьте почту, там ссылка.',
+  'error.fileNotFound':
+    'Файл недоступен — возможно, срок хранения истёк или ссылка недействительна.',
   'error.fileTooLarge': 'Файл весит {actual}, лимит — {max}. Выберите файл меньшего размера.',
   'error.unsupportedFileType':
     'Этот тип файла не поддерживается для такой конвертации. Проверьте список форматов.',

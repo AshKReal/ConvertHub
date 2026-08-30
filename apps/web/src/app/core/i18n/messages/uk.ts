@@ -106,6 +106,8 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'error.invalidApiKey': 'Ключ API недійсний або відкликаний. Перевірте ключ або випустіть новий.',
   'error.emailNotVerified':
     'Підтвердьте email, перш ніж продовжити — перевірте пошту, там посилання.',
+  'error.fileNotFound':
+    'Файл недоступний — можливо, термін зберігання минув або посилання недійсне.',
   'error.fileTooLarge': 'Файл важить {actual}, ліміт — {max}. Виберіть файл меншого розміру.',
   'error.unsupportedFileType':
     'Цей тип файлу не підтримується для такої конвертації. Перевірте список форматів.',

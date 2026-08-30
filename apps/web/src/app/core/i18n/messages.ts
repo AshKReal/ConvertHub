@@ -34,6 +34,7 @@ export const DIRECTION_DESCRIPTION_KEYS: Record<ConversionDirectionId, MessageKe
 export const ERROR_MESSAGE_KEYS: Record<ErrorCode, MessageKey> = {
   INVALID_API_KEY: 'error.invalidApiKey',
   EMAIL_NOT_VERIFIED: 'error.emailNotVerified',
+  FILE_NOT_FOUND: 'error.fileNotFound',
   FILE_TOO_LARGE: 'error.fileTooLarge',
   UNSUPPORTED_FILE_TYPE: 'error.unsupportedFileType',
   FILE_TYPE_MISMATCH: 'error.fileTypeMismatch',

@@ -108,6 +108,8 @@ export const EN_MESSAGES = {
 
   'error.invalidApiKey': 'Invalid or revoked API key. Check the key or issue a new one.',
   'error.emailNotVerified': 'Confirm your email before continuing — check your inbox for the link.',
+  'error.fileNotFound':
+    'This file is no longer available — it may have expired or the link is invalid.',
   'error.fileTooLarge': 'File is {actual}, the limit is {max}. Choose a smaller file.',
   'error.unsupportedFileType':
     "This file type isn't supported for this conversion. Check the accepted formats.",
