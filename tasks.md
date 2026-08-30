@@ -114,12 +114,13 @@
 
 ## Стадия 5 — `JPG → PNG`, хранилище, глобальный фильтр ошибок
 
-- [ ] **002** 🔒 `convert-jpg-png`
-  - [ ] Приём файла потоком во временный каталог — под контракт, заданный в 001
-  - [ ] Определение типа по magic bytes, не по расширению/`Content-Type`
-  - [ ] Decompression bomb: проверка заявленных размеров до декодирования, лимит 50 Мп
-  - [ ] `ConversionEngine.convert()` для sharp: `JPG↔PNG`, `quality`, `background`
-  - [ ] Удаление временных файлов в `finally`
+- [ ] **002** 🔒 `convert-jpg-png` — `specs/002-convert-jpg-png.md`
+  - [x] Приём файла потоком во временный каталог — под контракт, заданный в 001
+  - [x] Определение типа по magic bytes, не по расширению/`Content-Type`
+  - [x] Decompression bomb: проверка заявленных размеров до декодирования, лимит 50 Мп
+  - [x] `ConversionEngine.convert()` для sharp: `JPG↔PNG`, `quality`, `background`
+  - [x] Удаление временных файлов в `finally`
+  - [ ] Приёмка владельцем: критерии из спеки руками, враждебное второе мнение
 - [ ] **003** 🔒 `file-storage`
   - [ ] Интерфейс `Storage` (`put`/`getSignedUrl`/`delete`/`list`)
   - [ ] `LocalDiskStorage implements Storage`, папка вне репозитория
