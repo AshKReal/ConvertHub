@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import type { AppError } from '../../../../core/interceptors/error-interceptor';
 import { AuthService } from '../../../../core/services/auth';
@@ -8,7 +8,7 @@ import { I18nService } from '../../../../core/services/i18n';
 import { ToastService } from '../../../../core/services/toast';
 import { Button } from '../../../../shared/ui/button/button';
 import { Input } from '../../../../shared/ui/input/input';
-import { OauthButtons, type OauthProvider } from '../../components/oauth-buttons/oauth-buttons';
+import { OauthButtons } from '../../components/oauth-buttons/oauth-buttons';
 
 @Component({
   selector: 'app-login-page',
@@ -18,9 +18,24 @@ import { OauthButtons, type OauthProvider } from '../../components/oauth-buttons
 })
 export class LoginPage {
   private readonly auth = inject(AuthService);
+  private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
   protected readonly i18n = inject(I18nService);
+
+  /**
+   * Спека 008. Google-колбэк — полная навигация, не может отдать `AppError`
+   * через обычный HTTP-перехватчик (`error-interceptor.ts`) — сюда приходит
+   * редиректом `?oauthError=...` вместо этого.
+   */
+  constructor() {
+    const oauthError = this.route.snapshot.queryParamMap.get('oauthError');
+    if (oauthError === 'conflict') {
+      this.toast.show('danger', this.i18n.t('auth.oauth.conflictError'));
+    } else if (oauthError === 'failed') {
+      this.toast.show('danger', this.i18n.t('auth.oauth.failedError'));
+    }
+  }
 
   protected readonly form = new FormGroup({
     email: new FormControl('', {
@@ -74,8 +89,9 @@ export class LoginPage {
     });
   }
 
-  protected onOauth(provider: OauthProvider): void {
-    this.auth.loginAsMockOAuth('demo@convert-hub.io', provider);
+  /** Единственный оставшийся мок-провайдер — Telegram (`OauthButtons.chosen`, спека 008). */
+  protected onOauth(): void {
+    this.auth.loginAsMockOAuth('demo@convert-hub.io');
     this.router.navigateByUrl('/');
   }
 }

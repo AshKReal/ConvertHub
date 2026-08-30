@@ -9,7 +9,7 @@ import { I18nService } from '../../../../core/services/i18n';
 import { ToastService } from '../../../../core/services/toast';
 import { Button } from '../../../../shared/ui/button/button';
 import { Input } from '../../../../shared/ui/input/input';
-import { OauthButtons, type OauthProvider } from '../../components/oauth-buttons/oauth-buttons';
+import { OauthButtons } from '../../components/oauth-buttons/oauth-buttons';
 
 @Component({
   selector: 'app-register-page',
@@ -85,8 +85,9 @@ export class RegisterPage {
       });
   }
 
-  protected onOauth(provider: OauthProvider): void {
-    this.auth.loginAsMockOAuth('demo@convert-hub.io', provider);
+  /** Единственный оставшийся мок-провайдер — Telegram (`OauthButtons.chosen`, спека 008). */
+  protected onOauth(): void {
+    this.auth.loginAsMockOAuth('demo@convert-hub.io');
     this.router.navigateByUrl('/');
   }
 }
