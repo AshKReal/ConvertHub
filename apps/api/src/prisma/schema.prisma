@@ -28,8 +28,54 @@ model User {
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
   identities          Identity[]
+  apiKeys             ApiKey[]
 
   @@map("users")
+}
+
+/// Спека 011. `TECH-SPEC.md` §8.4: в БД — только SHA-256 хеш ключа и префикс
+/// для показа; полное значение отдаётся клиенту один раз, при выпуске и
+/// перевыпуске. Ключ — неизменяемая строка (та же модель, что `RefreshToken`
+/// 007, не UPDATE на месте): перевыпуск = `revokedAt` старой строке + INSERT
+/// новой в одной транзакции, отзыв = `revokedAt`. `revokedAt IS NULL` —
+/// единственный предикат «ключ действует».
+model ApiKey {
+  id String @id @db.VarChar(26)
+
+  userId String @map("user_id") @db.VarChar(26)
+
+  /// SHA-256 hex полного значения (`AUTH-RULES.md` §2: SHA-256 предписан для
+  /// высокоэнтропийных ключей, не argon2). Поиск — точный матч по `@unique`
+  /// индексу, тайминг не несёт информации о содержимом (довод `RefreshToken`).
+  keyHash String @unique @map("key_hash")
+
+  /// Первые 12 символов значения (`ch_live_a1b2`) — для показа в списке, не секрет.
+  prefix String
+
+  environment ApiKeyEnvironment @default(LIVE)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  /// Пишет только 012 при аутентификации запроса ключом. NULL — ещё не использован.
+  lastUsedAt DateTime? @map("last_used_at")
+
+  /// NULL — ключ действует. Проставляется при отзыве и перевыпуске (старой строке).
+  revokedAt DateTime? @map("revoked_at")
+
+  /// Cascade — то же решение владельца, что 008/009: удаление аккаунта убирает
+  /// ключи одним вызовом `prisma.user.delete()`.
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("api_keys")
+}
+
+/// Спека 011. Формат ключа несёт признак окружения (`ch_live_`/`ch_test_`,
+/// `TECH-SPEC.md` §7.1). Сейчас выпускается только `LIVE`; `TEST` активируется,
+/// если появится песочница с иными лимитами.
+enum ApiKeyEnvironment {
+  LIVE
+  TEST
 }
 
 /// Спека 008. Идентификация по `sub` провайдера (`AUTH-RULES.md`), не по
