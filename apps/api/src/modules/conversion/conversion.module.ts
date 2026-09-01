@@ -6,6 +6,7 @@ import { ConcurrencyLimiterService } from './concurrency-limiter.service';
 import { ConversionController } from './conversion.controller';
 import { ConversionHistoryService } from './conversion-history.service';
 import { ConversionService } from './conversion.service';
+import { IdempotencyService } from './idempotency.service';
 import { CONVERSION_ENGINES } from './engines/engine.interface';
 import { ImageEngine } from './engines/image.engine';
 import { PdfToDocxEngine } from './engines/pdf-to-docx.engine';
@@ -30,6 +31,7 @@ import { MulterExceptionFilter } from './filters/multer-exception.filter';
     ConversionService,
     ConversionHistoryService,
     ConcurrencyLimiterService,
+    IdempotencyService,
     // Не зарегистрирован через @UseFilters — вызывается изнутри
     // ConversionFailureFilter как обычный провайдер (см. её докблок).
     MulterExceptionFilter,
