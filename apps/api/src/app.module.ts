@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ExceptionsModule } from './common/filters/exceptions.module';
+import { ApiKeyModule } from './modules/api-keys/api-keys.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ConversionModule } from './modules/conversion/conversion.module';
 import { FilesModule } from './modules/files/files.module';
@@ -14,6 +15,7 @@ import { PrismaModule } from './prisma/prisma.module';
     AuthModule,
     FilesModule,
     ConversionModule,
+    ApiKeyModule,
   ],
 })
 export class AppModule {}
