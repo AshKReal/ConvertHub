@@ -19,12 +19,17 @@ const AUTH_BASE = `${environment.apiUrl}/v1/auth`;
  * `authInterceptor` уже относится к `GET /v1/auth/me` как к защищённому
  * маршруту (см. его докблок) — Bearer и retry-после-401 работают сами,
  * ничего здесь настраивать не нужно.
+ *
+ * `enabled` — `/files` уже за `authGuard` (гостя туда не пускает маршрут),
+ * а `dropzone` (`convert`) публичный: без гейта каждый гость слал бы
+ * заведомо обречённый на 401 запрос при каждой загрузке страницы конвертации.
  */
-export function injectMeQuery() {
+export function injectMeQuery(options?: { enabled?: () => boolean }) {
   const http = inject(HttpClient);
 
   return injectQuery(() => ({
     queryKey: ['me'],
+    enabled: options?.enabled?.() ?? true,
     queryFn: () =>
       firstValueFrom(http.get<MeResponse>(`${AUTH_BASE}/me`, { withCredentials: true })),
   }));
