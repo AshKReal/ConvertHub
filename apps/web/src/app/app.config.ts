@@ -7,6 +7,7 @@ import {
 } from '@angular/core';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { firstValueFrom } from 'rxjs';
 
 import { authInterceptor } from './core/interceptors/auth-interceptor';
@@ -26,5 +27,9 @@ export const appConfig: ApplicationConfig = {
     // authGuard (/profile, /files, /api-keys) увидел бы user()===null и
     // перебросил на /login ещё залогиненного пользователя после обычного F5.
     provideAppInitializer(() => firstValueFrom(inject(AuthService).restoreSession())),
+    // Спека 010 — подключается вместе с первым серверным списком
+    // (ARCHITECTURE.md §6.2), не раньше: до этого серверных данных, которые
+    // нужно кешировать/инвалидировать, в приложении не было.
+    provideTanStackQuery(new QueryClient()),
   ],
 };
