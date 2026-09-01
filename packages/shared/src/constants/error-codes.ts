@@ -13,6 +13,8 @@ export const ERROR_CODES = {
   UNAUTHENTICATED: { status: 401, retryable: true },
   EMAIL_NOT_VERIFIED: { status: 403, retryable: false },
   FILE_NOT_FOUND: { status: 404, retryable: false },
+  /** Перевыпуск/отзыв чужого или несуществующего ключа (спека 011) — 404, а не 403, чтобы «нет такого» и «не твой» были неотличимы (AUTH-RULES.md, critical-zones). */
+  API_KEY_NOT_FOUND: { status: 404, retryable: false },
   /** Регистрация: email уже занят (спека 007) — в отличие от логина/сброса пароля, здесь раскрытие существования аккаунта не запрещено (AUTH-RULES.md §2 перечисляет только логин и восстановление). */
   EMAIL_ALREADY_REGISTERED: { status: 409, retryable: false },
   /** Google вернул email другого существующего аккаунта, но не подтвердил владение им (спека 008) — автолинковка запрещена (AUTH-RULES.md, OAuth), второй аккаунт с тем же email завести нельзя (User.email уникален). */
@@ -29,6 +31,8 @@ export const ERROR_CODES = {
   INVALID_PARAMETER: { status: 422, retryable: false },
   /** Явное включение `save` обратно на файле, когда квота уже не позволяет (спека 010) — снятие `save` при заполненной квоте на конвертации молча пропускает сохранение, не бросает этот код (тело ответа бинарное). */
   STORAGE_QUOTA_EXCEEDED: { status: 422, retryable: false },
+  /** Выпуск ключа при достигнутом пределе активных ключей на пользователя (спека 011, `MAX_ACTIVE_API_KEYS`). */
+  API_KEY_LIMIT_REACHED: { status: 422, retryable: false },
   RATE_LIMIT_EXCEEDED: { status: 429, retryable: true },
   /** Одновременных запросов от одного клиента больше лимита (спека 005) — счётчик "сейчас", не по времени, как RATE_LIMIT_EXCEEDED. */
   CONCURRENCY_LIMIT_EXCEEDED: { status: 429, retryable: true },

@@ -73,3 +73,10 @@ export const AUTH_RATE_LIMIT_WINDOW_SECONDS = 10 * 60;
 
 /** Спека 009. Ссылка сброса пароля — TECH-SPEC.md §8.5. */
 export const PASSWORD_RESET_TOKEN_TTL_SECONDS = 30 * 60;
+
+/**
+ * Спека 011. Верхняя граница числа активных (`revokedAt IS NULL`) API-ключей
+ * у одного пользователя — решение владельца. Выпуск сверх предела →
+ * `API_KEY_LIMIT_REACHED`; перевыпуск числа не увеличивает и предел не задевает.
+ */
+export const MAX_ACTIVE_API_KEYS = 3;
