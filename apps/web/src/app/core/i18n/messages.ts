@@ -43,6 +43,7 @@ export const ERROR_MESSAGE_KEYS: Record<ErrorCode, MessageKey> = {
   UNAUTHENTICATED: 'error.unauthenticated',
   EMAIL_NOT_VERIFIED: 'error.emailNotVerified',
   FILE_NOT_FOUND: 'error.fileNotFound',
+  API_KEY_NOT_FOUND: 'error.apiKeyNotFound',
   EMAIL_ALREADY_REGISTERED: 'auth.error.emailTaken',
   // Callback google/callback (008) ловит этот код сам и превращает в редирект
   // `?oauthError=conflict` — сюда interceptor попадает, только если код придёт
@@ -61,6 +62,7 @@ export const ERROR_MESSAGE_KEYS: Record<ErrorCode, MessageKey> = {
   // Тот же текст, что тумблер save на строке файла (010) показывает как
   // тултип/тост, когда включить обратно уже некуда.
   STORAGE_QUOTA_EXCEEDED: 'files.error.quotaExceeded',
+  API_KEY_LIMIT_REACHED: 'error.apiKeyLimitReached',
   RATE_LIMIT_EXCEEDED: 'error.rateLimitExceeded',
   CONCURRENCY_LIMIT_EXCEEDED: 'error.concurrencyLimitExceeded',
   CONVERSION_FAILED: 'error.conversionFailed',

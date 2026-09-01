@@ -147,6 +147,9 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'error.conversionTimeout':
     'Конвертация заняла слишком много времени и была остановлена. Попробуйте с файлом поменьше.',
   'error.unauthenticated': 'Сессия истекла. Повторный вход…',
+  'error.apiKeyNotFound': 'Этого API-ключа больше нет — обновите страницу.',
+  'error.apiKeyLimitReached':
+    'У вас уже 3 активных API-ключа. Отзовите один, чтобы выпустить новый.',
 
   'files.title': 'Мои файлы',
   'files.quota.label': '{used} из {total}',

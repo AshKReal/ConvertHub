@@ -19,6 +19,8 @@ const ERROR_DETAILS: Record<ErrorCode, (meta: Meta) => string> = {
     "The account's email address has not been verified yet.",
   FILE_NOT_FOUND: () =>
     'The requested file does not exist or is no longer available.',
+  API_KEY_NOT_FOUND: () =>
+    'The API key does not exist or has already been revoked.',
   EMAIL_ALREADY_REGISTERED: () =>
     'An account with this email address already exists.',
   OAUTH_ACCOUNT_CONFLICT: () =>
@@ -44,6 +46,8 @@ const ERROR_DETAILS: Record<ErrorCode, (meta: Meta) => string> = {
       : 'One of the request parameters is invalid.',
   STORAGE_QUOTA_EXCEEDED: () =>
     'Restoring this file would exceed the storage quota.',
+  API_KEY_LIMIT_REACHED: (meta) =>
+    `The account already has the maximum of ${meta?.['max'] ?? '?'} active API keys. Revoke one before issuing another.`,
   RATE_LIMIT_EXCEEDED: () =>
     'Too many requests. Retry after the indicated interval.',
   CONCURRENCY_LIMIT_EXCEEDED: (meta) =>
