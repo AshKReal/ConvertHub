@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Статус | план принят владельцем, код в работе |
+| Статус | код написан, приёмка владельцем не пройдена |
 | Зависит от | 011 |
 | Источник | ТЗ п. 6, `TECH-SPEC.md` §6, §7.1, §7.3, §8.1, `ARCHITECTURE.md` §9 |
 | Критичность | 🔒 (`apps/api/src/modules/**` обработка ключа/лимитов; сравнение секретов, отказоустойчивость) |
@@ -43,7 +43,8 @@
 ## Поведение
 
 - `POST /v1/convert` с `Authorization: Bearer ch_live_<32>` от действующего ключа → конвертация выполняется от
-  имени владельца ключа (файл сохраняется по его квоте, как для вошедшего). `last_used_at` ключа обновляется.
+  имени владельца ключа; если запрос содержит `save=true` — файл сохраняется по квоте владельца (авто-сохранение
+  делает только веб-UI на фронте, сервер сохраняет по явному `save=true`, 010). `last_used_at` ключа обновляется.
 - Тот же запрос с отозванным, несуществующим или искажённым ключом → `401 INVALID_API_KEY`, конвертации нет.
 - `POST /v1/convert` без `Authorization` → гость, как раньше.
 - `POST /v1/convert` с токеном сессии (JWT) → как раньше (010): вошедший пользователь, авто-сохранение.
@@ -223,15 +224,15 @@ Multer — интерцептор, выполняется раньше тела;
 
 ## Чек-лист
 
-- [ ] `common/redis/redis.module.ts` (`ioredis`, `REDIS_CLIENT`, `enableOfflineQueue: false`), `REDIS_URL` в `env.ts`/`.env.example`/`docs/SETUP.md`
-- [ ] `packages/shared`: лимиты частоты (`GUEST_CONVERT_RATE`/`USER_CONVERT_RATE`/`API_RATE`/`IDEMPOTENCY_TTL_SECONDS`), `IDEMPOTENCY_KEY_CONFLICT`, `idempotencyKeySchema`
-- [ ] `common/rate-limit/rate-limiter.service.ts` — token bucket на Lua, `consume()` совместим, fail-open; удалить `fixed-window-rate-limiter.service.ts`; `auth.module.ts`/`auth.controller.ts` на новый сервис
-- [ ] `ApiKeyModule` экспортирует `ApiKeyService`; `common/auth/request-identity.*` — разбор `Authorization` (ключ ∨ JWT ∨ гость), `INVALID_API_KEY` на плохой ключ, fire-and-forget `last_used_at`
-- [ ] `conversion.controller.ts` — resolve identity, `consume()` 1–3 бакета, `X-RateLimit-*`; `main.ts` `exposedHeaders`
-- [ ] `idempotency.service.ts` + вызовы из `conversion.controller.ts` (replay до `consume`, store после), `409` на `processing`, fail-open
-- [ ] `files.controller.ts` (`GET /v1/files`, download) — combined guard ключ ∨ сессия (по решению 1)
-- [ ] `docs/AUTH.md` (второй Bearer + лимиты), `docs/SECURITY.md` (снять §3, добавить замок идемпотентности)
-- [ ] Ручная проверка: curl (ключ/JWT/гость, все лимиты, идемпотентность, Redis stop/start) + SELECT `last_used_at`/`conversions`
+- [x] `common/redis/redis.module.ts` (`ioredis@6`, `REDIS_CLIENT`, `enableOfflineQueue: false`, `error`-handler, `onApplicationShutdown`), `REDIS_URL` в `env.ts`/`.env.example`/`docs/SETUP.md`
+- [x] `packages/shared`: `GUEST_CONVERT_RATE`/`USER_CONVERT_RATE`/`API_RATE`/`IDEMPOTENCY_TTL_SECONDS`, `IDEMPOTENCY_KEY_CONFLICT` (409), `idempotencyKeySchema`
+- [x] `common/rate-limit/rate-limiter.service.ts` — token bucket на Lua `EVAL`, `consume()` совместим (возвращает `RateLimitResult`), fail-open; `fixed-window-rate-limiter.service.ts` удалён; `auth.module.ts`/`auth.controller.ts` (`await consume`) на новый сервис
+- [x] `ApiKeyModule` экспортирует `ApiKeyService` + `RequestIdentityService`; `common/auth/request-identity.service.ts` — `resolve(header)` → guest ∨ session ∨ api-key, `INVALID_API_KEY` на плохой ключ, fire-and-forget `markUsed`
+- [x] `conversion.controller.ts` — resolve identity, `consume()` 1–3 бакета, `X-RateLimit-*` (в т.ч. на `429`); `main.ts` `exposedHeaders`; `conversion-failure.filter.ts` не пишет в историю `RATE_LIMIT_EXCEEDED`/`IDEMPOTENCY_KEY_CONFLICT`/`INVALID_API_KEY`; `all-exceptions.filter.ts` — заголовок `Retry-After`
+- [x] `idempotency.service.ts` + вызовы из `conversion.controller.ts` (replay до `consume`, store после), `409` на `processing`, fail-open; `try/finally` в контроллере чистит temp-каталог на путях replay/`409`/`429`
+- [x] `files.controller.ts` (`GET /v1/files` — жёстко, download — опционально) на `RequestIdentityService`; `PATCH` остаётся под `JwtGuard`; `files.module.ts` + `ApiKeyModule`
+- [x] `docs/AUTH.md` (раздел «Ключ в публичном API», таблица бакетов), `docs/SECURITY.md` (§3 «закрыто спекой 012», §7 замок идемпотентности)
+- [x] Ручная проверка: curl (ключ/JWT/гость, guest 429, минутный лимит по 80 параллельным, auth-лимит, идемпотентность replay/409/422, Redis stop/start) + SELECT `last_used_at`/`conversions` — 10/10 групп
 
 ### Приёмка
 
@@ -242,22 +243,23 @@ Multer — интерцептор, выполняется раньше тела;
 
 ### Для 🔒 — дополнительно
 
-- [ ] Найдены **все** места, где данные попадают в систему: `Authorization` (ключ/JWT), `Idempotency-Key` из
-  заголовка (Zod UUID), `X-Forwarded-For`/`req.ip` для `ipHash` (уже через `hashIp`), тело/файл `/v1/convert` (без изменений)
-- [ ] Сравнение секретов постоянно по времени: ключ ищется `WHERE keyHash = ?` по `@unique` индексу (точный
+- [x] Найдены **все** места, где данные попадают в систему: `Authorization` (ключ/JWT), `Idempotency-Key` из
+  заголовка (Zod UUID, иначе `INVALID_PARAMETER`), `req.ip` для `ipHash` (через `hashIp`), тело/файл `/v1/convert` (без изменений)
+- [x] Сравнение секретов постоянно по времени: ключ ищется `WHERE keyHash = ?` по `@unique` индексу (точный
   индексированный матч, тайминг не о содержимом — довод `RefreshToken`/`ApiKey`, 007/011); argon2/JWT — без изменений
-- [ ] Тип файла по сигнатуре — без изменений (002/005)
-- [ ] Имя файла от клиента как путь — не относится
-- [ ] Каждый `catch` различает причины: `INVALID_API_KEY` (ключ) ≠ гость (нет заголовка) ≠ `429` ≠ `409`;
-  ошибка Redis в лимитере/идемпотентности → fail-open, не 500
-- [ ] В лог не попадают: полное значение ключа, `Idempotency-Key` тела ответа, полный IP (только `hashIp`)
-- [ ] Ошибка не раскрывает существование: `INVALID_API_KEY` одинаков для отозванного и несуществующего ключа
-- [ ] Ресурсы освобождаются в `finally` — temp-файл `/v1/convert` уже в `finally` (005); новый Redis-клиент —
-  один долгоживущий, `OnModuleDestroy` закрывает
+- [x] Тип файла по сигнатуре — без изменений (002/005)
+- [x] Имя файла от клиента как путь — не относится
+- [x] Каждый `catch` различает причины: `INVALID_API_KEY` (ключ) ≠ гость (нет заголовка) ≠ `429` ≠ `409`;
+  ошибка Redis в лимитере/идемпотентности → fail-open (лог `warn`), не 500 — проверено `docker compose stop redis`
+- [x] В лог не попадают: полное значение ключа, содержимое ответа; `ipHash`, не полный IP. `RateLimiterService`/
+  `IdempotencyService` логируют только текст ошибки соединения
+- [x] Ошибка не раскрывает существование: `INVALID_API_KEY` одинаков для отозванного и несуществующего ключа — проверено
+- [x] Ресурсы освобождаются в `finally` — temp-каталог `/v1/convert` теперь в `try/finally` контроллера (покрывает
+  replay/`409`/`429`, где `ConversionService` не вызывается); Redis-клиент один долгоживущий, `onApplicationShutdown` → `quit()`
 
 ### После мержа
 
-- [ ] Решения-долгожители → `TECH-SPEC.md`: `ioredis` как клиент, значения лимитов частоты уже в §6, дописать
-  token bucket + fail-open/замок идемпотентности; `ARCHITECTURE.md` §4.3 — `REDIS_URL` теперь реально читается
+- [ ] Решения-долгожители → `TECH-SPEC.md`: `ioredis` как клиент, token bucket + fail-open + замок идемпотентности
+  (значения лимитов уже в §6); `ARCHITECTURE.md` §4.3 — `REDIS_URL` теперь реально читается
 - [ ] Статус в реестре обновлён
 - [ ] Ошибки агента записаны в `AI-JOURNAL.md`
