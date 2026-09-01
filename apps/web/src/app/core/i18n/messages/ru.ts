@@ -150,6 +150,8 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'error.apiKeyNotFound': 'Этого API-ключа больше нет — обновите страницу.',
   'error.apiKeyLimitReached':
     'У вас уже 3 активных API-ключа. Отзовите один, чтобы выпустить новый.',
+  'error.idempotencyConflict':
+    'Предыдущий запрос с этим ключом ещё обрабатывается. Повторите чуть позже.',
 
   'files.title': 'Мои файлы',
   'files.quota.label': '{used} из {total}',

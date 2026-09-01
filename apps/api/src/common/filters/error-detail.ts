@@ -27,6 +27,8 @@ const ERROR_DETAILS: Record<ErrorCode, (meta: Meta) => string> = {
     'This email is already registered to a different account, and the provider did not confirm ownership of it.',
   LAST_LOGIN_METHOD: () =>
     'This is the only remaining sign-in method for the account and cannot be unlinked.',
+  IDEMPOTENCY_KEY_CONFLICT: () =>
+    'A request with this Idempotency-Key is still being processed. Retry once it completes.',
   FILE_TOO_LARGE: (meta) =>
     `Uploaded file is ${meta?.['actual_size_bytes'] ?? '?'} bytes, maximum allowed is ${meta?.['max_size_bytes'] ?? '?'}.`,
   UNSUPPORTED_FILE_TYPE: () =>

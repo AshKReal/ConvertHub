@@ -152,6 +152,8 @@ export const EN_MESSAGES = {
   'error.apiKeyNotFound': 'This API key no longer exists — refresh the page.',
   'error.apiKeyLimitReached':
     'You already have 3 active API keys. Revoke one before issuing another.',
+  'error.idempotencyConflict':
+    'A previous request with this key is still processing. Retry in a moment.',
 
   'files.title': 'My files',
   'files.quota.label': '{used} of {total} used',
