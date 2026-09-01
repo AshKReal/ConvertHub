@@ -149,6 +149,9 @@ export const EN_MESSAGES = {
   'error.conversionTimeout':
     'Conversion took too long and was stopped. Try again with a smaller file.',
   'error.unauthenticated': 'Your session expired. Signing you in again…',
+  'error.apiKeyNotFound': 'This API key no longer exists — refresh the page.',
+  'error.apiKeyLimitReached':
+    'You already have 3 active API keys. Revoke one before issuing another.',
 
   'files.title': 'My files',
   'files.quota.label': '{used} of {total} used',

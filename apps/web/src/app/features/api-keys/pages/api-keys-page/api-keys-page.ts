@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 
+import type { AppError } from '../../../../core/interceptors/error-interceptor';
 import { I18nService } from '../../../../core/services/i18n';
 import { ModalService } from '../../../../core/services/modal';
 import { ToastService } from '../../../../core/services/toast';
@@ -7,25 +8,46 @@ import { Button } from '../../../../shared/ui/button/button';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog/confirm-dialog';
 import { KeyRevealModal } from '../../components/key-reveal-modal/key-reveal-modal';
 import { KeyRow } from '../../components/key-row/key-row';
-import { ApiKeysStore } from '../../data/api-keys.store';
+import {
+  injectApiKeysQuery,
+  injectIssueApiKeyMutation,
+  injectReissueApiKeyMutation,
+  injectRevokeApiKeyMutation,
+} from '../../data/api-keys.api';
 
+/**
+ * Спека 011. Мок-стор (`ApiKeysStore`, 022) удалён — TanStack Query даёт
+ * сигналы состояния сам (`ARCHITECTURE.md` §6.2), как и `/files` (010).
+ * Полное значение ключа приходит из ответа мутации, не создаётся на клиенте.
+ */
 @Component({
   selector: 'app-api-keys-page',
   imports: [Button, KeyRow],
-  providers: [ApiKeysStore],
   templateUrl: './api-keys-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ApiKeysPage {
-  private readonly store = inject(ApiKeysStore);
   private readonly modal = inject(ModalService);
   private readonly toast = inject(ToastService);
   protected readonly i18n = inject(I18nService);
 
-  protected readonly keys = this.store.keys;
+  private readonly query = injectApiKeysQuery();
+  protected readonly issueMutation = injectIssueApiKeyMutation();
+  private readonly reissueMutation = injectReissueApiKeyMutation();
+  private readonly revokeMutation = injectRevokeApiKeyMutation();
+
+  protected readonly keys = computed(() => this.query.data()?.items ?? []);
+  /** Первая загрузка — не показываем ни список, ни пустое состояние, чтобы «ключей нет» не мигало. */
+  protected readonly loading = computed(() => this.query.isPending());
 
   protected issueKey(): void {
-    this.openReveal(this.store.issue());
+    if (this.issueMutation.isPending()) {
+      return;
+    }
+    this.issueMutation.mutate(undefined, {
+      onSuccess: (issued) => this.openReveal(issued.fullValue),
+      onError: (error: AppError) => this.toast.show('danger', error.message),
+    });
   }
 
   protected reissueKey(id: string): void {
@@ -37,10 +59,10 @@ export class ApiKeysPage {
       variant: 'primary',
       onConfirm: () => {
         ref.close();
-        const fullValue = this.store.reissue(id);
-        if (fullValue !== undefined) {
-          this.openReveal(fullValue);
-        }
+        this.reissueMutation.mutate(id, {
+          onSuccess: (issued) => this.openReveal(issued.fullValue),
+          onError: (error: AppError) => this.toast.show('danger', error.message),
+        });
       },
       onCancel: () => ref.close(),
     });
@@ -55,8 +77,10 @@ export class ApiKeysPage {
       variant: 'danger',
       onConfirm: () => {
         ref.close();
-        this.store.revoke(id);
-        this.toast.show('success', this.i18n.t('apiKeys.revokeConfirm.success'));
+        this.revokeMutation.mutate(id, {
+          onSuccess: () => this.toast.show('success', this.i18n.t('apiKeys.revokeConfirm.success')),
+          onError: (error: AppError) => this.toast.show('danger', error.message),
+        });
       },
       onCancel: () => ref.close(),
     });
