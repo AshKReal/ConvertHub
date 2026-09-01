@@ -9,13 +9,24 @@ import {
   UseFilters,
   UseInterceptors,
 } from '@nestjs/common';
-import type { ConvertRequest } from '@convert-hub/shared';
+import {
+  API_RATE,
+  GUEST_CONVERT_RATE,
+  USER_CONVERT_RATE,
+  type ConvertRequest,
+} from '@convert-hub/shared';
 import type { Request, Response } from 'express';
 import { hashIp } from '../../common/util/hash-ip';
+import {
+  RequestIdentityService,
+  type RequestIdentity,
+} from '../../common/auth/request-identity.service';
 import { AppException } from '../../common/exceptions/app.exception';
-import { extractBearerToken } from '../../common/guards/extract-bearer-token';
+import {
+  RateLimiterService,
+  type RateLimitResult,
+} from '../../common/rate-limit/rate-limiter.service';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
-import { TokenService } from '../auth/token.service';
 import { ConversionService } from './conversion.service';
 import { createConvertFileInterceptor } from './convert-file.interceptor';
 import { convertFormSchema } from './dto/convert-form.schema';
@@ -33,7 +44,8 @@ import { ConversionFailureFilter } from './filters/conversion-failure.filter';
 export class ConversionController {
   constructor(
     private readonly conversionService: ConversionService,
-    private readonly tokenService: TokenService,
+    private readonly requestIdentity: RequestIdentityService,
+    private readonly rateLimiter: RateLimiterService,
   ) {}
 
   @Post()
@@ -49,18 +61,20 @@ export class ConversionController {
       throw new AppException('INVALID_PARAMETER', { field: 'file' });
     }
 
-    // Гостевой маршрут (001/005) — невалидный/просроченный токен тихо даёт
-    // `null`, не 401: здесь нечего блокировать, `verifyAccessToken` для
-    // этого и не бросает (спека 007, `token.service.ts`).
-    const userId =
-      this.tokenService.verifyAccessToken(
-        extractBearerToken(req.headers.authorization),
-      )?.userId ?? null;
-    // Ключ лимита одновременности (спека 005) — тот же паттерн анонимной
-    // идентичности, что и лимит частоты гостя (TECH-SPEC.md §6): хеш IP, пока
-    // нет настоящего пользователя.
-    const concurrencyKey =
-      userId ?? hashIp(req.ip ?? req.socket.remoteAddress ?? 'unknown');
+    // Спека 012. Гость ∨ сессия ∨ API-ключ. Плохой/отозванный ключ —
+    // `INVALID_API_KEY` (не тихий гость, решение владельца); протухший JWT —
+    // по-прежнему тихий гость.
+    const identity = await this.requestIdentity.resolve(
+      req.headers.authorization,
+    );
+
+    await this.applyRateLimits(identity, req, res);
+
+    const userId = identity.kind === 'guest' ? null : identity.userId;
+    // Ключ лимита одновременности (спека 005) — реальный пользователь или
+    // хеш IP гостя, тот же паттерн анонимной идентичности (TECH-SPEC.md §6).
+    const concurrencyKey = userId ?? hashIp(clientIp(req));
+
     const result = await this.conversionService.convert(
       file.path,
       body,
@@ -68,6 +82,7 @@ export class ConversionController {
       concurrencyKey,
       file.originalname,
     );
+
     if (result.fileId !== undefined) {
       res.setHeader('X-File-Id', result.fileId);
     }
@@ -80,4 +95,49 @@ export class ConversionController {
     res.setHeader('Content-Type', result.mime);
     res.send(result.buffer);
   }
+
+  /**
+   * Спека 012. Гость — часовой лимит по хешу IP; вошедший (сессия или ключ) —
+   * суточный по `userId`; ключ вдобавок — минутный по `userId` (не по ключу,
+   * решение владельца). `X-RateLimit-*` — по самому узкому бакету. Любой
+   * `consume` бросает `RATE_LIMIT_EXCEEDED` при превышении.
+   */
+  private async applyRateLimits(
+    identity: RequestIdentity,
+    req: Request,
+    res: Response,
+  ): Promise<void> {
+    const results: RateLimitResult[] = [];
+    if (identity.kind === 'guest') {
+      results.push(
+        await this.rateLimiter.consume(
+          `rl:guest:${hashIp(clientIp(req))}`,
+          GUEST_CONVERT_RATE,
+        ),
+      );
+    } else {
+      results.push(
+        await this.rateLimiter.consume(
+          `rl:user:${identity.userId}`,
+          USER_CONVERT_RATE,
+        ),
+      );
+      if (identity.kind === 'api-key') {
+        results.push(
+          await this.rateLimiter.consume(`rl:api:${identity.userId}`, API_RATE),
+        );
+      }
+    }
+
+    const tightest = results.reduce((a, b) =>
+      b.remaining < a.remaining ? b : a,
+    );
+    res.setHeader('X-RateLimit-Limit', tightest.limit);
+    res.setHeader('X-RateLimit-Remaining', tightest.remaining);
+    res.setHeader('X-RateLimit-Reset', tightest.resetSeconds);
+  }
+}
+
+function clientIp(req: Request): string {
+  return req.ip ?? req.socket.remoteAddress ?? 'unknown';
 }

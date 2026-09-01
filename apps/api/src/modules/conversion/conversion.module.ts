@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ApiKeyModule } from '../api-keys/api-keys.module';
 import { AuthModule } from '../auth/auth.module';
 import { FilesModule } from '../files/files.module';
 import { ConcurrencyLimiterService } from './concurrency-limiter.service';
@@ -12,7 +13,8 @@ import { ConversionFailureFilter } from './filters/conversion-failure.filter';
 import { MulterExceptionFilter } from './filters/multer-exception.filter';
 
 @Module({
-  imports: [FilesModule, AuthModule],
+  // AuthModule — `RateLimiterService`; ApiKeyModule — `RequestIdentityService` (спека 012).
+  imports: [FilesModule, AuthModule, ApiKeyModule],
   controllers: [ConversionController],
   providers: [
     ImageEngine,
