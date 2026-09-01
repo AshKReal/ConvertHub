@@ -12,8 +12,11 @@ import { OauthStateService } from './oauth-state.service';
 import { TokenService } from './token.service';
 
 /**
- * `exports: [TokenService]` — `conversion`/`files` нужен только он (проверка
- * access-токена на гостевых маршрутах), не весь модуль целиком
+ * `exports: [TokenService, JwtGuard]` — `conversion`/`files` нужен только
+ * `TokenService` (проверка access-токена на гостевых маршрутах), а с 010
+ * `FilesController` ещё и `JwtGuard` (список файлов и тумблер `save` —
+ * маршруты, требующие сессию жёстко, не гостевые) — оба экспортированы
+ * ровно потому, что другой модуль их реально вызывает
  * (`backend.md`: экспортировать то, что реально вызывает другой модуль).
  * `JwtModule.register({})` без секрета в конфиге: `TokenService` передаёт
  * `secret`/`expiresIn` на каждый вызов сам, модульный конфиг не нужен.
@@ -36,6 +39,6 @@ import { TokenService } from './token.service';
     FixedWindowRateLimiterService,
     JwtGuard,
   ],
-  exports: [TokenService],
+  exports: [TokenService, JwtGuard],
 })
 export class AuthModule {}

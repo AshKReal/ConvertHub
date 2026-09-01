@@ -22,10 +22,10 @@ import {
   oauthProviderSchema,
   resetPasswordRequestSchema,
   type AuthResponse,
-  type AuthUser,
   type ChangePasswordRequest,
   type ForgotPasswordRequest,
   type LoginRequest,
+  type MeResponse,
   type OauthProvider,
   type RegisterRequest,
   type ResetPasswordRequest,
@@ -263,7 +263,7 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(JwtGuard)
-  async me(@CurrentUser() userId: string): Promise<AuthUser> {
+  async me(@CurrentUser() userId: string): Promise<MeResponse> {
     // `findUniqueOrThrow` — пользователь с валидным access-токеном не может
     // не существовать в течение жизни этого токена: удаление аккаунта (009)
     // не отзывает уже выданные access-токены (они самодостаточный JWT, TTL 15 мин —
@@ -277,6 +277,7 @@ export class AuthController {
         id: true,
         email: true,
         passwordHash: true,
+        storageUsedBytes: true,
         identities: { select: { provider: true } },
       },
     });
@@ -287,6 +288,11 @@ export class AuthController {
       providers: user.identities.map(
         (identity) => PROVIDER_LABELS[identity.provider],
       ),
+      // Спека 010. Живой запрос за квотой (TanStack Query `['me']`,
+      // apps/web/core/services/me.ts) — единственная причина, по которой
+      // `GET /me` вообще остался отдельным маршрутом, не просто полем
+      // ответа `login`/`register`/`refresh` (снэпшот сессии, не то же самое).
+      storageUsedBytes: user.storageUsedBytes,
     };
   }
 

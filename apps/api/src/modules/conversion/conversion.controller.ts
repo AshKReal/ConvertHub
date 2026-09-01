@@ -66,9 +66,16 @@ export class ConversionController {
       body,
       userId,
       concurrencyKey,
+      file.originalname,
     );
     if (result.fileId !== undefined) {
       res.setHeader('X-File-Id', result.fileId);
+    }
+    // Спека 010. Клиент просил save:true, сервер молча не сохранил из-за
+    // квоты — тело ответа бинарное (байты файла), сигнализировать иначе
+    // нечем; фронт (dropzone) читает заголовок и показывает тост.
+    if (result.saveSkippedQuota) {
+      res.setHeader('X-Save-Skipped-Reason', 'quota-full');
     }
     res.setHeader('Content-Type', result.mime);
     res.send(result.buffer);

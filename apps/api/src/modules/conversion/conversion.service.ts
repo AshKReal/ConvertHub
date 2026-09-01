@@ -53,6 +53,7 @@ export class ConversionService {
     request: ConvertRequest,
     userId: string | null,
     concurrencyKey: string,
+    originalFilename: string,
   ): Promise<ConvertResult> {
     const startedAt = Date.now();
     let acquiredSlot = false;
@@ -97,6 +98,7 @@ export class ConversionService {
           buffer,
           mime,
           extension: request.target,
+          originalFilename,
         });
         if (outcome.status === 'saved') {
           fileId = outcome.fileId;
