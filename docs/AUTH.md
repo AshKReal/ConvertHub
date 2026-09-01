@@ -4,7 +4,8 @@
 `AUTH-RULES.md` в корне репозитория, обязателен к прочтению целиком перед правками в `modules/auth/**`.
 
 Пока покрыто: email + пароль, сессия (007); восстановление и смена пароля, удаление аккаунта (009); Google OAuth,
-привязка/отвязка (008, пока только Google — `AUTH-RULES.md` §5, Telegram отложен).
+привязка/отвязка (008, пока только Google — `AUTH-RULES.md` §5, Telegram отложен); API-ключи — выпуск, список,
+перевыпуск, отзыв (011).
 
 ## Эндпоинты
 
@@ -92,6 +93,29 @@ Google приводит сюда браузер полной навигацие�
 **Отвязка.** `DELETE /identities/:provider` идемпотентна (не привязан — `204`, не ошибка), но `AUTH-RULES.md`
 запрещает отвязку последнего способа входа: если после отвязки не останется ни пароля, ни другой `identities`-
 строки — `LAST_LOGIN_METHOD` (409), сама отвязка не происходит.
+
+## API-ключи (011)
+
+Второй независимый механизм аутентификации (`TECH-SPEC.md` §8.1): ключ — для публичного API (012), сессия — для
+веба; одно не даёт доступа к другому. Выпуск/список/перевыпуск/отзыв — всегда под сессией (`JwtGuard`), никогда
+по самому ключу. Базовый путь — `/v1/api-keys`, тело — `application/json`.
+
+В БД (`api_keys`) — только SHA-256-хеш полного значения и префикс для показа (`ch_live_a1b2`), тот же приём, что
+refresh-токен (007). Полное значение (`ch_live_` + 32 символа `[a-z0-9]`, ~165 бит) отдаётся клиенту ровно один
+раз — в ответе на выпуск и перевыпуск. Ключ — неизменяемая строка: перевыпуск = `revokedAt` старой строке +
+INSERT новой в одной транзакции, отзыв = `revokedAt`. `revokedAt IS NULL` — единственный предикат «действует».
+Предел активных ключей на пользователя — `MAX_ACTIVE_API_KEYS` (`packages/shared`).
+
+| Метод | Путь | Тело запроса | Тело ответа | Auth | Коды ошибок |
+|---|---|---|---|---|---|
+| `GET` | `/v1/api-keys` | — | `{items: [{id, environment, maskedPrefix, createdAt, lastUsedAt}]}` (только активные) | `Authorization: Bearer <accessToken>` | `UNAUTHENTICATED` (401) |
+| `POST` | `/v1/api-keys` | — | `{…item, fullValue}` (полное значение один раз) | `Authorization: Bearer <accessToken>` | `API_KEY_LIMIT_REACHED` (422), `UNAUTHENTICATED` (401) |
+| `POST` | `/v1/api-keys/:id/reissue` | — | `{…item, fullValue}` (полное значение один раз) | `Authorization: Bearer <accessToken>` | `API_KEY_NOT_FOUND` (404), `UNAUTHENTICATED` (401) |
+| `DELETE` | `/v1/api-keys/:id` | — | — (`204`) | `Authorization: Bearer <accessToken>` | `API_KEY_NOT_FOUND` (404 — чужой/несуществующий id; свой уже отозванный — идемпотентный `204`), `UNAUTHENTICATED` (401) |
+
+`:id` не валидируется отдельно — кривой id не отличается от «не твой»/«нет такого», всё сводится в
+`API_KEY_NOT_FOUND` (404, не 403 — `critical-zones.md`). `last_used_at` заполняет только 012 (Bearer-аутентификация
+по ключу); до неё всегда `null`. Rate limit и `Idempotency-Key` по ключу — тоже 012.
 
 ## `GET /v1/convert`, `GET /v1/files/{id}/download` — опциональная авторизация
 
