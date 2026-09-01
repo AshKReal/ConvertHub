@@ -23,9 +23,13 @@ import {
   RequestIdentityService,
   type RequestIdentity,
 } from '../../common/auth/request-identity.service';
-import { AppException } from '../../common/exceptions/app.exception';
+import {
+  AppException,
+  type AppExceptionBody,
+} from '../../common/exceptions/app.exception';
 import {
   RateLimiterService,
+  type ConsumeOptions,
   type RateLimitResult,
 } from '../../common/rate-limit/rate-limiter.service';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
@@ -156,47 +160,67 @@ export class ConversionController {
   /**
    * Спека 012. Гость — часовой лимит по хешу IP; вошедший (сессия или ключ) —
    * суточный по `userId`; ключ вдобавок — минутный по `userId` (не по ключу,
-   * решение владельца). `X-RateLimit-*` — по самому узкому бакету. Любой
-   * `consume` бросает `RATE_LIMIT_EXCEEDED` при превышении.
+   * решение владельца). `X-RateLimit-*` — по самому узкому бакету; на `429`
+   * — по отказавшему (остаток 0, `reset` = `Retry-After`).
    */
   private async applyRateLimits(
     identity: RequestIdentity,
     req: Request,
     res: Response,
   ): Promise<void> {
+    const buckets: [string, ConsumeOptions][] =
+      identity.kind === 'guest'
+        ? [[`rl:guest:${hashIp(clientIp(req))}`, GUEST_CONVERT_RATE]]
+        : [[`rl:user:${identity.userId}`, USER_CONVERT_RATE]];
+    if (identity.kind === 'api-key') {
+      buckets.push([`rl:api:${identity.userId}`, API_RATE]);
+    }
+
     const results: RateLimitResult[] = [];
-    if (identity.kind === 'guest') {
-      results.push(
-        await this.rateLimiter.consume(
-          `rl:guest:${hashIp(clientIp(req))}`,
-          GUEST_CONVERT_RATE,
-        ),
-      );
-    } else {
-      results.push(
-        await this.rateLimiter.consume(
-          `rl:user:${identity.userId}`,
-          USER_CONVERT_RATE,
-        ),
-      );
-      if (identity.kind === 'api-key') {
-        results.push(
-          await this.rateLimiter.consume(`rl:api:${identity.userId}`, API_RATE),
-        );
+    for (const [key, options] of buckets) {
+      try {
+        results.push(await this.rateLimiter.consume(key, options));
+      } catch (error) {
+        if (isRateLimitException(error)) {
+          setRateLimitHeaders(res, {
+            limit: options.max,
+            remaining: 0,
+            resetSeconds: rateLimitRetryAfter(error),
+          });
+        }
+        throw error;
       }
     }
 
-    const tightest = results.reduce((a, b) =>
-      b.remaining < a.remaining ? b : a,
+    setRateLimitHeaders(
+      res,
+      results.reduce((a, b) => (b.remaining < a.remaining ? b : a)),
     );
-    res.setHeader('X-RateLimit-Limit', tightest.limit);
-    res.setHeader('X-RateLimit-Remaining', tightest.remaining);
-    res.setHeader('X-RateLimit-Reset', tightest.resetSeconds);
   }
 }
 
 function clientIp(req: Request): string {
   return req.ip ?? req.socket.remoteAddress ?? 'unknown';
+}
+
+function setRateLimitHeaders(res: Response, r: RateLimitResult): void {
+  res.setHeader('X-RateLimit-Limit', r.limit);
+  res.setHeader('X-RateLimit-Remaining', r.remaining);
+  res.setHeader('X-RateLimit-Reset', r.resetSeconds);
+}
+
+function isRateLimitException(error: unknown): error is AppException {
+  return (
+    error instanceof AppException &&
+    (error.getResponse() as AppExceptionBody).code === 'RATE_LIMIT_EXCEEDED'
+  );
+}
+
+function rateLimitRetryAfter(error: AppException): number {
+  const retry = (error.getResponse() as AppExceptionBody).meta?.[
+    'retry_after_seconds'
+  ];
+  return typeof retry === 'number' ? retry : 0;
 }
 
 /** `Idempotency-Key` — UUID (спека 012). Отсутствует → `undefined`; есть, но не UUID → `INVALID_PARAMETER`. */
