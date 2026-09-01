@@ -157,6 +157,7 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'files.badge.saved': 'Сохранён',
   'files.badge.temporary': 'Временный',
   'files.save.toggle': 'Сохранять этот файл',
+  'files.error.quotaExceeded': 'Нельзя сохранить файл — хранилище заполнено.',
 
   'apiKeys.title': 'API-ключи',
   'apiKeys.issue.action': 'Выпустить новый ключ',

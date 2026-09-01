@@ -3,3 +3,4 @@ export * from './constants/formats.js';
 export * from './constants/limits.js';
 export * from './schemas/convert.js';
 export * from './schemas/auth.js';
+export * from './schemas/files.js';

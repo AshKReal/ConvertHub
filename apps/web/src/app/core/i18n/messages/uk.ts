@@ -156,6 +156,7 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'files.badge.saved': 'Збережено',
   'files.badge.temporary': 'Тимчасовий',
   'files.save.toggle': 'Зберігати цей файл',
+  'files.error.quotaExceeded': 'Не можна зберегти файл — сховище заповнене.',
 
   'apiKeys.title': 'API-ключі',
   'apiKeys.issue.action': 'Випустити новий ключ',

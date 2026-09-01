@@ -27,6 +27,8 @@ export const ERROR_CODES = {
   IMAGE_TOO_LARGE: { status: 422, retryable: false },
   TOO_MANY_PAGES: { status: 422, retryable: false },
   INVALID_PARAMETER: { status: 422, retryable: false },
+  /** Явное включение `save` обратно на файле, когда квота уже не позволяет (спека 010) — снятие `save` при заполненной квоте на конвертации молча пропускает сохранение, не бросает этот код (тело ответа бинарное). */
+  STORAGE_QUOTA_EXCEEDED: { status: 422, retryable: false },
   RATE_LIMIT_EXCEEDED: { status: 429, retryable: true },
   /** Одновременных запросов от одного клиента больше лимита (спека 005) — счётчик "сейчас", не по времени, как RATE_LIMIT_EXCEEDED. */
   CONCURRENCY_LIMIT_EXCEEDED: { status: 429, retryable: true },

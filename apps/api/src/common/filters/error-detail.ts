@@ -42,6 +42,8 @@ const ERROR_DETAILS: Record<ErrorCode, (meta: Meta) => string> = {
     meta?.['field'] !== undefined
       ? `One of the request parameters is invalid (field: ${meta['field']}).`
       : 'One of the request parameters is invalid.',
+  STORAGE_QUOTA_EXCEEDED: () =>
+    'Restoring this file would exceed the storage quota.',
   RATE_LIMIT_EXCEEDED: () =>
     'Too many requests. Retry after the indicated interval.',
   CONCURRENCY_LIMIT_EXCEEDED: (meta) =>

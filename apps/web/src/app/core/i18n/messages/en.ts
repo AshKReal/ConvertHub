@@ -159,6 +159,7 @@ export const EN_MESSAGES = {
   'files.badge.saved': 'Saved',
   'files.badge.temporary': 'Temporary',
   'files.save.toggle': 'Keep this file',
+  'files.error.quotaExceeded': "Can't keep this file — your storage is full.",
 
   'apiKeys.title': 'API keys',
   'apiKeys.issue.action': 'Issue new key',

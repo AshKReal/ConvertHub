@@ -58,6 +58,9 @@ export const ERROR_MESSAGE_KEYS: Record<ErrorCode, MessageKey> = {
   IMAGE_TOO_LARGE: 'error.imageTooLarge',
   TOO_MANY_PAGES: 'error.tooManyPages',
   INVALID_PARAMETER: 'error.invalidParameter',
+  // Тот же текст, что тумблер save на строке файла (010) показывает как
+  // тултип/тост, когда включить обратно уже некуда.
+  STORAGE_QUOTA_EXCEEDED: 'files.error.quotaExceeded',
   RATE_LIMIT_EXCEEDED: 'error.rateLimitExceeded',
   CONCURRENCY_LIMIT_EXCEEDED: 'error.concurrencyLimitExceeded',
   CONVERSION_FAILED: 'error.conversionFailed',
