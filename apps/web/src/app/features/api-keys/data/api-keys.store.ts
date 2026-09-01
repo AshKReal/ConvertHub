@@ -3,7 +3,7 @@ import { Injectable, signal } from '@angular/core';
 import type { ApiKey, ApiKeyEnvironment } from '../model/api-key';
 import { MOCK_API_KEYS, generateApiKey } from './api-keys.mock';
 
-/** Провайдится на уровне маршрута (`api-keys-page`), не в `root` — та же дисциплина, что `FilesStore` (021). */
+/** Провайдится на уровне маршрута (`api-keys-page`), не в `root` (`ARCHITECTURE.md` §6.1) — мок, ждёт своего 011, как когда-то `FilesStore` ждал 010 (тот уже заменён на TanStack Query, `features/files/data/files.api.ts`). */
 @Injectable()
 export class ApiKeysStore {
   private readonly _keys = signal<readonly ApiKey[]>(MOCK_API_KEYS);
