@@ -15,10 +15,11 @@ export interface IssuedOauthState {
 }
 
 /**
- * Спека 008. In-memory PKCE `code_verifier` + anti-CSRF `state` — тот же
- * временный приём, что `FixedWindowRateLimiterService` (007): не переживает
- * рестарт процесса и не работает при нескольких инстансах API,
- * задокументированная замена на Redis — спека 012, не эта.
+ * Спека 008. In-memory PKCE `code_verifier` + anti-CSRF `state`: не переживает
+ * рестарт процесса и не работает при нескольких инстансах API. 012 перевело
+ * на Redis лимит частоты и идемпотентность, но не этот стор — короткоживущий
+ * (TTL 10 мин, в рамках одного OAuth-редиректа); перенос на Redis — отдельная
+ * задача, если появится мультиэкземплярное развёртывание.
  *
  * `state` защищает от login-CSRF (сверяется с `HttpOnly`-кукой, поставленной
  * на `/google/start`, в `auth.controller.ts`); `code_verifier` — от

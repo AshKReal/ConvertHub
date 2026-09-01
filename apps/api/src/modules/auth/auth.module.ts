@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { FixedWindowRateLimiterService } from '../../common/rate-limit/fixed-window-rate-limiter.service';
+import { RateLimiterService } from '../../common/rate-limit/rate-limiter.service';
 import { JwtGuard } from '../../common/guards/jwt.guard';
 import { MailModule } from '../mail/mail.module';
 import { StorageModule } from '../storage/storage.module';
@@ -36,9 +36,9 @@ import { TokenService } from './token.service';
     TokenService,
     GoogleOauthService,
     OauthStateService,
-    FixedWindowRateLimiterService,
+    RateLimiterService,
     JwtGuard,
   ],
-  exports: [TokenService, JwtGuard],
+  exports: [TokenService, JwtGuard, RateLimiterService],
 })
 export class AuthModule {}
