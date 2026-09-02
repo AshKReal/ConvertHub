@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main, backend]
 
-# Только typecheck/lint/юнит-тесты (pnpm test — без внешних сервисов,
-# specs/015-testing.md). e2e (pnpm test:e2e) требует Postgres — отдельный
-# шаг на будущее, не в этом простом пайплайне.
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -44,3 +41,67 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test
+
+  e2e:
+    runs-on: ubuntu-latest
+    # Спека 015. Реальный стек: e2e-слой apps/api (supertest + Postgres) и
+    # браузерный минимум (Playwright — сам поднимает API на convert_hub_test
+    # и ng serve). Отдельная job — тяжелее check, но независима от неё.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: convert_hub
+          POSTGRES_PASSWORD: change-me
+          POSTGRES_DB: convert_hub
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U convert_hub"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      # .env.example уже указывает на localhost:5432 / localhost:6379 с
+      # тем же user/pass, что сервисы выше — трогаем только LOCAL_STORAGE_DIR
+      # (в .env.example это заглушечный путь; LocalDiskStorage падает на
+      # старте, если каталога нет или он внутри репозитория).
+      - run: |
+          cp apps/api/.env.example apps/api/.env
+          mkdir -p "$RUNNER_TEMP/ch-storage"
+          sed -i "s|^LOCAL_STORAGE_DIR=.*|LOCAL_STORAGE_DIR=$RUNNER_TEMP/ch-storage|" apps/api/.env
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @convert-hub/shared build
+      - run: pnpm --filter api db:generate
+
+      # convert_hub уже создан сервисом; вторую БД — руками, затем миграции
+      # в обе (apps/api читает convert_hub, Playwright-API — convert_hub_test).
+      - run: PGPASSWORD=change-me psql -h localhost -U convert_hub -d convert_hub -c "CREATE DATABASE convert_hub_test;"
+      - run: pnpm --filter api exec prisma migrate deploy
+      - run: pnpm --filter api db:migrate:test
+
+      - run: pnpm --filter web exec playwright install --with-deps chromium
+
+      - run: pnpm --filter web e2e:typecheck
+      - run: pnpm --filter api test:e2e
+      - run: pnpm --filter web e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7
