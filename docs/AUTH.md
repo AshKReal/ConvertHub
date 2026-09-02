@@ -123,6 +123,10 @@ INSERT новой в одной транзакции, отзыв = `revokedAt`. 
 `packages/shared`, что валидируют запросы; `securitySchemes.bearerAuth` = этот же заголовок. Публичный, без
 guard.
 
+`GET /metrics` (014) — отдельный механизм: `Authorization: Bearer <METRICS_TOKEN>` (общий секрет из env,
+сравнение `timingSafeEqual`), иначе `401`. Не связан ни с сессией, ни с API-ключом. `/health`, `/ready` — без
+аутентификации, сигналы для площадки развёртывания.
+
 `ch_live_…`/`ch_test_…` в `Authorization: Bearer` на `POST /v1/convert`, `GET /v1/files`,
 `GET /v1/files/{id}/download` (`RequestIdentityService`, `common/auth/`): `sha256(значение)` → строка `api_keys`
 с `revokedAt IS NULL` → пользователь-владелец. `last_used_at` отмечается fire-and-forget. `PATCH /v1/files/{id}`

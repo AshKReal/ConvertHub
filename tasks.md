@@ -201,10 +201,11 @@
   - [x] OpenAPI 3.1 из Zod-схем `packages/shared` (`@asteasolutions/zod-to-openapi@7` — не 9, та требует zod@4), `GET /v1/openapi.json` (публичный). Только три реально смапленных маршрута публичного API (не восемь из TECH-SPEC §7.2 — половины нет в коде)
   - [x] Подключить 023 к реальной схеме: страница грузит `/v1/openapi.json` (TanStack Query), рисует эндпоинты из неё; стаб `model/endpoint.ts` и `apiDocs.endpoints.*` удалены; плашка при сбое загрузки
   - [ ] Приёмка владельцем: валидатор OpenAPI руками, браузер (обе темы, три языка, 320px), враждебное второе мнение
-- [ ] **014** `observability`
-  - [ ] `GET /health` и `GET /ready`
-  - [ ] `request_id` генерируется на клиенте, интерцептор пробрасывает в заголовок и в лог
-  - [ ] Метрики: конвертации по направлению/статусу, гистограмма длительности, доля ошибок по коду, заполненность пула, объём хранилища
+- [ ] **014** `observability` — `specs/014-observability.md`
+  - [x] `GET /health` (мгновенно) и `GET /ready` (БД вниз → `503 down`; Redis вниз → `200 degraded`; всё вверх → `200 ok`), таймаут 1с
+  - [x] `request_id` генерируется на клиенте (`req_<uuid>`), интерцептор шлёт `X-Request-Id`; `nestjs-pino` (`genReqId`) кладёт в лог и эхом в заголовок ответа; `request_id` тела ошибки = логовому. Структурные JSON-логи (в проде — сырьё, в деве `pino-pretty`), без заголовков/IP/тел
+  - [x] Метрики (`@prometheus-io/client`, `GET /metrics` за `METRICS_TOKEN`): `converthub_conversions_total{direction,status}`, `_conversion_duration_seconds`, `_http_errors_total{code}`, `_conversions_in_flight`, `_storage_used_bytes` + дефолтные `process_*`/`nodejs_*`
+  - [ ] Приёмка владельцем: критерии руками (частью прогнаны curl'ом), браузер (`X-Request-Id` в Network), враждебное второе мнение
 - [ ] **015** `testing` — `specs/015-testing.md` (частично)
   - [x] Раннер (Vitest) настроен во всех трёх пакетах + e2e-слой `apps/api` против `convert_hub_test` — сделано
     вне очереди (решение владельца, прямо в `backend`, без ветки/PR). Ни один из пунктов ниже ещё не покрыт

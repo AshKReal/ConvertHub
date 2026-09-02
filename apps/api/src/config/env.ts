@@ -40,6 +40,12 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   /** Полный абсолютный URL callback-маршрута (`/v1/auth/google/callback`) — должен совпадать с authorized redirect URI в Google Cloud Console. */
   GOOGLE_REDIRECT_URI: z.string().url(),
+  /** Спека 014. Уровень структурных логов (`pino`). Дефолт `info`. */
+  LOG_LEVEL: z
+    .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+    .default('info'),
+  /** Спека 014. `Authorization: Bearer <токен>` на `GET /metrics` — иначе `401`. Без дефолта, как секрет. */
+  METRICS_TOKEN: z.string().min(16),
 });
 
 export type Env = z.infer<typeof envSchema>;

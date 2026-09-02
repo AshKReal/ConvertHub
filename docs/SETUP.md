@@ -96,6 +96,11 @@ pnpm lint
 | `GOOGLE_CLIENT_ID` | **да** | `xxx.apps.googleusercontent.com` | Старт падает: `GoogleOauthService` (спека 008) не может собрать authorize URL |
 | `GOOGLE_CLIENT_SECRET` | **да** | из Google Cloud Console | Старт падает: без него не пройдёт обмен `code` на токен |
 | `GOOGLE_REDIRECT_URI` | **да** | `http://localhost:3000/v1/auth/google/callback` | Старт падает: схема требует валидный URL. Должен буквально совпадать с authorized redirect URI в настройках Client ID — иначе Google отказывает с `redirect_uri_mismatch`, не наш код |
+| `LOG_LEVEL` | нет | `info` | По умолчанию `info` (спека 014, `pino`). Значение вне `fatal`/`error`/`warn`/`info`/`debug`/`trace`/`silent` роняет старт |
+| `METRICS_TOKEN` | **да** | 16+ случайных символов | Старт падает: `GET /metrics` (спека 014) закрыт `Authorization: Bearer <этот токен>`, дефолта нет намеренно |
+
+`NODE_ENV=production` отключает `pino-pretty` — логи в stdout сырым JSON (одна запись — одна строка), как ждёт
+сборщик. В деве — человекочитаемый формат.
 
 ## Тесты
 

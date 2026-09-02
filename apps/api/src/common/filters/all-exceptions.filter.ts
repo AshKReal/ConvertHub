@@ -13,6 +13,7 @@ import {
   AppException,
   type AppExceptionBody,
 } from '../exceptions/app.exception';
+import { MetricsService } from '../../modules/metrics/metrics.service';
 import { buildDetail } from './error-detail';
 
 const PROBLEM_TYPE_BASE = 'https://api.convert-hub.io/errors/';
@@ -44,6 +45,8 @@ interface ProblemDetails {
 export class AllExceptionsFilter implements ExceptionFilter<unknown> {
   private readonly logger = new Logger(AllExceptionsFilter.name);
 
+  constructor(private readonly metrics: MetricsService) {}
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const req = ctx.getRequest<Request>();
@@ -57,6 +60,8 @@ export class AllExceptionsFilter implements ExceptionFilter<unknown> {
     }
 
     const { status, code, meta } = classify(exception);
+    // Спека 014. Единая точка сериализации ошибки — и единая точка счётчика.
+    this.metrics.httpErrorsTotal.inc({ code });
     const body: ProblemDetails = {
       type: `${PROBLEM_TYPE_BASE}${kebabCase(code)}`,
       title: titleCase(code),
@@ -104,6 +109,12 @@ function classify(exception: unknown): {
 }
 
 function requestId(req: Request): string {
+  // Спека 014. `pino-http` (`genReqId`) уже положил сюда id из заголовка либо
+  // сгенерировал свой — берём его, чтобы `request_id` тела совпал с логом.
+  const fromLogger = (req as { id?: unknown }).id;
+  if (typeof fromLogger === 'string' && fromLogger !== '') {
+    return fromLogger;
+  }
   const header = req.headers[REQUEST_ID_HEADER];
   const value = Array.isArray(header) ? header[0] : header;
   return value !== undefined && value !== '' ? value : `req_${ulid()}`;
