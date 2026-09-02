@@ -10,6 +10,7 @@
     "lint": "pnpm -r --if-present lint",
     "test": "pnpm -r --if-present test",
     "test:e2e": "pnpm -r --if-present test:e2e",
+    "e2e": "pnpm --filter web e2e",
     "dev:api": "pnpm --filter api dev",
     "dev:web": "pnpm --filter web dev",
     "db:up": "docker compose up -d postgres redis",

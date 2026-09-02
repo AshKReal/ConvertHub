@@ -1,0 +1,20 @@
+/* Спека 015. Playwright-сценарии (`e2e/**`) — вне `src/`, поэтому не
+   попадают ни в `tsconfig.app.json`, ни в `tsconfig.spec.json`. Отдельный
+   гейт: `pnpm --filter web e2e:typecheck`. Сам прогон Playwright транспилит
+   своим esbuild и этот файл не читает. */
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["ES2022", "DOM"],
+    "types": ["node", "@playwright/test"],
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "outDir": "./out-tsc/e2e"
+  },
+  "include": ["e2e/**/*.ts", "playwright.config.ts"]
+}
