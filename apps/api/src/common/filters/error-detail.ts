@@ -19,12 +19,16 @@ const ERROR_DETAILS: Record<ErrorCode, (meta: Meta) => string> = {
     "The account's email address has not been verified yet.",
   FILE_NOT_FOUND: () =>
     'The requested file does not exist or is no longer available.',
+  API_KEY_NOT_FOUND: () =>
+    'The API key does not exist or has already been revoked.',
   EMAIL_ALREADY_REGISTERED: () =>
     'An account with this email address already exists.',
   OAUTH_ACCOUNT_CONFLICT: () =>
     'This email is already registered to a different account, and the provider did not confirm ownership of it.',
   LAST_LOGIN_METHOD: () =>
     'This is the only remaining sign-in method for the account and cannot be unlinked.',
+  IDEMPOTENCY_KEY_CONFLICT: () =>
+    'A request with this Idempotency-Key is still being processed. Retry once it completes.',
   FILE_TOO_LARGE: (meta) =>
     `Uploaded file is ${meta?.['actual_size_bytes'] ?? '?'} bytes, maximum allowed is ${meta?.['max_size_bytes'] ?? '?'}.`,
   UNSUPPORTED_FILE_TYPE: () =>
@@ -42,6 +46,10 @@ const ERROR_DETAILS: Record<ErrorCode, (meta: Meta) => string> = {
     meta?.['field'] !== undefined
       ? `One of the request parameters is invalid (field: ${meta['field']}).`
       : 'One of the request parameters is invalid.',
+  STORAGE_QUOTA_EXCEEDED: () =>
+    'Restoring this file would exceed the storage quota.',
+  API_KEY_LIMIT_REACHED: (meta) =>
+    `The account already has the maximum of ${meta?.['max'] ?? '?'} active API keys. Revoke one before issuing another.`,
   RATE_LIMIT_EXCEEDED: () =>
     'Too many requests. Retry after the indicated interval.',
   CONCURRENCY_LIMIT_EXCEEDED: (meta) =>

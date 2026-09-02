@@ -1,21 +1,21 @@
 <div class="mx-auto flex max-w-[720px] flex-col gap-6 px-6 py-16">
   <h1 class="font-heading text-heading text-text">{{ i18n.t('files.title') }}</h1>
 
-  @if (!store.loading() && store.entries().length > 0) {
+  @if (!filesQuery.isLoading() && entries().length > 0) {
     <app-storage-quota
-      [usedBytes]="store.usedBytes()"
+      [usedBytes]="meQuery.data()?.storageUsedBytes ?? 0"
       [totalBytes]="quotaTotal"
       [label]="quotaLabel()"
     />
   }
 
-  @if (store.loading()) {
+  @if (filesQuery.isLoading()) {
     <div class="flex flex-col overflow-hidden rounded-lg border border-hairline bg-surface">
       @for (row of skeletonRows; track $index) {
         <app-file-row-skeleton />
       }
     </div>
-  } @else if (store.entries().length === 0) {
+  } @else if (entries().length === 0) {
     <div
       class="flex flex-col items-center gap-2 rounded-lg border border-hairline bg-surface px-6 py-16 text-center"
     >
@@ -24,18 +24,22 @@
     </div>
   } @else {
     <div class="flex flex-col overflow-hidden rounded-lg border border-hairline bg-surface">
-      @for (entry of store.entries(); track entry.id) {
-        <app-file-row [entry]="entry" (toggled)="store.toggleSave(entry.id)" />
+      @for (entry of entries(); track entry.id) {
+        <app-file-row [entry]="entry" (toggled)="onToggle(entry.id, entry.saved)" />
       }
     </div>
 
-    @if (store.hasMore()) {
+    @if (filesQuery.hasNextPage()) {
       <app-button
         variant="secondary"
-        [disabled]="store.loadingMore()"
-        (click)="store.loadMore()"
+        [disabled]="filesQuery.isFetchingNextPage()"
+        (click)="loadMore()"
       >
-        {{ store.loadingMore() ? i18n.t('files.loadMore.loading') : i18n.t('files.loadMore.action') }}
+        {{
+          filesQuery.isFetchingNextPage()
+            ? i18n.t('files.loadMore.loading')
+            : i18n.t('files.loadMore.action')
+        }}
       </app-button>
     }
   }

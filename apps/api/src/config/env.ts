@@ -10,6 +10,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   /** Спека 003. Секрет HMAC-подписи ссылок на скачивание — без дефолта, как остальные секреты. */
   SIGNED_URL_SECRET: z.string().min(32),
+  /** Спека 012. Rate limit (token bucket) и идемпотентность. Redis необязателен на пути ключа/сессии — при недоступности обе подсистемы fail-open (`ARCHITECTURE.md` §9). */
+  REDIS_URL: z.string().url(),
   /** Спека 003. Папка `LocalDiskStorage` — без дефолта, обязана лежать вне репозитория. */
   LOCAL_STORAGE_DIR: z.string().min(1),
   /** Спека 007. Подпись access-JWT (`TokenService`) — без дефолта, как остальные секреты. */
@@ -38,6 +40,12 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   /** Полный абсолютный URL callback-маршрута (`/v1/auth/google/callback`) — должен совпадать с authorized redirect URI в Google Cloud Console. */
   GOOGLE_REDIRECT_URI: z.string().url(),
+  /** Спека 014. Уровень структурных логов (`pino`). Дефолт `info`. */
+  LOG_LEVEL: z
+    .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+    .default('info'),
+  /** Спека 014. `Authorization: Bearer <токен>` на `GET /metrics` — иначе `401`. Без дефолта, как секрет. */
+  METRICS_TOKEN: z.string().min(16),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -1,8 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 
 import { I18nService } from '../../../../core/services/i18n';
-import { maskedDisplay } from '../../data/api-keys.mock';
-import type { ApiKey } from '../../model/api-key';
+import { maskedDisplay, type ApiKey } from '../../model/api-key';
 
 @Component({
   selector: 'app-key-row',

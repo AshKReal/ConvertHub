@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
+import type { FileListItem } from '@convert-hub/shared';
 
 import { I18nService } from '../../../../core/services/i18n';
 import { FileTypeIcon } from '../../../../shared/ui/file-type-icon/file-type-icon';
-import type { FileEntry } from '../../model/file-entry';
 import { fileCategory } from '../../model/file-entry';
 
 @Component({
@@ -14,21 +14,23 @@ import { fileCategory } from '../../model/file-entry';
 export class FileRow {
   protected readonly i18n = inject(I18nService);
 
-  entry = input.required<FileEntry>();
+  entry = input.required<FileListItem>();
   toggled = output<void>();
 
-  protected readonly category = computed(() => fileCategory(this.entry().target));
+  protected readonly category = computed(() => fileCategory(this.entry().extension));
 
-  /** Обрезка по центру: ствол имени укорачивается, расширение всегда видно (`DESIGN.md`). */
+  /**
+   * Обрезка по центру: ствол имени укорачивается, расширение всегда видно
+   * (`DESIGN.md`). `originalFilename` может нести чужое расширение (файл
+   * сконвертирован — реальное хранимое расширение другое, `entry().extension`)
+   * или отсутствовать вовсе (`null`) — тогда ствол имени - `id`.
+   */
   protected readonly namePart = computed(() => {
-    const name = this.entry().name;
-    const dot = name.lastIndexOf('.');
-    return dot > 0 ? name.slice(0, dot) : name;
+    const original = this.entry().originalFilename;
+    const base = original ?? this.entry().id;
+    const dot = base.lastIndexOf('.');
+    return dot > 0 ? base.slice(0, dot) : base;
   });
 
-  protected readonly extensionPart = computed(() => {
-    const name = this.entry().name;
-    const dot = name.lastIndexOf('.');
-    return dot > 0 ? name.slice(dot) : '';
-  });
+  protected readonly extensionPart = computed(() => `.${this.entry().extension}`);
 }

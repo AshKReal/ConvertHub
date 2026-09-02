@@ -71,7 +71,7 @@ pnpm lint
 | `MAILHOG_SMTP_PORT` | нет | `1025` | по умолчанию `1025` — этот порт указывает `SMTP_HOST`/`SMTP_PORT` в `apps/api/.env` |
 | `MAILHOG_WEB_PORT` | нет | `8025` | по умолчанию `8025` — веб-интерфейс, см. «Где смотреть письма» |
 | `DATABASE_URL` | пока нет | `postgresql://convert_hub:change-me@localhost:5432/convert_hub` | Ничего: читает только `docker compose`/Prisma CLI при прямом вызове из корня; приложение и `prisma migrate` читают одноимённую переменную из `apps/api/.env` (ниже) |
-| `REDIS_URL` | пока нет | `redis://localhost:6379` | Ничего: кодом ещё не читается, объявлена под rate limit и идемпотентность (спека 012) |
+| `REDIS_URL` | нет | `redis://localhost:6379` | Ничего для docker compose; переменную с тем же значением читает `apps/api` (спека 012) — см. таблицу `apps/api/.env` ниже |
 
 ### `apps/api/.env` — валидируется Zod-схемой при старте
 
@@ -85,6 +85,7 @@ pnpm lint
 | `PORT` | нет | `3000` | По умолчанию `3000`; нечисловое или отрицательное значение роняет старт |
 | `CORS_ORIGIN` | **да** | `http://localhost:4200` | Старт падает: схема требует валидный URL. Строка `*` не проходит валидацию — это осознанное ограничение |
 | `DATABASE_URL` | **да** | `postgresql://convert_hub:change-me@localhost:5432/convert_hub` | Старт падает: схема требует валидный URL. Читает Prisma (спека 003) |
+| `REDIS_URL` | **да** | `redis://localhost:6379` | Старт падает: схема требует валидный URL. Rate limit и идемпотентность (спека 012). Сам Redis необязателен в рантайме — если он лёг, обе подсистемы fail-open; но переменная нужна, чтобы клиент знал, куда подключаться |
 | `SIGNED_URL_SECRET` | **да** | 32+ случайных символа | Старт падает: подпись ссылок на скачивание (`LocalDiskStorage.getSignedUrl`, спека 003) без секрета невозможна — дефолта нет намеренно |
 | `LOCAL_STORAGE_DIR` | **да** | `E:\convertedHub-local-storage` (абсолютный путь вне репозитория) | Старт падает: `LocalDiskStorage` явно проверяет, что путь не лежит внутри репозитория (спека 003) |
 | `JWT_SECRET` | **да** | 32+ случайных символа | Старт падает: подпись access-JWT (`TokenService`, спека 007) без секрета невозможна — дефолта нет намеренно |
@@ -95,6 +96,11 @@ pnpm lint
 | `GOOGLE_CLIENT_ID` | **да** | `xxx.apps.googleusercontent.com` | Старт падает: `GoogleOauthService` (спека 008) не может собрать authorize URL |
 | `GOOGLE_CLIENT_SECRET` | **да** | из Google Cloud Console | Старт падает: без него не пройдёт обмен `code` на токен |
 | `GOOGLE_REDIRECT_URI` | **да** | `http://localhost:3000/v1/auth/google/callback` | Старт падает: схема требует валидный URL. Должен буквально совпадать с authorized redirect URI в настройках Client ID — иначе Google отказывает с `redirect_uri_mismatch`, не наш код |
+| `LOG_LEVEL` | нет | `info` | По умолчанию `info` (спека 014, `pino`). Значение вне `fatal`/`error`/`warn`/`info`/`debug`/`trace`/`silent` роняет старт |
+| `METRICS_TOKEN` | **да** | 16+ случайных символов | Старт падает: `GET /metrics` (спека 014) закрыт `Authorization: Bearer <этот токен>`, дефолта нет намеренно |
+
+`NODE_ENV=production` отключает `pino-pretty` — логи в stdout сырым JSON (одна запись — одна строка), как ждёт
+сборщик. В деве — человекочитаемый формат.
 
 ## Тесты
 

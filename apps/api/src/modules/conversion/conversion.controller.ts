@@ -1,3 +1,4 @@
+import { dirname } from 'node:path';
 import {
   Body,
   Controller,
@@ -9,17 +10,40 @@ import {
   UseFilters,
   UseInterceptors,
 } from '@nestjs/common';
-import type { ConvertRequest } from '@convert-hub/shared';
+import {
+  API_RATE,
+  GUEST_CONVERT_RATE,
+  USER_CONVERT_RATE,
+  idempotencyKeySchema,
+  type ConvertRequest,
+} from '@convert-hub/shared';
 import type { Request, Response } from 'express';
 import { hashIp } from '../../common/util/hash-ip';
-import { AppException } from '../../common/exceptions/app.exception';
-import { extractBearerToken } from '../../common/guards/extract-bearer-token';
+import {
+  RequestIdentityService,
+  type RequestIdentity,
+} from '../../common/auth/request-identity.service';
+import {
+  AppException,
+  type AppExceptionBody,
+} from '../../common/exceptions/app.exception';
+import {
+  RateLimiterService,
+  type ConsumeOptions,
+  type RateLimitResult,
+} from '../../common/rate-limit/rate-limiter.service';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
-import { TokenService } from '../auth/token.service';
 import { ConversionService } from './conversion.service';
-import { createConvertFileInterceptor } from './convert-file.interceptor';
+import {
+  cleanupConvertTempDir,
+  createConvertFileInterceptor,
+} from './convert-file.interceptor';
 import { convertFormSchema } from './dto/convert-form.schema';
 import { ConversionFailureFilter } from './filters/conversion-failure.filter';
+import {
+  IdempotencyService,
+  type IdempotentResult,
+} from './idempotency.service';
 
 /**
  * Без логики и без Prisma (ARCHITECTURE.md §4.1) — разбирает запрос, вызывает
@@ -33,7 +57,9 @@ import { ConversionFailureFilter } from './filters/conversion-failure.filter';
 export class ConversionController {
   constructor(
     private readonly conversionService: ConversionService,
-    private readonly tokenService: TokenService,
+    private readonly requestIdentity: RequestIdentityService,
+    private readonly rateLimiter: RateLimiterService,
+    private readonly idempotency: IdempotencyService,
   ) {}
 
   @Post()
@@ -48,29 +74,176 @@ export class ConversionController {
     if (!file) {
       throw new AppException('INVALID_PARAMETER', { field: 'file' });
     }
+    const tempFilePath = file.path;
+    const originalFilename = file.originalname;
 
-    // Гостевой маршрут (001/005) — невалидный/просроченный токен тихо даёт
-    // `null`, не 401: здесь нечего блокировать, `verifyAccessToken` для
-    // этого и не бросает (спека 007, `token.service.ts`).
-    const userId =
-      this.tokenService.verifyAccessToken(
-        extractBearerToken(req.headers.authorization),
-      )?.userId ?? null;
-    // Ключ лимита одновременности (спека 005) — тот же паттерн анонимной
-    // идентичности, что и лимит частоты гостя (TECH-SPEC.md §6): хеш IP, пока
-    // нет настоящего пользователя.
-    const concurrencyKey =
-      userId ?? hashIp(req.ip ?? req.socket.remoteAddress ?? 'unknown');
-    const result = await this.conversionService.convert(
-      file.path,
-      body,
-      userId,
-      concurrencyKey,
-    );
-    if (result.fileId !== undefined) {
+    try {
+      // Спека 012. Гость ∨ сессия ∨ API-ключ. Плохой/отозванный ключ —
+      // `INVALID_API_KEY` (не тихий гость, решение владельца); протухший JWT —
+      // по-прежнему тихий гость.
+      const identity = await this.requestIdentity.resolve(
+        req.headers.authorization,
+      );
+      const idempotencyKey = readIdempotencyKey(req);
+      const scope =
+        identity.kind === 'guest' ? hashIp(clientIp(req)) : identity.userId;
+
+      // Идемпотентность до `consume`: replay не списывает лимит частоты.
+      // `holdsLock` — мы поставили замок `"processing"` и обязаны снять его,
+      // если до `complete` дело не дойдёт (`429`, сбой конвертации), иначе
+      // повтор с тем же ключом получит `409` до истечения короткого TTL.
+      let holdsLock = false;
+      if (idempotencyKey !== undefined) {
+        const outcome = await this.idempotency.begin(scope, idempotencyKey);
+        if (outcome.state === 'conflict') {
+          throw new AppException('IDEMPOTENCY_KEY_CONFLICT');
+        }
+        if (outcome.state === 'replay') {
+          this.sendResult(res, outcome.result, true);
+          return;
+        }
+        holdsLock = outcome.state === 'new';
+      }
+
+      try {
+        await this.applyRateLimits(identity, req, res);
+
+        const userId = identity.kind === 'guest' ? null : identity.userId;
+        // Ключ лимита одновременности (спека 005) — реальный пользователь или
+        // хеш IP гостя, тот же паттерн анонимной идентичности (TECH-SPEC.md §6).
+        const concurrencyKey = userId ?? hashIp(clientIp(req));
+
+        const result = await this.conversionService.convert(
+          tempFilePath,
+          body,
+          userId,
+          concurrencyKey,
+          originalFilename,
+        );
+
+        const payload: IdempotentResult = {
+          mime: result.mime,
+          fileId: result.fileId ?? null,
+          saveSkippedQuota: result.saveSkippedQuota,
+          body: result.buffer,
+        };
+        if (holdsLock && idempotencyKey !== undefined) {
+          await this.idempotency.complete(scope, idempotencyKey, payload);
+          holdsLock = false; // ответ зафиксирован — сбой в `sendResult` его не отзывает
+        }
+        this.sendResult(res, payload, false);
+      } catch (error) {
+        if (holdsLock && idempotencyKey !== undefined) {
+          await this.idempotency.discard(scope, idempotencyKey);
+        }
+        throw error;
+      }
+    } finally {
+      // Multer уже выгрузил файл во временный каталог к моменту входа сюда;
+      // на пути replay/`409`/`429` `ConversionService` (со своим `finally`)
+      // не вызывается — убираем каталог здесь. На обычном пути это
+      // повторная уборка, `rm({ force: true })` её выдерживает.
+      await cleanupConvertTempDir(dirname(tempFilePath));
+    }
+  }
+
+  private sendResult(
+    res: Response,
+    result: IdempotentResult,
+    replayed: boolean,
+  ): void {
+    if (result.fileId !== null) {
       res.setHeader('X-File-Id', result.fileId);
     }
+    // Спека 010. Клиент просил save:true, сервер молча не сохранил из-за
+    // квоты — тело ответа бинарное (байты файла), сигнализировать иначе
+    // нечем; фронт (dropzone) читает заголовок и показывает тост.
+    if (result.saveSkippedQuota) {
+      res.setHeader('X-Save-Skipped-Reason', 'quota-full');
+    }
+    if (replayed) {
+      res.setHeader('X-Idempotent-Replay', 'true');
+    }
     res.setHeader('Content-Type', result.mime);
-    res.send(result.buffer);
+    res.send(result.body);
   }
+
+  /**
+   * Спека 012. Гость — часовой лимит по хешу IP; вошедший (сессия или ключ) —
+   * суточный по `userId`; ключ вдобавок — минутный по `userId` (не по ключу,
+   * решение владельца). `X-RateLimit-*` — по самому узкому бакету; на `429`
+   * — по отказавшему (остаток 0, `reset` = `Retry-After`).
+   */
+  private async applyRateLimits(
+    identity: RequestIdentity,
+    req: Request,
+    res: Response,
+  ): Promise<void> {
+    const buckets: [string, ConsumeOptions][] =
+      identity.kind === 'guest'
+        ? [[`rl:guest:${hashIp(clientIp(req))}`, GUEST_CONVERT_RATE]]
+        : [[`rl:user:${identity.userId}`, USER_CONVERT_RATE]];
+    if (identity.kind === 'api-key') {
+      buckets.push([`rl:api:${identity.userId}`, API_RATE]);
+    }
+
+    const results: RateLimitResult[] = [];
+    for (const [key, options] of buckets) {
+      try {
+        results.push(await this.rateLimiter.consume(key, options));
+      } catch (error) {
+        if (isRateLimitException(error)) {
+          setRateLimitHeaders(res, {
+            limit: options.max,
+            remaining: 0,
+            resetSeconds: rateLimitRetryAfter(error),
+          });
+        }
+        throw error;
+      }
+    }
+
+    setRateLimitHeaders(
+      res,
+      results.reduce((a, b) => (b.remaining < a.remaining ? b : a)),
+    );
+  }
+}
+
+function clientIp(req: Request): string {
+  return req.ip ?? req.socket.remoteAddress ?? 'unknown';
+}
+
+function setRateLimitHeaders(res: Response, r: RateLimitResult): void {
+  res.setHeader('X-RateLimit-Limit', r.limit);
+  res.setHeader('X-RateLimit-Remaining', r.remaining);
+  res.setHeader('X-RateLimit-Reset', r.resetSeconds);
+}
+
+function isRateLimitException(error: unknown): error is AppException {
+  return (
+    error instanceof AppException &&
+    (error.getResponse() as AppExceptionBody).code === 'RATE_LIMIT_EXCEEDED'
+  );
+}
+
+function rateLimitRetryAfter(error: AppException): number {
+  const retry = (error.getResponse() as AppExceptionBody).meta?.[
+    'retry_after_seconds'
+  ];
+  return typeof retry === 'number' ? retry : 0;
+}
+
+/** `Idempotency-Key` — UUID (спека 012). Отсутствует → `undefined`; есть, но не UUID → `INVALID_PARAMETER`. */
+function readIdempotencyKey(req: Request): string | undefined {
+  const raw = req.headers['idempotency-key'];
+  if (raw === undefined) {
+    return undefined;
+  }
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  const parsed = idempotencyKeySchema.safeParse(value);
+  if (!parsed.success) {
+    throw new AppException('INVALID_PARAMETER', { field: 'Idempotency-Key' });
+  }
+  return parsed.data;
 }

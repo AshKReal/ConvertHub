@@ -35,6 +35,14 @@ export class ConversionFailureFilter implements ExceptionFilter<unknown> {
     const req = host.switchToHttp().getRequest<Request>();
     const startedAt = req.convertStartedAt ?? Date.now();
 
+    // Спека 012. Отказ до самой конвертации (лимит частоты, повтор
+    // идемпотентного ключа во время выполнения, неверный API-ключ) — не
+    // «неуспешная конвертация», в `conversions` его писать незачем.
+    if (isPreConversionRejection(exception)) {
+      this.multerFilter.catch(exception, host);
+      return;
+    }
+
     // Не блокирует ответ клиенту — тот же fire-and-forget, что и уборка
     // temp-папки в MulterExceptionFilter; аудит-лог не должен маскировать
     // реальный ответ, если сам не пишется.
@@ -74,4 +82,18 @@ function extractErrorCode(exception: unknown): string {
     return (exception.getResponse() as AppExceptionBody).code;
   }
   return 'CONVERSION_FAILED';
+}
+
+/** Коды, означающие «до конвертации дело не дошло» — история их не пишет (спека 012). */
+const PRE_CONVERSION_CODES = new Set([
+  'RATE_LIMIT_EXCEEDED',
+  'IDEMPOTENCY_KEY_CONFLICT',
+  'INVALID_API_KEY',
+]);
+
+function isPreConversionRejection(exception: unknown): boolean {
+  return (
+    exception instanceof AppException &&
+    PRE_CONVERSION_CODES.has((exception.getResponse() as AppExceptionBody).code)
+  );
 }

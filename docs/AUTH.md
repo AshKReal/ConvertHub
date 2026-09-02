@@ -4,7 +4,8 @@
 `AUTH-RULES.md` в корне репозитория, обязателен к прочтению целиком перед правками в `modules/auth/**`.
 
 Пока покрыто: email + пароль, сессия (007); восстановление и смена пароля, удаление аккаунта (009); Google OAuth,
-привязка/отвязка (008, пока только Google — `AUTH-RULES.md` §5, Telegram отложен).
+привязка/отвязка (008, пока только Google — `AUTH-RULES.md` §5, Telegram отложен); API-ключи — выпуск, список,
+перевыпуск, отзыв (011).
 
 ## Эндпоинты
 
@@ -34,10 +35,11 @@ providers: []}`, других способов входа тогда ещё не
 `Secure` только при `NODE_ENV=production` — см. `docs/SECURITY.md`, `Path=/v1/auth` — кука не уходит на остальной
 API). `logout` и `DELETE /account` чистят её (`Max-Age=0`).
 
-`register`/`login`/`forgot-password` рассчитывают лимит частоты (`FixedWindowRateLimiterService`, временно
-in-memory — 012 заменит Redis-версией): по хешу IP на всех трёх, дополнительно по нормализованному email на
-`login`/`forgot-password` (`AUTH-RULES.md` §2). `change-password`/`delete-account` — без отдельного лимита: оба
-уже за `JwtGuard`, брute-force имеет смысл только с украденным валидным токеном, а не с чистого листа.
+`register`/`login`/`forgot-password` рассчитывают лимит частоты (`RateLimiterService` — token bucket в Redis,
+012): по хешу IP на всех трёх, дополнительно по нормализованному email на `login`/`forgot-password`
+(`AUTH-RULES.md` §2), 10 попыток / 10 минут. Redis недоступен → fail-open (`docs/SECURITY.md` §3).
+`change-password`/`delete-account` — без отдельного лимита: оба уже за `JwtGuard`, брute-force имеет смысл только
+с украденным валидным токеном, а не с чистого листа.
 
 ## Восстановление и смена пароля, удаление аккаунта (009)
 
@@ -93,13 +95,72 @@ Google приводит сюда браузер полной навигацие�
 запрещает отвязку последнего способа входа: если после отвязки не останется ни пароля, ни другой `identities`-
 строки — `LAST_LOGIN_METHOD` (409), сама отвязка не происходит.
 
-## `GET /v1/convert`, `GET /v1/files/{id}/download` — опциональная авторизация
+## API-ключи (011)
 
-Эти маршруты (002/003/005) остаются гостевыми — `Authorization: Bearer` необязателен. Если заголовок есть и
-токен валиден, `userId` берётся из него (файл привязывается к аккаунту, `save=true` не создаёт гостевую запись).
-Любая проблема с токеном (нет, просрочен, невалиден) — тихий откат к гостю, не `401`: эти маршруты никогда не
-требовали авторизации, отказывать здесь из-за протухшего токена в фоновой вкладке было бы неверно. Отличие от
-`GET /v1/auth/me` — там `JwtGuard` жёсткий: маршрут без валидного токена не имеет смысла вообще.
+Второй независимый механизм аутентификации (`TECH-SPEC.md` §8.1): ключ — для публичного API (012), сессия — для
+веба; одно не даёт доступа к другому. Выпуск/список/перевыпуск/отзыв — всегда под сессией (`JwtGuard`), никогда
+по самому ключу. Базовый путь — `/v1/api-keys`, тело — `application/json`.
+
+В БД (`api_keys`) — только SHA-256-хеш полного значения и префикс для показа (`ch_live_a1b2`), тот же приём, что
+refresh-токен (007). Полное значение (`ch_live_` + 32 символа `[a-z0-9]`, ~165 бит) отдаётся клиенту ровно один
+раз — в ответе на выпуск и перевыпуск. Ключ — неизменяемая строка: перевыпуск = `revokedAt` старой строке +
+INSERT новой в одной транзакции, отзыв = `revokedAt`. `revokedAt IS NULL` — единственный предикат «действует».
+Предел активных ключей на пользователя — `MAX_ACTIVE_API_KEYS` (`packages/shared`).
+
+| Метод | Путь | Тело запроса | Тело ответа | Auth | Коды ошибок |
+|---|---|---|---|---|---|
+| `GET` | `/v1/api-keys` | — | `{items: [{id, environment, maskedPrefix, createdAt, lastUsedAt}]}` (только активные) | `Authorization: Bearer <accessToken>` | `UNAUTHENTICATED` (401) |
+| `POST` | `/v1/api-keys` | — | `{…item, fullValue}` (полное значение один раз) | `Authorization: Bearer <accessToken>` | `API_KEY_LIMIT_REACHED` (422), `UNAUTHENTICATED` (401) |
+| `POST` | `/v1/api-keys/:id/reissue` | — | `{…item, fullValue}` (полное значение один раз) | `Authorization: Bearer <accessToken>` | `API_KEY_NOT_FOUND` (404), `UNAUTHENTICATED` (401) |
+| `DELETE` | `/v1/api-keys/:id` | — | — (`204`) | `Authorization: Bearer <accessToken>` | `API_KEY_NOT_FOUND` (404 — чужой/несуществующий id; свой уже отозванный — идемпотентный `204`), `UNAUTHENTICATED` (401) |
+
+`:id` не валидируется отдельно — кривой id не отличается от «не твой»/«нет такого», всё сводится в
+`API_KEY_NOT_FOUND` (404, не 403 — `critical-zones.md`).
+
+## Ключ в публичном API (012)
+
+Машиночитаемое описание публичного API — `GET /v1/openapi.json` (013): OpenAPI 3.1, собран из тех же Zod-схем
+`packages/shared`, что валидируют запросы; `securitySchemes.bearerAuth` = этот же заголовок. Публичный, без
+guard.
+
+`GET /metrics` (014) — отдельный механизм: `Authorization: Bearer <METRICS_TOKEN>` (общий секрет из env,
+сравнение `timingSafeEqual`), иначе `401`. Не связан ни с сессией, ни с API-ключом. `/health`, `/ready` — без
+аутентификации, сигналы для площадки развёртывания.
+
+`ch_live_…`/`ch_test_…` в `Authorization: Bearer` на `POST /v1/convert`, `GET /v1/files`,
+`GET /v1/files/{id}/download` (`RequestIdentityService`, `common/auth/`): `sha256(значение)` → строка `api_keys`
+с `revokedAt IS NULL` → пользователь-владелец. `last_used_at` отмечается fire-and-forget. `PATCH /v1/files/{id}`
+(тумблер `save`) — только под сессией (`TECH-SPEC.md` §8.1).
+
+**Ключ vs JWT в одном заголовке.** Различаются по префиксу `ch_live_`/`ch_test_` — есть → ключ, нет → JWT
+сессии. Ключ найден и не отозван → пользователь; ключ (префикс есть), но не найден/отозван → `INVALID_API_KEY`
+(401) на **любом** из этих маршрутов (решение владельца — явный отказ, не тихий гость). Плохой/отсутствующий
+JWT — по-прежнему тихий гость.
+
+**Rate limit** (`RateLimiterService`, token bucket в Redis, `TECH-SPEC.md` §6) на `POST /v1/convert`:
+
+| Идентичность | Бакеты |
+|---|---|
+| гость | `rl:guest:<hashIp>` — 5 / час |
+| сессия или ключ | `rl:user:<userId>` — 100 / сутки |
+| ключ дополнительно | `rl:api:<userId>` — 60 / минуту (на пользователя, не на ключ) |
+
+Превышение любого → `429 RATE_LIMIT_EXCEEDED` + `Retry-After` + `X-RateLimit-Limit/Remaining/Reset` (по самому
+узкому бакету). Redis недоступен → fail-open (`docs/SECURITY.md` §3).
+
+**`Idempotency-Key`** (UUID) на `POST /v1/convert`: повтор с тем же ключом в течение 24ч → сохранённый ответ
+(`X-Idempotent-Replay: true`), без повторной конвертации и без списания лимита частоты. Повтор во время
+выполнения первого → `409 IDEMPOTENCY_KEY_CONFLICT`. Не UUID → `422 INVALID_PARAMETER`. Механика и режим отказа —
+`docs/SECURITY.md` §7.
+
+## `POST /v1/convert`, `GET /v1/files`, `GET /v1/files/{id}/download` — опциональная авторизация
+
+`POST /v1/convert` и `GET /v1/files/{id}/download` (002/003/005) остаются гостевыми — `Authorization: Bearer`
+необязателен. Если заголовок есть и это валидный JWT либо действующий ключ, `userId` берётся из него (файл
+привязывается к аккаунту). Протухший/невалидный JWT — тихий откат к гостю, не `401`: эти маршруты никогда не
+требовали авторизации. Отозванный/несуществующий **ключ** — исключение: `INVALID_API_KEY` (012, выше).
+`GET /v1/files` (список) авторизацию требует жёстко — гостю показывать нечего, `UNAUTHENTICATED`. Отличие от
+`GET /v1/auth/me` — там `JwtGuard`, ключ не принимается вовсе.
 
 ## Поток: вход и обновление токена
 

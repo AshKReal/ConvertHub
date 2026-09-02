@@ -21,7 +21,9 @@ import type { Subscription } from 'rxjs';
 
 import type { AppError } from '../../../../core/interceptors/error-interceptor';
 import { ERROR_MESSAGE_KEYS } from '../../../../core/i18n/messages';
+import { AuthService } from '../../../../core/services/auth';
 import { I18nService } from '../../../../core/services/i18n';
+import { injectMeQuery } from '../../../../core/services/me';
 import { ToastService } from '../../../../core/services/toast';
 import { Button } from '../../../../shared/ui/button/button';
 import { injectConvertApi } from '../../data/convert.api';
@@ -54,12 +56,6 @@ const ICON_BY_KIND: Partial<Record<DropzoneStateKind, string>> = {
   uploading: 'text-text-secondary',
 };
 
-/**
- * Мок-заготовка для 006: реальный расчёт занятого места — 010.
- * Значение меняется только руками, для ручной приёмки.
- */
-const MOCK_STORAGE_USED_BYTES = 0;
-
 @Component({
   selector: 'app-dropzone',
   imports: [Button],
@@ -78,6 +74,9 @@ export class Dropzone {
   protected readonly i18n = inject(I18nService);
   private readonly toast = inject(ToastService);
   private readonly convertApi = injectConvertApi();
+  private readonly auth = inject(AuthService);
+  /** Гость квоты не имеет — без гейта каждая загрузка страницы слала бы обречённый на 401 запрос. */
+  private readonly meQuery = injectMeQuery({ enabled: () => this.auth.user() !== null });
 
   private readonly picker = viewChild.required<ElementRef<HTMLInputElement>>('picker');
 
@@ -96,8 +95,11 @@ export class Dropzone {
 
   private convertSubscription: Subscription | null = null;
 
-  /** `ARCHITECTURE.md` §6.4: выставляется до выбора файла, по данным `['me']` — здесь на моке. */
-  protected readonly quotaFull = MOCK_STORAGE_USED_BYTES >= USER_STORAGE_QUOTA_BYTES;
+  /** `ARCHITECTURE.md` §6.4: выставляется до выбора файла, по данным `['me']`. */
+  protected readonly quotaFull = computed(() => {
+    const me = this.meQuery.data();
+    return me !== undefined && me.storageUsedBytes >= USER_STORAGE_QUOTA_BYTES;
+  });
 
   protected readonly state = computed<DropzoneState>(() => {
     const error = this.error();
@@ -110,7 +112,7 @@ export class Dropzone {
       if (this.dragDepth() > 0) {
         return { kind: 'dragover' };
       }
-      return this.quotaFull ? { kind: 'quotaFull' } : { kind: 'empty' };
+      return this.quotaFull() ? { kind: 'quotaFull' } : { kind: 'empty' };
     }
 
     switch (this.phase()) {
@@ -222,8 +224,13 @@ export class Dropzone {
       return;
     }
 
+    // Спека 010. Вошедший сохраняет по умолчанию, без отдельного чекбокса —
+    // его нет и никогда не было ни в одном из мок-состояний зоны (006/019);
+    // `/files` уже даёт способ отказаться постфактум (тумблер `save`). Гость
+    // не сохраняет — ему просто нечему принадлежать этот файл на сервере.
+    const save = this.auth.user() !== null;
     this.convertSubscription = this.convertApi
-      .convert(file, { target: this.direction().target })
+      .convert(file, { target: this.direction().target, save })
       .subscribe({
         next: (event) => this.handleConvertEvent(event),
         error: (error: AppError) => {
@@ -263,6 +270,12 @@ export class Dropzone {
       case HttpEventType.Response:
         this.resultBlob.set(event.body);
         this.phase.set('done');
+        // Спека 010. Клиент просил save:true, сервер молча не сохранил из-за
+        // квоты — тело ответа бинарное, единственный канал сигнала — этот
+        // заголовок. Тост, не блокирует `done`: конвертация всё равно удалась.
+        if (event.headers.get('X-Save-Skipped-Reason') === 'quota-full') {
+          this.toast.show('danger', this.i18n.t('dropzone.quotaFull.title'));
+        }
         break;
       default:
         break;

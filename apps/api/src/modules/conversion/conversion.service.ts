@@ -22,6 +22,13 @@ export interface ConvertResult {
   readonly mime: string;
   /** Задан только если клиент попросил сохранить и сохранение удалось (спека 003). */
   readonly fileId?: string;
+  /**
+   * Спека 010. `true`, только если клиент просил `save:true`, а сервер молча
+   * не сохранил из-за заполненной квоты — контроллер превращает это в
+   * заголовок `X-Save-Skipped-Reason` (тело ответа бинарное, сигнализировать
+   * иначе нечем).
+   */
+  readonly saveSkippedQuota: boolean;
 }
 
 @Injectable()
@@ -46,6 +53,7 @@ export class ConversionService {
     request: ConvertRequest,
     userId: string | null,
     concurrencyKey: string,
+    originalFilename: string,
   ): Promise<ConvertResult> {
     const startedAt = Date.now();
     let acquiredSlot = false;
@@ -83,14 +91,20 @@ export class ConversionService {
       const mime = outputMimeFor(request.target);
 
       let fileId: string | undefined;
+      let saveSkippedQuota = false;
       if (request.save === true) {
-        const saved = await this.filesService.saveConversionResult({
+        const outcome = await this.filesService.saveConversionResult({
           userId,
           buffer,
           mime,
           extension: request.target,
+          originalFilename,
         });
-        fileId = saved?.fileId;
+        if (outcome.status === 'saved') {
+          fileId = outcome.fileId;
+        } else if (outcome.status === 'skipped-quota') {
+          saveSkippedQuota = true;
+        }
       }
 
       // Fire-and-forget, как и уборка temp-файла в фильтрах: упавшая запись
@@ -107,7 +121,7 @@ export class ConversionService {
         })
         .catch(() => undefined);
 
-      return { buffer, mime, fileId };
+      return { buffer, mime, fileId, saveSkippedQuota };
     } finally {
       if (acquiredSlot) {
         this.concurrencyLimiter.release(concurrencyKey);

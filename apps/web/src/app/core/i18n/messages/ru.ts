@@ -147,6 +147,11 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'error.conversionTimeout':
     'Конвертация заняла слишком много времени и была остановлена. Попробуйте с файлом поменьше.',
   'error.unauthenticated': 'Сессия истекла. Повторный вход…',
+  'error.apiKeyNotFound': 'Этого API-ключа больше нет — обновите страницу.',
+  'error.apiKeyLimitReached':
+    'У вас уже 3 активных API-ключа. Отзовите один, чтобы выпустить новый.',
+  'error.idempotencyConflict':
+    'Предыдущий запрос с этим ключом ещё обрабатывается. Повторите чуть позже.',
 
   'files.title': 'Мои файлы',
   'files.quota.label': '{used} из {total}',
@@ -157,6 +162,7 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'files.badge.saved': 'Сохранён',
   'files.badge.temporary': 'Временный',
   'files.save.toggle': 'Сохранять этот файл',
+  'files.error.quotaExceeded': 'Нельзя сохранить файл — хранилище заполнено.',
 
   'apiKeys.title': 'API-ключи',
   'apiKeys.issue.action': 'Выпустить новый ключ',
@@ -186,19 +192,14 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
 
   'apiDocs.title': 'Документация API',
   'apiDocs.intro':
-    'Базовый URL https://api.convert-hub.io/v1. Только HTTPS — запросы по HTTP отклоняются, а не перенаправляются. Это заглушечная справка; сгенерированная OpenAPI-схема и интерактивный проигрыватель появятся позже.',
+    'Базовый URL https://api.convert-hub.io/v1. Только HTTPS — запросы по HTTP отклоняются, а не перенаправляются. Список эндпоинтов ниже читается из сгенерированной OpenAPI-схемы.',
   'apiDocs.auth.title': 'Аутентификация',
   'apiDocs.auth.description':
     'Каждый запрос несёт API-ключ в заголовке Bearer — выпускается на странице API-ключей.',
   'apiDocs.endpoints.title': 'Эндпоинты',
-  'apiDocs.endpoints.convert': 'Конвертация файла (multipart)',
-  'apiDocs.endpoints.listFiles': 'Список ваших файлов, курсорная пагинация',
-  'apiDocs.endpoints.downloadFile': '302 на подписанную ссылку для скачивания',
-  'apiDocs.endpoints.deleteFile': 'Удаление файла, идемпотентно',
-  'apiDocs.endpoints.listConversions': 'История конвертаций, включая неуспешные',
-  'apiDocs.endpoints.formats': 'Поддерживаемые направления и лимиты, без ключа',
-  'apiDocs.endpoints.me': 'Аккаунт, квота, остаток лимита',
-  'apiDocs.endpoints.health': 'Для площадки развёртывания',
+  'apiDocs.schema.loading': 'Загрузка схемы…',
+  'apiDocs.schema.unavailable': 'Схема сейчас недоступна — справка ниже всё равно актуальна.',
+  'apiDocs.schema.full': 'Полная машиночитаемая схема:',
   'apiDocs.limits.title': 'Лимиты',
   'apiDocs.limits.fileSize': 'Размер файла: до {value}',
   'apiDocs.limits.quota': 'Квота хранилища: {value} на аккаунт',

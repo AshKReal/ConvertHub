@@ -48,6 +48,19 @@ export const authUserSchema = z.object({
 
 export type AuthUser = z.infer<typeof authUserSchema>;
 
+/**
+ * Спека 010. Тело `GET /v1/auth/me` — отдельная схема, не расширение самого
+ * `authUserSchema`: `register`/`login`/`refresh` не обязаны знать актуальную
+ * квоту на момент входа (снэпшот сессии), `GET /me` — намеренно живой
+ * повторный запрос за свежими данными (`core/services/me.ts`, TanStack Query
+ * `['me']`, apps/web).
+ */
+export const meResponseSchema = authUserSchema.extend({
+  storageUsedBytes: z.number(),
+});
+
+export type MeResponse = z.infer<typeof meResponseSchema>;
+
 /** Тело `register`/`login`/`refresh` — refresh-токен уходит только в cookie, не сюда. */
 export const authResponseSchema = z.object({
   accessToken: z.string(),

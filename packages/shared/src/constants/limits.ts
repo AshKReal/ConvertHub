@@ -31,6 +31,16 @@ export const SIGNED_URL_TTL_SECONDS = 15 * 60;
 /** Срок жизни сохранённого файла гостя (не авторизован) — TECH-SPEC.md §11. */
 export const GUEST_FILE_TTL_SECONDS = 60 * 60;
 
+/**
+ * Спека 010. Срок жизни файла, у которого пользователь сознательно снял
+ * `save` (тумблер на `/files`) — то же значение, что `GUEST_FILE_TTL_SECONDS`
+ * сегодня, но отдельная константа: гостевой файл анонимен по умолчанию, этот
+ * — осознанно снят вошедшим пользователем, разные смыслы могут разойтись
+ * числом позже. Мягкое истечение (`File.expiresAt`), не немедленное удаление
+ * — решение владельца, обратимо повторным включением `save` до истечения.
+ */
+export const UNSAVED_FILE_GRACE_SECONDS = 60 * 60;
+
 /** Спека 007. Access-токен — TECH-SPEC.md §8.2. */
 export const JWT_ACCESS_TTL_SECONDS = 15 * 60;
 
@@ -63,3 +73,27 @@ export const AUTH_RATE_LIMIT_WINDOW_SECONDS = 10 * 60;
 
 /** Спека 009. Ссылка сброса пароля — TECH-SPEC.md §8.5. */
 export const PASSWORD_RESET_TOKEN_TTL_SECONDS = 30 * 60;
+
+/**
+ * Спека 012. Лимиты частоты `POST /v1/convert` (TECH-SPEC.md §6) — token
+ * bucket в Redis (`RateLimiterService`). Форма совпадает с `ConsumeOptions`
+ * (`apps/api/common/rate-limit`): `max` — ёмкость бакета и число запросов за
+ * окно, `windowSeconds` — за сколько бакет доливается целиком.
+ */
+export const GUEST_CONVERT_RATE = { max: 5, windowSeconds: 60 * 60 } as const;
+export const USER_CONVERT_RATE = {
+  max: 100,
+  windowSeconds: 24 * 60 * 60,
+} as const;
+/** Спека 012. Дополнительный минутный лимит для запросов по API-ключу — на пользователя, не на ключ (решение владельца). */
+export const API_RATE = { max: 60, windowSeconds: 60 } as const;
+
+/** Спека 012. Окно, в течение которого повтор `POST /v1/convert` с тем же `Idempotency-Key` возвращает сохранённый результат (TECH-SPEC.md §7.3). */
+export const IDEMPOTENCY_TTL_SECONDS = 24 * 60 * 60;
+
+/**
+ * Спека 011. Верхняя граница числа активных (`revokedAt IS NULL`) API-ключей
+ * у одного пользователя — решение владельца. Выпуск сверх предела →
+ * `API_KEY_LIMIT_REACHED`; перевыпуск числа не увеличивает и предел не задевает.
+ */
+export const MAX_ACTIVE_API_KEYS = 3;

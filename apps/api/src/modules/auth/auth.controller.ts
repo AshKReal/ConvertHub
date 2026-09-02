@@ -22,10 +22,10 @@ import {
   oauthProviderSchema,
   resetPasswordRequestSchema,
   type AuthResponse,
-  type AuthUser,
   type ChangePasswordRequest,
   type ForgotPasswordRequest,
   type LoginRequest,
+  type MeResponse,
   type OauthProvider,
   type RegisterRequest,
   type ResetPasswordRequest,
@@ -41,9 +41,9 @@ import {
 import { JwtGuard } from '../../common/guards/jwt.guard';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import {
-  FixedWindowRateLimiterService,
+  RateLimiterService,
   type ConsumeOptions,
-} from '../../common/rate-limit/fixed-window-rate-limiter.service';
+} from '../../common/rate-limit/rate-limiter.service';
 import { env } from '../../config/env';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AccountService } from './account.service';
@@ -78,7 +78,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly accountService: AccountService,
-    private readonly rateLimiter: FixedWindowRateLimiterService,
+    private readonly rateLimiter: RateLimiterService,
     private readonly prisma: PrismaService,
     private readonly google: GoogleOauthService,
     private readonly oauthState: OauthStateService,
@@ -91,7 +91,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthResponse> {
-    this.rateLimiter.consume(this.ipKey(req), AUTH_RATE_LIMIT);
+    await this.rateLimiter.consume(this.ipKey(req), AUTH_RATE_LIMIT);
     const session = await this.authService.register(body);
     return this.respond(res, session);
   }
@@ -105,8 +105,8 @@ export class AuthController {
   ): Promise<AuthResponse> {
     // И по IP, и по аккаунту (AUTH-RULES.md §2) — только по IP обходится
     // ботнетом, только по аккаунту — перебором аккаунтов с разных адресов.
-    this.rateLimiter.consume(this.ipKey(req), AUTH_RATE_LIMIT);
-    this.rateLimiter.consume(
+    await this.rateLimiter.consume(this.ipKey(req), AUTH_RATE_LIMIT);
+    await this.rateLimiter.consume(
       `login:${body.email.trim().toLowerCase()}`,
       AUTH_RATE_LIMIT,
     );
@@ -210,8 +210,8 @@ export class AuthController {
     body: ForgotPasswordRequest,
     @Req() req: Request,
   ): Promise<void> {
-    this.rateLimiter.consume(this.ipKey(req), AUTH_RATE_LIMIT);
-    this.rateLimiter.consume(
+    await this.rateLimiter.consume(this.ipKey(req), AUTH_RATE_LIMIT);
+    await this.rateLimiter.consume(
       `forgot-password:${body.email.trim().toLowerCase()}`,
       AUTH_RATE_LIMIT,
     );
@@ -228,7 +228,7 @@ export class AuthController {
     body: ResetPasswordRequest,
     @Req() req: Request,
   ): Promise<void> {
-    this.rateLimiter.consume(this.ipKey(req), AUTH_RATE_LIMIT);
+    await this.rateLimiter.consume(this.ipKey(req), AUTH_RATE_LIMIT);
     // Не логинит автоматически — 020 уже показывает экран успеха со ссылкой
     // на `/login`, менять готовый UX незачем; сама `resetPassword` уже
     // отозвала все сессии пользователя (включая гипотетическую текущую).
@@ -263,7 +263,7 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(JwtGuard)
-  async me(@CurrentUser() userId: string): Promise<AuthUser> {
+  async me(@CurrentUser() userId: string): Promise<MeResponse> {
     // `findUniqueOrThrow` — пользователь с валидным access-токеном не может
     // не существовать в течение жизни этого токена: удаление аккаунта (009)
     // не отзывает уже выданные access-токены (они самодостаточный JWT, TTL 15 мин —
@@ -277,6 +277,7 @@ export class AuthController {
         id: true,
         email: true,
         passwordHash: true,
+        storageUsedBytes: true,
         identities: { select: { provider: true } },
       },
     });
@@ -287,6 +288,11 @@ export class AuthController {
       providers: user.identities.map(
         (identity) => PROVIDER_LABELS[identity.provider],
       ),
+      // Спека 010. Живой запрос за квотой (TanStack Query `['me']`,
+      // apps/web/core/services/me.ts) — единственная причина, по которой
+      // `GET /me` вообще остался отдельным маршрутом, не просто полем
+      // ответа `login`/`register`/`refresh` (снэпшот сессии, не то же самое).
+      storageUsedBytes: user.storageUsedBytes,
     };
   }
 
