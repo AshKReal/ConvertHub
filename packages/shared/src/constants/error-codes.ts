@@ -21,6 +21,8 @@ export const ERROR_CODES = {
   OAUTH_ACCOUNT_CONFLICT: { status: 409, retryable: false },
   /** Попытка отвязать единственный оставшийся способ входа (спека 008, AUTH-RULES.md: «НИКОГДА не разрешать отвязку последнего способа входа»). */
   LAST_LOGIN_METHOD: { status: 409, retryable: false },
+  /** Повтор `POST /v1/convert` с тем же `Idempotency-Key`, пока первый запрос ещё выполняется (спека 012). Не `retryable` автоматически — клиент решает, когда первый закончится. */
+  IDEMPOTENCY_KEY_CONFLICT: { status: 409, retryable: false },
   FILE_TOO_LARGE: { status: 413, retryable: false },
   UNSUPPORTED_FILE_TYPE: { status: 415, retryable: false },
   FILE_TYPE_MISMATCH: { status: 415, retryable: false },

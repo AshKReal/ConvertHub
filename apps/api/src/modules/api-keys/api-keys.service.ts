@@ -14,6 +14,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 const KEY_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
 const KEY_RANDOM_LENGTH = 32;
 const KEY_ENV_PART = 'ch_live_';
+/** Оба окружения из `TECH-SPEC.md` §7.1 — по любому из префиксов строку в `Authorization` трактуем как API-ключ, не JWT. */
+const KEY_PREFIXES = ['ch_live_', 'ch_test_'] as const;
 /** `ch_live_` + первые 4 символа случайной части — маска в списке (`TECH-SPEC.md` §8.4). */
 const PREFIX_LENGTH = KEY_ENV_PART.length + 4;
 
@@ -114,6 +116,41 @@ export class ApiKeyService {
       where: { id, userId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+  }
+
+  /**
+   * Спека 012. Разрешение API-ключа из `Authorization: Bearer`. `null` —
+   * строка не похожа на ключ (нет префикса `ch_live_`/`ch_test_`), вызывающий
+   * пойдёт по JWT-пути. `INVALID_API_KEY` — префикс есть, но ключ не найден
+   * или отозван: явный отказ, не тихий откат к гостю (решение владельца).
+   * Поиск — точный матч по `keyHash` (`@unique`), тайминг не о содержимом.
+   */
+  async resolveKey(
+    bearerToken: string,
+  ): Promise<{ userId: string; apiKeyId: string } | null> {
+    if (!KEY_PREFIXES.some((prefix) => bearerToken.startsWith(prefix))) {
+      return null;
+    }
+    const keyHash = createHash('sha256').update(bearerToken).digest('hex');
+    const row = await this.prisma.apiKey.findFirst({
+      where: { keyHash, revokedAt: null },
+      select: { id: true, userId: true },
+    });
+    if (row === null) {
+      throw new AppException('INVALID_API_KEY');
+    }
+    return { userId: row.userId, apiKeyId: row.id };
+  }
+
+  /**
+   * Спека 012. Отметка использования — fire-and-forget, свои ошибки глушит
+   * (как `ConversionHistoryService`): потеря этой записи не должна ронять
+   * успешный ответ клиенту.
+   */
+  markUsed(apiKeyId: string): void {
+    void this.prisma.apiKey
+      .update({ where: { id: apiKeyId }, data: { lastUsedAt: new Date() } })
+      .catch(() => undefined);
   }
 
   private async assertUnderLimit(userId: string): Promise<void> {

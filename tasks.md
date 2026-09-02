@@ -188,11 +188,12 @@
   - [x] Предел `MAX_ACTIVE_API_KEYS = 3` активных ключей на пользователя (решение владельца) → `API_KEY_LIMIT_REACHED`
   - [x] Подключить 022 к реальным эндпоинтам выпуска/перевыпуска/отзыва (TanStack Query, мок-стор удалён)
   - [ ] Приёмка владельцем: критерии из спеки руками, браузер/Playwright обе темы, враждебное второе мнение
-- [ ] **012** 🔒 `public-api`
-  - [ ] Bearer-аутентификация по API-ключу
-  - [ ] Rate limit token bucket в Redis: гость 5/час (по хешу IP), пользователь 100/сутки, 60 запросов/мин к API
-  - [ ] `Idempotency-Key` (UUID, 24 часа) через Redis
-  - [ ] Redis недоступен → fail-open для rate limit, fail-closed для проверки сессии/ключа
+- [ ] **012** 🔒 `public-api` — `specs/012-public-api.md`
+  - [x] Bearer по API-ключу (`RequestIdentityService`): `POST /v1/convert`, `GET /v1/files`, download; плохой ключ → `INVALID_API_KEY` (не тихий гость); `last_used_at` fire-and-forget. `PATCH` остаётся под сессией
+  - [x] Rate limit token bucket в Redis (`ioredis`, Lua `EVAL`): гость 5/час по хешу IP, пользователь 100/сутки, ключ +60/мин на пользователя; `X-RateLimit-*` + `Retry-After`. Заменил `FixedWindowRateLimiterService` (auth-лимит на том же механизме)
+  - [x] `Idempotency-Key` (UUID, 24ч) через Redis: `SET NX` замок, replay без повторной конвертации и без списания лимита, `409` во время выполнения, `422` на не-UUID
+  - [x] Redis недоступен → fail-open для rate limit и идемпотентности; проверка ключа/сессии на Postgres/JWT, Redis не на пути (fail-closed по построению)
+  - [ ] Приёмка владельцем: критерии из спеки руками, враждебное второе мнение
 
 ## Стадия 9 — документация, наблюдаемость, тесты
 

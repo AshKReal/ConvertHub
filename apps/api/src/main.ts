@@ -13,7 +13,16 @@ async function bootstrap() {
   app.enableCors({
     origin: env.CORS_ORIGIN,
     credentials: true,
-    exposedHeaders: ['X-File-Id', 'X-Save-Skipped-Reason'],
+    exposedHeaders: [
+      'X-File-Id',
+      'X-Save-Skipped-Reason',
+      // Спека 012 — лимит частоты и повтор идемпотентного запроса.
+      'X-RateLimit-Limit',
+      'X-RateLimit-Remaining',
+      'X-RateLimit-Reset',
+      'X-Idempotent-Replay',
+      'Retry-After',
+    ],
   });
   // Читает refresh-cookie (спека 007) в `req.cookies` — без этого пришлось
   // бы вручную парсить заголовок `Cookie` в каждом месте, где он нужен.

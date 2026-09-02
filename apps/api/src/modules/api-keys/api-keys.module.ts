@@ -1,18 +1,20 @@
 import { Module } from '@nestjs/common';
+import { RequestIdentityService } from '../../common/auth/request-identity.service';
 import { AuthModule } from '../auth/auth.module';
 import { ApiKeyController } from './api-keys.controller';
 import { ApiKeyService } from './api-keys.service';
 
 /**
- * Спека 011. `imports: [AuthModule]` — нужен только `JwtGuard` (маршруты
- * требуют сессию жёстко), `AuthModule` его экспортирует (`backend.md`:
- * импортируем модуль, не тянем файл guard'а напрямую). `exports` нет —
- * `ApiKeyService` пока никто извне не вызывает; 012 (проверка ключа в
- * запросах) добавит потребителя и `export` вместе с собой.
+ * Спека 011/012. `imports: [AuthModule]` — `JwtGuard` (маршруты 011 требуют
+ * сессию жёстко) и `TokenService` (нужен `RequestIdentityService`).
+ * `RequestIdentityService` живёт здесь: он про «чей это запрос» — ключ ∨
+ * сессия ∨ гость, — и его потребители (`conversion`, `files`, 012) и так
+ * тянут этот модуль ради ключей.
  */
 @Module({
   imports: [AuthModule],
   controllers: [ApiKeyController],
-  providers: [ApiKeyService],
+  providers: [ApiKeyService, RequestIdentityService],
+  exports: [ApiKeyService, RequestIdentityService],
 })
 export class ApiKeyModule {}

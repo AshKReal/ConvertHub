@@ -51,6 +51,7 @@ export const ERROR_MESSAGE_KEYS: Record<ErrorCode, MessageKey> = {
   OAUTH_ACCOUNT_CONFLICT: 'auth.oauth.conflictError',
   // Тот же текст, что кнопка «отвязать» в профиле (008) показывает как тултип до запроса.
   LAST_LOGIN_METHOD: 'profile.providers.unlinkBlocked',
+  IDEMPOTENCY_KEY_CONFLICT: 'error.idempotencyConflict',
   FILE_TOO_LARGE: 'error.fileTooLarge',
   UNSUPPORTED_FILE_TYPE: 'error.unsupportedFileType',
   FILE_TYPE_MISMATCH: 'error.fileTypeMismatch',

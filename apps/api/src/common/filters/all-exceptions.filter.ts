@@ -68,6 +68,13 @@ export class AllExceptionsFilter implements ExceptionFilter<unknown> {
       ...(meta ? { meta } : {}),
     };
 
+    // Спека 012. `RATE_LIMIT_EXCEEDED` несёт `retry_after_seconds` в `meta` —
+    // продублировать стандартным заголовком `Retry-After` (TECH-SPEC.md §7.5).
+    const retryAfter = meta?.['retry_after_seconds'];
+    if (code === 'RATE_LIMIT_EXCEEDED' && typeof retryAfter === 'number') {
+      res.setHeader('Retry-After', String(retryAfter));
+    }
+
     res
       .status(status)
       .type('application/problem+json')

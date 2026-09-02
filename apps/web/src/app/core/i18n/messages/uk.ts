@@ -148,6 +148,8 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'error.unauthenticated': 'Сесія закінчилася. Повторний вхід…',
   'error.apiKeyNotFound': 'Цього API-ключа більше немає — оновіть сторінку.',
   'error.apiKeyLimitReached': 'У вас уже 3 активні API-ключі. Відкличте один, щоб випустити новий.',
+  'error.idempotencyConflict':
+    'Попередній запит із цим ключем ще обробляється. Повторіть трохи згодом.',
 
   'files.title': 'Мої файли',
   'files.quota.label': '{used} з {total}',

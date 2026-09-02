@@ -20,3 +20,10 @@ export const convertRequestSchema = z.object({
 });
 
 export type ConvertRequest = z.infer<typeof convertRequestSchema>;
+
+/**
+ * Спека 012. Заголовок `Idempotency-Key` на `POST /v1/convert` — UUID
+ * (TECH-SPEC.md §7.3). Повтор с тем же ключом в течение `IDEMPOTENCY_TTL_SECONDS`
+ * возвращает сохранённый результат вместо повторной конвертации.
+ */
+export const idempotencyKeySchema = z.string().uuid();

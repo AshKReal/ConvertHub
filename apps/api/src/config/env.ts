@@ -10,6 +10,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   /** Спека 003. Секрет HMAC-подписи ссылок на скачивание — без дефолта, как остальные секреты. */
   SIGNED_URL_SECRET: z.string().min(32),
+  /** Спека 012. Rate limit (token bucket) и идемпотентность. Redis необязателен на пути ключа/сессии — при недоступности обе подсистемы fail-open (`ARCHITECTURE.md` §9). */
+  REDIS_URL: z.string().url(),
   /** Спека 003. Папка `LocalDiskStorage` — без дефолта, обязана лежать вне репозитория. */
   LOCAL_STORAGE_DIR: z.string().min(1),
   /** Спека 007. Подпись access-JWT (`TokenService`) — без дефолта, как остальные секреты. */
