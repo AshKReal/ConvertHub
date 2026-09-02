@@ -89,7 +89,10 @@ export class ConversionController {
         identity.kind === 'guest' ? hashIp(clientIp(req)) : identity.userId;
 
       // Идемпотентность до `consume`: replay не списывает лимит частоты.
-      let storeResult = false;
+      // `holdsLock` — мы поставили замок `"processing"` и обязаны снять его,
+      // если до `complete` дело не дойдёт (`429`, сбой конвертации), иначе
+      // повтор с тем же ключом получит `409` до истечения короткого TTL.
+      let holdsLock = false;
       if (idempotencyKey !== undefined) {
         const outcome = await this.idempotency.begin(scope, idempotencyKey);
         if (outcome.state === 'conflict') {
@@ -99,34 +102,42 @@ export class ConversionController {
           this.sendResult(res, outcome.result, true);
           return;
         }
-        storeResult = outcome.state === 'new';
+        holdsLock = outcome.state === 'new';
       }
 
-      await this.applyRateLimits(identity, req, res);
+      try {
+        await this.applyRateLimits(identity, req, res);
 
-      const userId = identity.kind === 'guest' ? null : identity.userId;
-      // Ключ лимита одновременности (спека 005) — реальный пользователь или
-      // хеш IP гостя, тот же паттерн анонимной идентичности (TECH-SPEC.md §6).
-      const concurrencyKey = userId ?? hashIp(clientIp(req));
+        const userId = identity.kind === 'guest' ? null : identity.userId;
+        // Ключ лимита одновременности (спека 005) — реальный пользователь или
+        // хеш IP гостя, тот же паттерн анонимной идентичности (TECH-SPEC.md §6).
+        const concurrencyKey = userId ?? hashIp(clientIp(req));
 
-      const result = await this.conversionService.convert(
-        tempFilePath,
-        body,
-        userId,
-        concurrencyKey,
-        originalFilename,
-      );
+        const result = await this.conversionService.convert(
+          tempFilePath,
+          body,
+          userId,
+          concurrencyKey,
+          originalFilename,
+        );
 
-      const payload: IdempotentResult = {
-        mime: result.mime,
-        fileId: result.fileId ?? null,
-        saveSkippedQuota: result.saveSkippedQuota,
-        body: result.buffer,
-      };
-      if (storeResult && idempotencyKey !== undefined) {
-        await this.idempotency.complete(scope, idempotencyKey, payload);
+        const payload: IdempotentResult = {
+          mime: result.mime,
+          fileId: result.fileId ?? null,
+          saveSkippedQuota: result.saveSkippedQuota,
+          body: result.buffer,
+        };
+        if (holdsLock && idempotencyKey !== undefined) {
+          await this.idempotency.complete(scope, idempotencyKey, payload);
+          holdsLock = false; // ответ зафиксирован — сбой в `sendResult` его не отзывает
+        }
+        this.sendResult(res, payload, false);
+      } catch (error) {
+        if (holdsLock && idempotencyKey !== undefined) {
+          await this.idempotency.discard(scope, idempotencyKey);
+        }
+        throw error;
       }
-      this.sendResult(res, payload, false);
     } finally {
       // Multer уже выгрузил файл во временный каталог к моменту входа сюда;
       // на пути replay/`409`/`429` `ConversionService` (со своим `finally`)

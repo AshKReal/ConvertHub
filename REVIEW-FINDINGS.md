@@ -194,13 +194,14 @@ Row-lock на горячем ключе. Обновлять условно (`WHE
 ## Бэкенд — 012 public-api (из отдельного враждебного ревью, всё открыто)
 
 ### BE-PUB-01 · 🔴 · `Idempotency-Key` блокируется на 24ч при `429` или неуспешной конвертации
-`conversion.controller.ts` + `idempotency.service.ts` — `begin()` ставит `processing` до rate-limit и до конвертации; перезаписывается только на успехе. **Проверено:** битый файл → ключ застрял → повтор с хорошим файлом → `409` на 24ч. Гостевой `429` тоже оставляет `processing`-замок.
-**Фикс:** `IdempotencyService.discard()` (DEL) + `try/catch` вокруг секции после `begin`: на любой throw, если `storeResult` — `discard`, затем rethrow.
-- [ ]
+`conversion.controller.ts` + `idempotency.service.ts` — `begin()` ставит `processing` до rate-limit и до конвертации; перезаписывался только на успехе. **Было проверено:** битый файл → ключ застрял → повтор с хорошим файлом → `409` на 24ч. Гостевой `429` тоже оставлял `processing`-замок.
+**Фикс:** `IdempotencyService.discard()` (DEL) + `try/catch` вокруг секции после `begin`: на throw, если `holdsLock` — `discard`, затем rethrow; `holdsLock=false` после `complete`.
+- [x] Сделано (коммит `012: BE-PUB-01/02 — discard замка на отказе + короткий TTL processing`). Live re-verify — при поднятом Docker в батч-приёмке.
 
 ### BE-PUB-02 · 🟠 · Даже с фиксом BE-PUB-01 краш между `begin` и `complete` держит замок 24ч
-`idempotency.service.ts:41` — `ttlMs` (24ч) и для `processing`, и для ответа. Ставить `processing` с коротким TTL (`CONVERSION_TIMEOUT` + запас), 24ч — только на сохранённый ответ. Убирает `docs/SECURITY.md` §7 целиком.
-- [ ]
+`idempotency.service.ts` — `ttlMs` (24ч) и для `processing`, и для ответа.
+**Фикс:** `PROCESSING_TTL_MS = 90_000` на замок `processing` (≥ таймаут конвертации 60с + запас), 24ч — только на сохранённый ответ (`complete`). `docs/SECURITY.md` §7 переписан («короткий TTL + discard», остаточный риск ≤ 90с).
+- [x] Сделано (тот же коммит).
 
 ### BE-PUB-03 · 🟠 · Хранилище идемпотентности не ограничено в совокупности
 `idempotency.service.ts:complete` — ~13 МБ base64 на результат × 24ч, тот же Redis, что rate limit. Нужно `maxmemory`/eviction при деплое (017) + gzip для документных результатов.

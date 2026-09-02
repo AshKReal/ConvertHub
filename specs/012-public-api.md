@@ -138,12 +138,16 @@
 
 **Идемпотентность — `IdempotencyService` + вызовы из `ConversionController`.** Заголовок `Idempotency-Key`
 валидируется `z.string().uuid()` (в `packages/shared`), scope-ключ `idem:<userId ?? ipHash>:<uuid>`.
-На входе: `SET key "processing" NX EX 86400`.
-- `NX` прошёл → выполнить конвертацию, затем `SET key <сериализованный ответ> EX 86400` (перезапись
-  «processing»), вернуть; за этот запрос лимит частоты списан обычным порядком.
+На входе: `SET key "processing" NX PX 90000` — **короткий** TTL замка (`PROCESSING_TTL_MS`), не 24ч.
+- `NX` прошёл → выполнить конвертацию, затем `SET key <сериализованный ответ> PX 86400000` (перезапись
+  «processing», уже на 24ч), вернуть; за этот запрос лимит частоты списан обычным порядком.
 - `NX` не прошёл → `GET key`. `"processing"` → `IDEMPOTENCY_KEY_CONFLICT` (409). Иначе → десериализовать
   `{ mime, fileId?, saveSkippedQuota, bodyBase64 }`, выставить те же заголовки + `X-Idempotent-Replay: true`,
   `res.send(buffer)`; лимит частоты за replay **не** списывается (проверка идемпотентности — до `consume`).
+- **Штатный отказ до `complete`** (`429`, сбой конвертации) → контроллер (`try/catch` вокруг секции после
+  `begin`) зовёт `IdempotencyService.discard()` → `DEL key`, замок снимается сразу; повтор с тем же ключом
+  получает свежую попытку, а не `409`. `holdsLock` сбрасывается после `complete` — сбой в `sendResult` уже
+  зафиксированный ответ не отзывает.
 - Redis недоступен на входе → идемпотентность пропускается, обычная обработка (fail-open, принятый риск «двойная
   конвертация», `ARCHITECTURE.md` §9).
 Тело — в контроллере (у него уже `result.buffer` и формирование заголовков), не в интерцепторе: `@Res()`-ответ
@@ -189,9 +193,10 @@ Multer — интерцептор, выполняется раньше тела;
 - **Token bucket — atomic Lua**, иначе два параллельных запроса оба прочитают «1 токен» и оба спишут. Скрипт
   делает read-modify-write внутри одного `EVAL`.
 - **Идемпотентность — `SET NX` как замок.** Гонка двух одновременных первых запросов: `NX` выиграет один,
-  второй получит `"processing"` → `409`. Если процесс упадёт между `NX` и записью ответа — замок висит до
-  `EX 86400`, все 24ч повторы будут `409`. Принятый компромисс (лучше, чем повторная конвертация); альтернатива
-  (короткий TTL на «processing», отдельный на ответ) усложняет без явной надобности — отметить в `docs/SECURITY.md`.
+  второй получит `"processing"` → `409`. Штатный отказ до `complete` (`429`, сбой конвертации) снимает замок
+  через `discard()`. Краш процесса между `begin` и `discard`/`complete` держит замок оставшийся хвост
+  `PROCESSING_TTL_MS` (≤ 90с) — в это окно повтор с тем же ключом получит `409`; 90с ≥ таймаут конвертации
+  (`TECH-SPEC.md` §6) + запас, так что параллельная вторая конвертация всё ещё не стартует. `docs/SECURITY.md` §7.
 - **`last_used_at`** — fire-and-forget `update`, не в транзакции с конвертацией: потеря этой записи при сбое БД
   не должна ронять успешный ответ клиенту (тот же приём, что `ConversionHistoryService`).
 - **Fail-open** осознанно ослабляет защиту от перебора при недоступном Redis (`ARCHITECTURE.md` §9: «отсутствие
@@ -229,7 +234,7 @@ Multer — интерцептор, выполняется раньше тела;
 - [x] `common/rate-limit/rate-limiter.service.ts` — token bucket на Lua `EVAL`, `consume()` совместим (возвращает `RateLimitResult`), fail-open; `fixed-window-rate-limiter.service.ts` удалён; `auth.module.ts`/`auth.controller.ts` (`await consume`) на новый сервис
 - [x] `ApiKeyModule` экспортирует `ApiKeyService` + `RequestIdentityService`; `common/auth/request-identity.service.ts` — `resolve(header)` → guest ∨ session ∨ api-key, `INVALID_API_KEY` на плохой ключ, fire-and-forget `markUsed`
 - [x] `conversion.controller.ts` — resolve identity, `consume()` 1–3 бакета, `X-RateLimit-*` (в т.ч. на `429`); `main.ts` `exposedHeaders`; `conversion-failure.filter.ts` не пишет в историю `RATE_LIMIT_EXCEEDED`/`IDEMPOTENCY_KEY_CONFLICT`/`INVALID_API_KEY`; `all-exceptions.filter.ts` — заголовок `Retry-After`
-- [x] `idempotency.service.ts` + вызовы из `conversion.controller.ts` (replay до `consume`, store после), `409` на `processing`, fail-open; `try/finally` в контроллере чистит temp-каталог на путях replay/`409`/`429`
+- [x] `idempotency.service.ts` (короткий `PROCESSING_TTL_MS`, `discard()`) + вызовы из `conversion.controller.ts` (replay до `consume`, store после, `discard` в `catch` при `holdsLock`), `409` на `processing`, fail-open; `try/finally` в контроллере чистит temp-каталог на путях replay/`409`/`429`
 - [x] `files.controller.ts` (`GET /v1/files` — жёстко, download — опционально) на `RequestIdentityService`; `PATCH` остаётся под `JwtGuard`; `files.module.ts` + `ApiKeyModule`
 - [x] `docs/AUTH.md` (раздел «Ключ в публичном API», таблица бакетов), `docs/SECURITY.md` (§3 «закрыто спекой 012», §7 замок идемпотентности)
 - [x] Ручная проверка: curl (ключ/JWT/гость, guest 429, минутный лимит по 80 параллельным, auth-лимит, идемпотентность replay/409/422, Redis stop/start) + SELECT `last_used_at`/`conversions` — 10/10 групп

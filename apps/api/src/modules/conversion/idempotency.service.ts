@@ -29,12 +29,25 @@ interface StoredResult {
 const PROCESSING = 'processing';
 
 /**
+ * TTL замка `"processing"` — короткий, не `IDEMPOTENCY_TTL_SECONDS`: если
+ * запрос упадёт между `begin` и `complete` (краш процесса), замок обязан
+ * сам рассосаться, а не держать 24 часа ложных `409` (`docs/SECURITY.md`
+ * §7). Штатные отказы (`429`, ошибка конвертации) снимают его сразу через
+ * `discard()` из контроллера; этот TTL — только на случай, когда `discard`
+ * выполнить некому. Таймаут конвертации — 60с (`TECH-SPEC.md` §6), плюс
+ * запас на загрузку/очередь.
+ */
+const PROCESSING_TTL_MS = 90_000;
+
+/**
  * Спека 012. `Idempotency-Key` на `POST /v1/convert` (TECH-SPEC.md §7.3).
- * `SET NX` — замок: первый запрос кладёт `"processing"`, дальше пишет туда
- * сериализованный ответ; повтор в течение `IDEMPOTENCY_TTL_SECONDS` получает
- * его назад без повторной конвертации. Повтор во время выполнения первого →
- * `conflict` (`409`). Redis недоступен → `unavailable` — обычная обработка
- * без идемпотентности (fail-open, принятый риск «двойная конвертация»,
+ * `SET NX` — замок: первый запрос кладёт `"processing"` (короткий TTL),
+ * `complete` перезаписывает его сериализованным ответом на 24 часа; повтор в
+ * течение окна получает ответ назад без повторной конвертации. Повтор во
+ * время выполнения первого → `conflict` (`409`). Штатный отказ до `complete`
+ * (`429`, сбой конвертации) → контроллер зовёт `discard()`, замок снимается
+ * сразу. Redis недоступен → `unavailable`: обычная обработка без
+ * идемпотентности (fail-open, принятый риск «двойная конвертация»,
  * `ARCHITECTURE.md` §9).
  */
 @Injectable()
@@ -51,7 +64,7 @@ export class IdempotencyService {
         redisKey,
         PROCESSING,
         'PX',
-        this.ttlMs,
+        PROCESSING_TTL_MS,
         'NX',
       );
       if (set === 'OK') {
@@ -95,6 +108,20 @@ export class IdempotencyService {
       this.logger.warn(
         `Идемпотентность: результат не сохранён (${asMessage(error)}) — повтор переконвертирует`,
       );
+    }
+  }
+
+  /**
+   * Снять замок `"processing"`, когда до `complete` дело не дошло (`429`,
+   * сбой конвертации): без этого повтор с тем же ключом до истечения
+   * `PROCESSING_TTL_MS` получал бы `409` вместо новой попытки. Свои ошибки
+   * глушит — замок всё равно самоистечёт.
+   */
+  async discard(scope: string, key: string): Promise<void> {
+    try {
+      await this.redis.del(buildKey(scope, key));
+    } catch {
+      // Redis недоступен — замок рассосётся по `PROCESSING_TTL_MS`.
     }
   }
 }
