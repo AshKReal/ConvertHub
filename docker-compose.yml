@@ -84,6 +84,40 @@ services:
       mc mb --ignore-existing local/${MINIO_BUCKET:-convert-hub}
       "
 
+  # Спека 018. Конвертер DOCX→PDF (LibreOffice). Изоляция — это и есть смысл
+  # (ARCHITECTURE.md §2, граница 2): только internal-сеть `converter` (без
+  # исходящей сети и без порта наружу — ARCHITECTURE.md §13), без БД,
+  # read_only, tmpfs на /tmp + HOME (LibreOffice требует writable HOME),
+  # cap_drop ALL, лимиты памяти/процессов. Достижим только из контейнера
+  # `api` (`docker compose --profile full`); для docx→pdf при `pnpm dev:api`
+  # снаружи — опубликовать порт локальным docker-compose.override.yml
+  # (docs/SETUP.md).
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    restart: unless-stopped
+    command:
+      - gotenberg
+      - --chromium-disable-javascript=true
+      - --chromium-allow-list=file:///tmp/.*
+    networks:
+      - converter
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      HOME: /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 1g
+    pids_limit: 256
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   # Спека 016. Образ бэкенда под профилем `full`: `docker compose up -d`
   # поднимает только инфраструктуру и не ломает dev-цикл с горячей
   # перезагрузкой (ARCHITECTURE.md §10); `docker compose --profile full up -d`
@@ -95,12 +129,17 @@ services:
       context: .
       dockerfile: docker/api.Dockerfile
     restart: unless-stopped
+    networks:
+      - default
+      - converter
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       minio:
+        condition: service_healthy
+      gotenberg:
         condition: service_healthy
     environment:
       NODE_ENV: production
@@ -126,6 +165,7 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-unset.apps.googleusercontent.com}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-unset}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:3000/v1/auth/google/callback}
+      GOTENBERG_URL: http://gotenberg:3000
     ports:
       - "${API_PORT:-3000}:3000"
     healthcheck:
@@ -133,6 +173,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+
+networks:
+  # Спека 018. Без исходящей сети у Gotenberg — граница изоляции конвертера
+  # (ARCHITECTURE.md §2). `api` состоит и в `default`, и здесь.
+  converter:
+    internal: true
 
 volumes:
   postgres-data:

@@ -74,6 +74,14 @@ const envSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((value) => value === 'true'),
+  /**
+   * Спека 018. HTTP-адрес Gotenberg (конвертер DOCX→PDF). В `--profile full`
+   * — `http://gotenberg:3000` (внутренняя сеть compose). Недостижим →
+   * `docx-to-pdf` даёт `CONVERSION_FAILED`, остальные направления работают
+   * (`ARCHITECTURE.md` §9). Дефолт — под docker-compose.override.yml с
+   * опубликованным портом (docs/SETUP.md).
+   */
+  GOTENBERG_URL: z.string().url().default('http://localhost:3001'),
 });
 
 export type Env = z.infer<typeof envSchema>;
