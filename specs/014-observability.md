@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Статус | draft — план ждёт ревью владельца |
+| Статус | код написан, приёмка владельцем не пройдена |
 | Зависит от | 026 |
 | Источник | ТЗ п. 9.2, `TECH-SPEC.md` §7.2 («`/health` `/ready`»), §12 («Наблюдаемость»), `ARCHITECTURE.md` §8, §9 |
 | Критичность | обычная (но правит `AllExceptionsFilter` и конвейер конвертации — см. план) |
@@ -89,21 +89,15 @@
 
 ## План
 
-### Открытые решения владельца
+### Решено с владельцем
 
-1. **Health — руками, без `@nestjs/terminus`.** Две проверки (`SELECT 1`, `PING`), ~40 строк; Terminus — это
-   ещё зависимость и слой health-indicator ради двух вызовов. (Рекомендую руками.)
-2. **`/ready` при Redis-down → `200 degraded`, не `503`.** `ARCHITECTURE.md` §9: rate limit fail-open, сервис
-   продолжает работать. `503` только при недоступной базе (без неё сервис бесполезен). Площадка не должна
-   переставать слать трафик из-за упавшего Redis.
-3. **`/metrics` за токеном.** `METRICS_TOKEN` в env, `Authorization: Bearer <token>` — иначе `401`. Открытый
-   `/metrics` наружу раскрывает внутренние счётчики и кардинальность. (Рекомендую токен; альтернатива — оставить
-   открытым, pet-project, и закрыть на уровне площадки в 017.)
-4. **`request_id` от клиента — формат.** Клиент генерирует `req_<crypto.randomUUID()>` (не ULID — на фронте
-   `ulid` не подключён, а `crypto.randomUUID` есть в браузере). Сервер при отсутствии — `req_<ulid()>` (как
-   `AllExceptionsFilter` уже делает). Оба валидны, префикс `req_` общий.
+1. **Health — руками, без `@nestjs/terminus`** (две проверки: `SELECT 1`, `PING`).
+2. **`/ready` при Redis-down → `200 degraded`** (не `503`); `503` только при недоступной базе.
+3. **`/metrics` за `METRICS_TOKEN`** (`Authorization: Bearer`, иначе `401`).
+4. **`request_id` клиента = `req_<crypto.randomUUID()>`**; сервер при отсутствии — `req_<ulid()>`.
 5. **Зависимости:** `nestjs-pino@^5.1.0` + `pino@^10` + `pino-http@^11` (рантайм), `pino-pretty@^13` (dev),
-   `prom-client@^15`. Все совместимы с nest 11 / rxjs 7.
+   `@prometheus-io/client@^0.16.1` (переименованный `prom-client`, тот же API — `prom-client@15` помечен
+   deprecated «replaced by @prometheus-io/client»).
 
 ### Подход
 
@@ -204,14 +198,15 @@
 
 ## Чек-лист
 
-- [ ] `apps/api`: `nestjs-pino`+`pino`+`pino-http` (рантайм), `pino-pretty` (dev), `prom-client`
-- [ ] `common/logging/logger.config.ts` — фабрика `pinoHttp`-опций (genReqId + `X-Request-Id` ответа, `autoLogging.ignore`, свои `serializers`, `redact`, `transport` только вне прода); `LoggerModule.forRoot` в `AppModule`; `main.ts` `bufferLogs`+`useLogger`
-- [ ] `all-exceptions.filter.ts` — `requestId()` через `req.id`; `httpErrorsTotal.inc({ code })`
-- [ ] `modules/health/` — `/health` (живость), `/ready` (db `503` / redis `degraded`), таймаут 1с; `app.module.ts`
-- [ ] `modules/metrics/` — `@Global`, свой `Registry` + `collectDefaultMetrics`, пять custom-метрик, `/metrics` за `METRICS_TOKEN` (`timingSafeEqual`); `env.ts` += `LOG_LEVEL`/`METRICS_TOKEN`, `.env.example`, `docs/SETUP.md`
-- [ ] Хуки метрик: `ConversionHistoryService` (`conversionsTotal`/`conversionDuration`), `ConcurrencyLimiterService.totalActive()` (`conversionsInFlight`), `storageUsedBytes` через `collect`
-- [ ] Фронт: `core/interceptors/request-id-interceptor.ts`, порядок в `app.config.ts`; CORS `exposedHeaders`/`allowedHeaders` += `X-Request-Id`
-- [ ] Ручная проверка: все критерии приёмки + `grep` по логам на секреты + `docker compose stop postgres/redis`
+- [x] `apps/api`: `nestjs-pino`+`pino`+`pino-http` (рантайм), `pino-pretty` (dev), `@prometheus-io/client` (переименованный `prom-client`)
+- [x] `common/logging/logger.config.ts` — фабрика `pinoHttp`-опций (`genReqId` + `X-Request-Id` ответа, `autoLogging.ignore` `/health`/`/ready`/`/metrics`, свои `serializers` без `headers`/`remoteAddress`, `redact`, `pino-pretty` только вне прода); `LoggerModule.forRoot` в `AppModule`; `main.ts` `bufferLogs`+`useLogger`
+- [x] `all-exceptions.filter.ts` — `requestId()` через `req.id` (pino) → заголовок → генерация; `httpErrorsTotal.inc({ code })`
+- [x] `modules/health/` — `/health` (мгновенно `ok`), `/ready` (db → `503 down` / redis → `200 degraded`), таймаут 1с; `app.module.ts`
+- [x] `modules/metrics/` — `@Global`, свой `Registry` + `collectDefaultMetrics`, пять custom-метрик, `/metrics` за `METRICS_TOKEN` (`timingSafeEqual`); `env.ts` += `LOG_LEVEL`/`METRICS_TOKEN`, `.env.example`/`.env`, `docs/SETUP.md`, `docs/AUTH.md`
+- [x] Хуки метрик: `ConversionHistoryService` (`conversionsTotal`/`conversionDuration`), `ConcurrencyLimiterService` inc/dec (`conversionsInFlight`), `storageUsedBytes` через `refreshDynamicGauges()` перед скрейпом (не `collect` — нужен DI `PrismaService`)
+- [x] Фронт: `core/interceptors/request-id-interceptor.ts` первым в `app.config.ts`; CORS `exposedHeaders` += `X-Request-Id` (`allowedHeaders` не трогаем — `cors` отражает запрошенные)
+- [x] Ручная проверка (curl + docker stop): `/health` `200` даже при лежачих БД/Redis; `/ready` `503 db:down` / `200 degraded redis:down` / `200 ok`; `X-Request-Id` эхо и генерация; `request_id` тела = заголовок = `req_id` строки лога; `/health`/`/ready`/`/metrics` не в запрос-логе; grep по логу — ноль паролей/ключей/IP; `/metrics` `401` без токена / `200 text/plain` с токеном, все пять custom + `process_*`/`nodejs_*`; `conversions_total{jpg-to-png,COMPLETED}` и `http_errors_total{INVALID_PARAMETER}` растут; `storage_used_bytes` = `SUM(storage_used_bytes)`
+- [ ] Браузер: `X-Request-Id` в Network у каждого API-запроса; «валидный JSON построчно» — в `NODE_ENV=production` (в деве `pino-pretty`) — в батч-приёмку
 
 ### Приёмка
 
