@@ -12,25 +12,39 @@
 
   <section class="flex flex-col gap-3">
     <h2 class="font-heading text-heading-sm text-text">{{ i18n.t('apiDocs.endpoints.title') }}</h2>
-    <div class="overflow-x-auto rounded-lg border border-hairline bg-surface">
-      <table class="w-full text-left text-body-sm">
-        <tbody>
-          @for (endpoint of endpoints; track endpoint.id) {
-            <tr class="border-b border-hairline last:border-b-0">
-              <td class="whitespace-nowrap px-4 py-3 font-mono text-caption text-text-secondary">
-                {{ endpoint.method }}
-              </td>
-              <td class="whitespace-nowrap px-4 py-3 font-mono text-body-sm text-text">
-                {{ endpoint.path }}
-              </td>
-              <td class="px-4 py-3 text-text-secondary">
-                {{ i18n.t(endpointDescriptionKeys[endpoint.id]) }}
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+    @if (endpointsQuery.isPending()) {
+      <p class="text-body-sm text-text-muted">{{ i18n.t('apiDocs.schema.loading') }}</p>
+    } @else if (endpointsQuery.isError()) {
+      <p class="text-body-sm text-text-secondary">{{ i18n.t('apiDocs.schema.unavailable') }}</p>
+    } @else {
+      <div class="overflow-x-auto rounded-lg border border-hairline bg-surface">
+        <table class="w-full text-left text-body-sm">
+          <tbody>
+            @for (endpoint of endpointsQuery.data() ?? []; track endpoint.method + endpoint.path) {
+              <tr class="border-b border-hairline last:border-b-0">
+                <td class="whitespace-nowrap px-4 py-3 font-mono text-caption text-text-secondary">
+                  {{ endpoint.method }}
+                </td>
+                <td class="whitespace-nowrap px-4 py-3 font-mono text-body-sm text-text">
+                  {{ endpoint.path }}
+                </td>
+                <td class="px-4 py-3 text-text-secondary">{{ endpoint.summary }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+    <p class="text-caption text-text-muted">
+      {{ i18n.t('apiDocs.schema.full') }}
+      <a
+        [href]="openApiUrl"
+        target="_blank"
+        rel="noopener"
+        class="font-mono underline decoration-strong underline-offset-2 hover:text-text"
+        >/v1/openapi.json</a
+      >
+    </p>
   </section>
 
   <section class="flex flex-col gap-3">
