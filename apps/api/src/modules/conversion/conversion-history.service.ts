@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { ConversionStatus } from '@prisma/client';
 import { ulid } from 'ulid';
+import { MetricsService } from '../metrics/metrics.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface RecordConversionInput {
@@ -23,9 +24,22 @@ export interface RecordConversionInput {
 export class ConversionHistoryService {
   private readonly logger = new Logger(ConversionHistoryService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly metrics: MetricsService,
+  ) {}
 
   async recordConversion(input: RecordConversionInput): Promise<void> {
+    // Спека 014. Метрики — из той же единой точки записи любой конвертации
+    // (успешной и упавшей). Лейбл `direction` ограничен реестром направлений
+    // + `unknown` (отказ до определения направления) — кардинальность мала.
+    const direction = input.directionId ?? 'unknown';
+    this.metrics.conversionsTotal.inc({ direction, status: input.status });
+    this.metrics.conversionDuration.observe(
+      { direction },
+      input.durationMs / 1000,
+    );
+
     try {
       await this.prisma.conversion.create({
         data: {
