@@ -17,6 +17,8 @@ export function outputMimeFor(target: ConversionTarget): string {
     case 'docx':
       return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     default:
-      throw new Error(`No output MIME mapping for target "${target}"`);
+      // Все члены `ConversionTarget` покрыты — ветка только на случай
+      // значения вне union в рантайме.
+      throw new Error(`No output MIME mapping for target "${String(target)}"`);
   }
 }

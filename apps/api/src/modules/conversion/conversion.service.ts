@@ -7,12 +7,14 @@ import { FilesService } from '../files/files.service';
 import { ConcurrencyLimiterService } from './concurrency-limiter.service';
 import { ConversionHistoryService } from './conversion-history.service';
 import { cleanupConvertTempDir } from './convert-file.interceptor';
+import { DocumentPoolService } from './document-pool.service';
 import {
   CONVERSION_ENGINES,
   type ConversionEngine,
 } from './engines/engine.interface';
 import { outputMimeFor } from './output-mime';
 import { assertSupportedDirection } from './validators/conversion-direction.validator';
+import { assertDocxWithinUnzipLimit } from './validators/docx-zip-bomb.validator';
 import { detectFileType } from './validators/magic-bytes.validator';
 import { assertPdfPageLimit } from './validators/pdf-page-count.validator';
 import { assertWithinPixelLimit } from './validators/pixel-count.validator';
@@ -39,6 +41,7 @@ export class ConversionService {
     private readonly filesService: FilesService,
     private readonly conversionHistory: ConversionHistoryService,
     private readonly concurrencyLimiter: ConcurrencyLimiterService,
+    private readonly documentPool: DocumentPoolService,
   ) {}
 
   /**
@@ -64,11 +67,13 @@ export class ConversionService {
       const detected = await detectFileType(filePath);
       const direction = assertSupportedDirection(detected, request.target);
 
-      // Decompression bomb (изображения) и предел страниц (PDF) — разные
-      // проверки для разных форматов; `sharp` не понимает PDF, вызов не должен
-      // быть безусловным (спека 005).
+      // Проверка входа — по категории формата (`sharp` не понимает PDF, а
+      // DOCX — это ZIP, спека 018 🔒): бомба-разрешение для изображений,
+      // предел страниц для PDF, бомба-распаковки для DOCX. Всегда ДО движка.
       if (direction.from === 'PDF') {
         await assertPdfPageLimit(filePath);
+      } else if (direction.from === 'DOCX') {
+        await assertDocxWithinUnzipLimit(filePath);
       } else {
         await assertWithinPixelLimit(filePath);
       }
@@ -83,11 +88,29 @@ export class ConversionService {
       }
 
       const input = await readFile(filePath);
-      const buffer = await engine.convert(input, {
-        target: request.target,
-        quality: request.quality,
-        background: request.background,
-      });
+
+      // Спека 018 (TECH-SPEC.md §6). Пул документных конвертаций — только для
+      // `DOCX→PDF` (общий ресурс LibreOffice), вокруг самого `engine.convert`;
+      // `acquire()` может бросить `SERVICE_OVERLOADED` после ожидания.
+      let buffer: Buffer;
+      if (direction.from === 'DOCX') {
+        await this.documentPool.acquire();
+        try {
+          buffer = await engine.convert(input, {
+            target: request.target,
+            quality: request.quality,
+            background: request.background,
+          });
+        } finally {
+          this.documentPool.release();
+        }
+      } else {
+        buffer = await engine.convert(input, {
+          target: request.target,
+          quality: request.quality,
+          background: request.background,
+        });
+      }
       const mime = outputMimeFor(request.target);
 
       let fileId: string | undefined;

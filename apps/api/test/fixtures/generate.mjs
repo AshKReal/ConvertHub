@@ -7,27 +7,10 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import sharp from 'sharp';
 import { PDFDocument } from 'pdf-lib';
+import { buildZip, crc32, docxEntries } from './zip-writer.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const out = (name) => join(here, name);
-
-// Собственный CRC-32 (полином PNG/zlib) — чтобы скрипт не зависел от
-// `node:zlib#crc32` (только Node >= 22.2 / 20.15), он и так тут ради одной
-// операции.
-const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
-  let c = n;
-  for (let k = 0; k < 8; k += 1) {
-    c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-  }
-  return c >>> 0;
-});
-const crc32 = (buf) => {
-  let c = 0xffffffff;
-  for (const byte of buf) {
-    c = CRC_TABLE[(c ^ byte) & 0xff] ^ (c >>> 8);
-  }
-  return (c ^ 0xffffffff) >>> 0;
-};
 
 // 8×8 сплошной цвет — минимально валидные изображения, magic bytes реальные.
 await sharp({
@@ -83,5 +66,24 @@ await writeFile(out('exactly-50.pdf'), await pdfWithPages(50));
 await writeFile(out('many-pages.pdf'), await pdfWithPages(51));
 
 await writeFile(out('not-an-image.txt'), 'just some text, no magic bytes here\n');
+
+// ---- ZIP / DOCX (спека 018) — райтер в отдельном модуле, общий со спекой ----
+const docx = docxEntries();
+await writeFile(out('sample.docx'), buildZip(docx));
+
+// Бомба: тот же docx, но центральный каталог заявляет 500 МиБ несжатого на
+// `word/document.xml` при паре сотен байт на диске — превышает и коэффициент
+// (MAX_DOCX_UNZIP_RATIO), и абсолютный предел (MAX_DOCX_UNZIP_BYTES). Больше
+// 4 ГиБ в обычный ZIP не заявить — там uint32, для этого нужен ZIP64.
+await writeFile(
+  out('zip-bomb.docx'),
+  buildZip(
+    docx.map((e) =>
+      e.name === 'word/document.xml'
+        ? { ...e, declaredUncompressed: 500 * 1024 * 1024 }
+        : e,
+    ),
+  ),
+);
 
 console.log('fixtures written to', here);
