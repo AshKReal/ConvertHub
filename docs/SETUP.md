@@ -13,8 +13,8 @@
 | `apps/api` — Prisma 6 / PostgreSQL | Схема `users`/`files`/`conversions`, миграции в `apps/api/src/prisma/migrations/` (спека 003) |
 | `packages/shared` | Реестр направлений конвертации, коды ошибок, лимиты; собирается в `dist/` |
 | `docker-compose.yml` | `postgres:17-alpine`, `redis:7-alpine` (оба с healthcheck), `mailhog/mailhog:v1.0.1` (без — образ минимальный, нечем его написать) |
-| Тесты (Vitest, спека 015 частично) | Юнит во всех трёх пакетах + e2e в `apps/api` против реальной `convert_hub_test` — раздел «Тесты» ниже |
-| CI (`.github/workflows/ci.yml`) | `typecheck`/`lint`/`test` (юнит) на push/PR в `main`/`backend` — без внешних сервисов, e2e в CI пока нет |
+| Тесты (спека 015) | Vitest: юнит во всех трёх пакетах (🔒-валидаторы, автомат зоны загрузки, pipes, квота) + e2e-слой `apps/api` (`supertest` + `convert_hub_test`). Playwright: браузерный минимум (`apps/web/e2e/`). Раздел «Тесты» ниже |
+| CI (`.github/workflows/ci.yml`) | job `check` — `typecheck`/`lint`/`test` (юнит), без сервисов; job `e2e` — postgres+redis, `apps/api` supertest + Playwright. На push/PR в `main`/`backend` |
 
 ## Требования
 
@@ -104,12 +104,14 @@ pnpm lint
 
 ## Тесты
 
-Спека 015 (частично — Vitest сделан, Testcontainers сознательно заменён второй БД, Playwright отложен;
-`specs/015-testing.md`). Один раннер — Vitest — во всех трёх пакетах.
+Спека 015 (`specs/015-testing.md`). Testcontainers сознательно заменён второй БД на общем контейнере Postgres.
+Vitest — юнит во всех трёх пакетах + e2e-слой `apps/api` (`supertest` поверх `AppModule`). Playwright — браузерный
+e2e-минимум (`apps/web/e2e/`).
 
 ```
 pnpm test        юнит-тесты всех трёх пакетов, без внешних сервисов — безопасно запускать всегда
-pnpm test:e2e     apps/api против реальной convert_hub_test (см. ниже)
+pnpm test:e2e     apps/api (supertest) против реальной convert_hub_test (см. ниже)
+pnpm e2e          Playwright: chromium против поднятого стека (см. «Playwright» ниже)
 ```
 
 **Юнит.** `packages/shared` и `apps/web` — без внешних сервисов. `apps/api` — `unplugin-swc` (Vitest не умеет
@@ -132,6 +134,33 @@ pnpm --filter api db:migrate:test        # применяет все мигра�
 подменяет `DATABASE_URL` на неё до импорта Prisma; без `TEST_DATABASE_URL` тесты падают явно, не бьют по dev-БД
 тихо. Каждый e2e-тест удаляет за собой созданные строки (`test/utils/test-db.ts#cleanupUser`) — не глобальный
 rollback транзакций.
+
+### Playwright (`pnpm e2e`)
+
+Браузерный e2e-минимум (`ARCHITECTURE.md` §11): гость конвертирует, вошедший видит файл, файл > 10 МБ отклоняется,
+при полной квоте файл не сохраняется. Config — `apps/web/playwright.config.ts`.
+
+Playwright сам поднимает стек (`webServer`): `nest start` с `DATABASE_URL` = `TEST_DATABASE_URL` (та же
+`convert_hub_test`, что supertest-слой — сценарии создают и убирают своих `e2e-pw-*` пользователей) и `ng serve`.
+Разовая настройка:
+
+```
+docker compose up -d postgres redis           # оба нужны: rate limit / идемпотентность
+pnpm --filter api db:migrate:test             # если convert_hub_test ещё не мигрирована
+pnpm --filter web exec playwright install chromium
+```
+
+Прогон:
+
+```
+# останови pnpm dev:api, если запущен: локальный dev смотрит в convert_hub,
+# а Playwright-API и его сидинг квоты (apps/api/scripts/e2e-db.mjs) — в convert_hub_test;
+# они не должны расходиться, поэтому порт 3000 должен быть свободен
+pnpm e2e
+```
+
+`apps/web/e2e/e2e:typecheck` (`tsconfig.e2e.json`) — отдельный `tsc` для `e2e/`: каталог вне `src/`, обычный
+`pnpm --filter web typecheck` его теперь тоже гоняет.
 
 ## Где смотреть письма
 
@@ -166,4 +195,3 @@ Google (`invalid_client`), не `500` у нас — это ожидаемо, н�
 | Реальное объектное хранилище вместо `LocalDiskStorage` | Спека 016 |
 | Сервисы `api` и `web` в `docker-compose.yml`, Dockerfile | Спека 016 |
 | Gotenberg и MinIO | Спека 016 |
-| Playwright (браузерные e2e) | Спека 015, отложено — раздел «Тесты» выше покрывает только Vitest |
