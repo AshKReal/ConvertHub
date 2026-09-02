@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Статус | черновик спеки + плана, код не начат |
+| Статус | код написан, приёмка владельцем не пройдена |
 | Зависит от | 005 (движки), 015 (тесты — CI job), 003/010 (`Storage`) |
 | Источник | ТЗ п. 8.4, `TECH-SPEC.md` §3.1 (Cloudflare R2), §3.2 (замена `LocalDiskStorage` на `S3Storage`), §13, `ARCHITECTURE.md` §2 (граница 1/3), §10 |
 | Критичность | обычная (правит `config/env.ts` и `storage.module.ts`, но не 🔒-код; проверочное свойство — `conversion.service.ts`/`files.service.ts` не тронуты) |
@@ -235,18 +235,18 @@ S3-совместимое объектное хранилище с локаль�
 
 ## Чек-лист
 
-- [ ] `specs/016-containerization.md` + план (этот файл) — коммит-гейт перед кодом
-- [ ] `apps/api`: `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`
-- [ ] `config/env.ts` — `STORAGE_DRIVER` + `S3_*` с условным `superRefine`; `.env.example` (оба), `docs/SETUP.md`
-- [ ] `modules/storage/s3.storage.ts` — `put`/`getSignedUrl`/`delete`/`list`; `storage.module.ts` — фабрика по драйверу, raw-контроллер только при `local`
-- [ ] `s3.storage.spec.ts` — юнит с мокнутым клиентом S3 (форма команд, `ContentType`, `expiresIn`, постраничный `list`)
-- [ ] `modules/health/health.service.ts` — `checkStorage()` при `s3` → `degraded` при недоступности
-- [ ] `docker/api.Dockerfile` — 3 стадии, `node:22-bookworm-slim`, python + `pdf2docx`/`pymupdf`, prisma generate, `WORKDIR .../apps/api`, `USER node`
-- [ ] `docker/api-entrypoint.sh` — `prisma migrate deploy && exec node dist/main`
-- [ ] `docker-compose.yml` — `minio` + `minio-init` (основной набор), `api` (profile `full`), контейнерные хосты в env
-- [ ] `.github/workflows/ci.yml` — job `docker` (buildx build без push + smoke `/health` `/ready`)
-- [ ] Ручная проверка по критериям приёмки: build на чистом клоне; `up` без профиля не поднимает `api`; `--profile full` → `/health`/`/ready` `200`; `s3` — объект в бакете, `download` → `302`, скачивание; `local` — регрессия 003/010 и весь тестовый стек зелёные; `git diff` не трогает `conversion.service.ts`/`files.service.ts`
-- [ ] `pnpm typecheck` / `pnpm lint` / `pnpm test` / `pnpm test:e2e` / `pnpm e2e` — зелёные
+- [x] `specs/016-containerization.md` + план (этот файл) — коммит-гейт перед кодом
+- [x] `apps/api`: `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`
+- [x] `config/env.ts` — `STORAGE_DRIVER` + `S3_*` (S3-переменные `.optional()` + проверка после `parse`; `LOCAL_STORAGE_DIR`/`SIGNED_URL_SECRET` оставлены безусловными — см. «После мержа»); `.env.example` (оба), `docs/SETUP.md`
+- [x] `modules/storage/s3.storage.ts` — `put`/`getSignedUrl`/`delete`/`list`; `storage.module.ts` — фабрика по драйверу, raw-контроллер только при `local`
+- [x] `s3.storage.spec.ts` — юнит с мокнутым `@aws-sdk` (форма команд, `ContentType`, `expiresIn`, постраничный `list`)
+- [x] `modules/health/health.service.ts` — `checkStorage()` (`HeadBucket`) при `s3` → `degraded` при недоступности
+- [x] `docker/api.Dockerfile` — 3 стадии, `node:22-bookworm-slim`, python + `pdf2docx`/`pymupdf`, `pnpm deploy --prod --legacy`, prisma generate в runtime, `WORKDIR /app`, `USER node`; `tsconfig.base.json` копируется в build-стадию
+- [x] `docker/api-entrypoint.sh` — `prisma migrate deploy && node dist/src/main` (`nest build` кладёт точку входа в `dist/src/`); `.dockerignore`; `.gitattributes` (`*.sh` eol=lf)
+- [x] `docker-compose.yml` — `minio` + `minio-init` (основной набор), `api` (profile `full`), контейнерные хосты в env
+- [x] `.github/workflows/ci.yml` — job `docker` (buildx build без push + smoke `/health` `/ready`; MinIO через `docker run`, не `services:`)
+- [x] Ручная проверка: `docker build` на полном контексте проходит; контейнер против compose-инфры — миграции при старте, `/health` `200`, `/ready` `200 {db,redis,storage:up}`; `s3` — объект в бакете `convert-hub`, `download` → `302` presigned на `localhost:9000` (SigV4, path-style, `X-Amz-Expires=900`, `disposition=attachment`), скачивание PNG; `local` — регрессия 003/010 и весь тестовый стек зелёные; `git diff main..HEAD` не трогает `conversion.service.ts`/`files.service.ts` для 016
+- [x] `pnpm typecheck` / `pnpm lint` / `pnpm test` / `pnpm test:e2e` / `pnpm e2e` — зелёные
 
 ### Приёмка
 
@@ -255,10 +255,16 @@ S3-совместимое объектное хранилище с локаль�
 - [ ] Враждебное второе мнение: новый чат, только код, без плана и объяснений автора
 - [ ] `git diff` не содержит файлов вне постановки
 
+### Отступления от плана (в диффе, не молча)
+
+- **`LOCAL_STORAGE_DIR`/`SIGNED_URL_SECRET` оставлены безусловно обязательными** (план: «условная обязательность через `superRefine`»). Делать их условными → `string | undefined` в `signed-url.util.ts` и `local-disk-raw.controller.ts` (зона `critical-zones.md`); review-поверхность 🔒-файлов дороже удобства. В `s3`-режиме держатся заглушками (`docs/SETUP.md`, `env.ts` комментарий). S3-переменные — `.optional()` + явная проверка после `parse`.
+- **`api-entrypoint.sh` запускает `dist/src/main`, не `dist/main`** — `nest build` в этом проекте кладёт точку входа в `dist/src/` (`rootDir` выводится в `src`). Существующий `start:prod` (`node dist/main`) тоже неверен, просто не используется.
+- **MinIO в CI — `docker run`, не сервис-контейнер** — GitHub `services:` не даёт передать команду `server /data`.
+
 ### После мержа
 
 - [ ] Решения-долгожители → `TECH-SPEC.md` §3.2/§13: `STORAGE_DRIVER` как переключатель (а не жёсткий флип), `@aws-sdk/client-s3` + presigned URL как канон, профиль compose для `api`, `web` не в compose
 - [ ] `ARCHITECTURE.md` §1.1/§10 — MinIO в основном наборе compose, `api` под профилем, миграции при старте
-- [ ] `docs/SETUP.md` — строка «сервисы api и web в docker-compose.yml» приведена к реальности
+- [x] `docs/SETUP.md` — строка «сервисы api и web в docker-compose.yml» приведена к реальности (сделано в этой же ветке)
 - [ ] Статус в реестре обновлён (016 + сноска про совмещённую с 018 ветку)
 - [ ] Ошибки агента записаны в `AI-JOURNAL.md`

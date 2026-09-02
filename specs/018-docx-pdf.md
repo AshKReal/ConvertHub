@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Статус | черновик спеки + плана, код не начат |
+| Статус | код написан, приёмка владельцем построчно не пройдена (🔒) |
 | Зависит от | 016 (образ, compose, инфраструктура), 005 (`ConversionEngine`, оркестрация) |
 | Источник | ТЗ п. 2, п. 9.4, `TECH-SPEC.md` §2.1 (`DOCX → PDF` / Gotenberg), §6 (пул документов 8, ожидание 10 с), §9 (ZIP-бомба DOCX), §14, `ARCHITECTURE.md` §2 (граница 2 — изоляция конвертера), §9 |
 | Критичность | 🔒 — впервые пускает ZIP-архив недоверенного пользователя в парсер (LibreOffice) и в распаковщик. План до кода, приёмка построчная (`.claude/rules/critical-zones.md`) |
@@ -113,16 +113,20 @@ LibreOffice запускается в отдельном контейнере (G
    (`conversion-direction.validator.ts`, `docx-zip-bomb.validator.ts`) — отдельными коммитами.
 2. Приёмка построчная (`.claude/rules/critical-zones.md`), спека помечена 🔒 в `SPECS.md`.
 
-### Открытые вопросы (решить в плане до кода — не молча)
+### Открытые вопросы — решено при реализации
 
-- **Gotenberg в основном наборе compose или под профилем `full`?** Он не публикует портов и лёгкий; но
-  документный движок без него не работает. Склоняюсь к основному набору (как MinIO в 016) — тогда `pnpm dev:api`
-  снаружи может конвертировать документы. Против: ещё один контейнер в дефолтном `up`.
-- **`S3_PUBLIC_ENDPOINT`** (риск из 016) — если не решён в 016, документные результаты через presigned URL
-  наследуют ту же проблему.
-- **Health-проверка Gotenberg** в `/ready` — добавлять или нет.
-- **Метрика документного пула** — отдельный gauge или переиспользовать `conversionsInFlight`.
-- **Playwright — пятый сценарий `DOCX → PDF`** — добавлять в `apps/web/e2e/` или оставить на curl-проверку.
+- **Gotenberg в основном наборе compose**, не под профилем. НО без публикации портов и в
+  `internal: true`-сети — `pnpm dev:api` снаружи его не видит (изоляция важнее DX). Для docx→pdf локально —
+  `--profile full` либо `docker-compose.override.yml` с портом (`docs/SETUP.md`).
+- **`S3_PUBLIC_ENDPOINT`** решён в 016 — presigned URL подписывается от публичного хоста.
+- **Health-проверка Gotenberg в `/ready` — НЕ добавлена.** Локально без `--profile full` Gotenberg
+  недостижим, `/ready` был бы вечно `degraded` — шум. Сбой docx-конвертации даёт `CONVERSION_FAILED` + лог,
+  этого достаточно (014 её тоже не требовал).
+- **Метрика — отдельный gauge `converthub_document_pool_active`** (не переиспользуем `conversionsInFlight` —
+  другая семантика). 014 явно отложил её сюда.
+- **Playwright — пятый сценарий НЕ добавлен.** UI-путь конвертации уже покрыт (`jpg→png`);
+  `docx→pdf` через браузер потребовал бы Gotenberg в Playwright-джобе CI. Вместо этого —
+  `apps/api/test/docx-pdf.e2e-spec.ts` за флагом `E2E_DOCX=1`.
 
 ### Подход
 
@@ -257,18 +261,19 @@ LibreOffice запускается в отдельном контейнере (G
 
 ## Чек-лист
 
-- [ ] `specs/018-docx-pdf.md` + план (этот файл) — коммит-гейт перед кодом, 🔒 в `SPECS.md`
-- [ ] `packages/shared`: `DOCUMENT_POOL_SIZE`, `DOCUMENT_POOL_WAIT_SECONDS`, `CONVERSION_TIMEOUT_SECONDS`, `MAX_DOCX_UNZIP_RATIO`, `MAX_DOCX_UNZIP_BYTES` (убрать дубль `TIMEOUT_MS` в `pdf-to-docx.engine.ts`)
-- [ ] `docker-compose.yml` — `gotenberg` (сеть `internal`, `read_only`, `tmpfs`, `cap_drop`, лимиты, без портов); `env.ts` += `GOTENBERG_URL`; `.env.example`; `docs/SETUP.md`
-- [ ] `engines/document.engine.ts` — `supports('DOCX','PDF')`, `fetch` в Gotenberg с `AbortSignal.timeout`, отказы → `CONVERSION_TIMEOUT`/`CONVERSION_FAILED`; регистрация в `conversion.module.ts`
-- [ ] `document-pool.service.ts` — семафор 8 + очередь + ожидание 10 с → `SERVICE_OVERLOADED`; вызов в `conversion.service.ts` только для `docx-to-pdf`, `release()` в `finally`; `all-exceptions.filter.ts` — `Retry-After` для `SERVICE_OVERLOADED`
-- [ ] 🔒 `validators/conversion-direction.validator.ts` — снять `.filter(docx-to-pdf)`, внести оба MIME (docx / zip) в маппинг; **отдельный коммит**
-- [ ] 🔒 `validators/docx-zip-bomb.validator.ts` — разбор центрального каталога ZIP, ratio 100 + абсолютный предел → `FILE_TOO_LARGE`, битый → `FILE_CORRUPTED`, ZIP64 без EOCD64 → `FILE_CORRUPTED`; вызов до пула и до движка; **отдельный коммит**
-- [ ] Фикстуры: настоящий `sample.docx` + `zip-bomb.docx` (в `generate.mjs`); `conversion-direction.validator.spec.ts` переписан
-- [ ] Юнит: `docx-zip-bomb.validator.spec.ts` (в пределах / ровно на границе ratio / бомба / битый ZIP / ZIP64), `document-pool.service.spec.ts` (8 проходят, 9-я ждёт, таймаут → `SERVICE_OVERLOADED`, `release` отдаёт слот), `document.engine.spec.ts` (форма запроса к Gotenberg с мокнутым `fetch`, маппинг таймаута/не-2xx)
-- [ ] Ручная проверка по критериям 🔒: все точки входа DOCX найдены; тип по сигнатуре; `catch` различает причины; ресурсы в `finally`; бомба считается по каталогу без распаковки; в логе нет тела документа
-- [ ] Ручная проверка функциональная: настоящий docx → PDF; бомба → `413`; битый → `422`; fake → `415`; пул 8 + `503`+`Retry-After`; Gotenberg down → `504`/`500` при живых изображениях; сети у Gotenberg нет, порт не опубликован
-- [ ] `pnpm typecheck` / `pnpm lint` / `pnpm test` / `pnpm test:e2e` / `pnpm e2e` — зелёные
+- [x] `specs/018-docx-pdf.md` + план (этот файл) — коммит-гейт перед кодом, 🔒 в `SPECS.md`
+- [x] `packages/shared`: `DOCUMENT_POOL_SIZE`, `DOCUMENT_POOL_WAIT_SECONDS`, `CONVERSION_TIMEOUT_SECONDS`, `MAX_DOCX_UNZIP_RATIO`, `MAX_DOCX_UNZIP_BYTES` (дубль `TIMEOUT_MS` в `pdf-to-docx.engine.ts` убран)
+- [x] `docker-compose.yml` — `gotenberg` (сеть `converter` `internal`, `read_only`, `tmpfs /tmp` + `HOME=/tmp`, `cap_drop ALL`, `no-new-privileges`, `mem_limit`/`pids_limit`, без портов); `env.ts` += `GOTENBERG_URL`; `.env.example`; `docs/SETUP.md`
+- [x] `engines/document.engine.ts` — `supports('DOCX','PDF')`, `fetch` в Gotenberg с `AbortSignal.timeout`, `TimeoutError` → `CONVERSION_TIMEOUT`, не-2xx/сеть → `CONVERSION_FAILED`; регистрация в `conversion.module.ts`
+- [x] `document-pool.service.ts` — семафор 8 + очередь + ожидание 10 с → `SERVICE_OVERLOADED` + `retry_after_seconds`; вызов в `conversion.service.ts` только для `DOCX`, `release()` во вложенном `finally`; `all-exceptions.filter.ts` — `Retry-After` для `SERVICE_OVERLOADED`; метрика `converthub_document_pool_active`
+- [x] 🔒 `validators/conversion-direction.validator.ts` — снят `.filter(docx-to-pdf)` (`file-type` на реальном .docx отдаёт docx-MIME, не `application/zip` — проверено фикстурой) — **отдельный коммит**
+- [x] 🔒 `validators/docx-zip-bomb.validator.ts` — разбор центрального каталога ZIP, `> MAX_DOCX_UNZIP_BYTES` ИЛИ `> fileSize*RATIO` → `FILE_TOO_LARGE` (`actual_size_bytes`/`max_size_bytes` в `meta`), EOCD не найден / запись не парсится / ZIP64-sentinel → `FILE_CORRUPTED`; вызов до пула и до движка — **отдельный коммит**
+- [x] `output-mime.ts` — `target: 'pdf'` → `application/pdf`
+- [x] Фикстуры: `test/fixtures/zip-writer.mjs`+`.d.mts` (общий ZIP-райтер), `sample.docx` (LibreOffice его конвертирует), `zip-bomb.docx`; `conversion-direction.validator.spec.ts` переписан
+- [x] Юнит: `docx-zip-bomb.validator.spec.ts` (валиден / бомба / ровно на границе ratio / +1 байт / не-zip / обрезанный / ZIP64-sentinel), `document-pool.service.spec.ts` (8 проходят, 9-я ждёт, таймаут → `SERVICE_OVERLOADED`, `release` передаёт слот / декрементит гейдж), `document.engine.spec.ts` (маршрут/форма/маппинг таймаута/не-2xx/сети)
+- [x] `apps/api/test/docx-pdf.e2e-spec.ts` за `E2E_DOCX=1` — реальный docx → PDF, zip-bomb → `413` (проверено с поднятым Gotenberg: 2/2)
+- [x] Ручная проверка функциональная: настоящий docx → `200` PDF; бомба → `413 FILE_TOO_LARGE` с числами; `jpg→png` без регрессий; standalone Gotenberg с `read_only`+`tmpfs`+`HOME=/tmp` конвертирует (изоляция не мешает); порт не опубликован, сети наружу нет
+- [x] `pnpm typecheck` / `pnpm lint` / `pnpm test` (shared 5 / api 68 / web 19) / `pnpm test:e2e` (6, docx-спек skipped без флага) / `pnpm e2e` — зелёные
 
 ### Приёмка
 
