@@ -206,13 +206,15 @@
   - [x] `request_id` генерируется на клиенте (`req_<uuid>`), интерцептор шлёт `X-Request-Id`; `nestjs-pino` (`genReqId`) кладёт в лог и эхом в заголовок ответа; `request_id` тела ошибки = логовому. Структурные JSON-логи (в проде — сырьё, в деве `pino-pretty`), без заголовков/IP/тел
   - [x] Метрики (`@prometheus-io/client`, `GET /metrics` за `METRICS_TOKEN`): `converthub_conversions_total{direction,status}`, `_conversion_duration_seconds`, `_http_errors_total{code}`, `_conversions_in_flight`, `_storage_used_bytes` + дефолтные `process_*`/`nodejs_*`
   - [ ] Приёмка владельцем: критерии руками (частью прогнаны curl'ом), браузер (`X-Request-Id` в Network), враждебное второе мнение
-- [ ] **015** `testing` — `specs/015-testing.md` (частично)
+- [x] **015** `testing` — `specs/015-testing.md`
   - [x] Раннер (Vitest) настроен во всех трёх пакетах + e2e-слой `apps/api` против `convert_hub_test` — сделано
-    вне очереди (решение владельца, прямо в `backend`, без ветки/PR). Ни один из пунктов ниже ещё не покрыт
-    реальными тестами — только по одному тесту-доказательству на пакет, что раннер работает
-  - [ ] Vitest: валидаторы, автомат зоны загрузки, pipes, расчёт квоты
-  - [ ] ~~Testcontainers~~ — заменено второй БД на существующем контейнере Postgres (решение владельца, `specs/015-testing.md`): транзакции и миграции на настоящем PostgreSQL уже проверяются e2e-слоем `apps/api`
-  - [ ] Playwright: гость конвертирует; пользователь входит и видит файл; файл >10 МБ отклоняется; конвертация при заполненной квоте не сохраняет файл
+    вне очереди (решение владельца, прямо в `backend`, без ветки/PR)
+  - [x] Vitest: 🔒-валидаторы (`magic-bytes`, `conversion-direction`, `pdf-page-count`, `pixel-count`), `ZodValidationPipe` + `convertFormSchema`, автомат зоны загрузки (`Dropzone`), расчёт квоты (`files.service` + e2e `quota.e2e-spec.ts`), `formatBytes`/`formatDate`
+  - [x] ~~Testcontainers~~ — заменено второй БД на существующем контейнере Postgres (решение владельца, `specs/015-testing.md`): транзакции и миграции на настоящем PostgreSQL проверяются e2e-слоем `apps/api`
+  - [x] Playwright (`apps/web/e2e/`, chromium): гость конвертирует (проверка PNG-сигнатуры скачанного файла); пользователь входит и видит файл; файл >10 МБ отклонён без запроса; конвертация при заполненной квоте не сохраняет файл
+  - [x] CI: job `e2e` в `.github/workflows/ci.yml` (postgres+redis, обе БД, `api test:e2e` + Playwright); `ci.yml` заведён вне очереди коммитом `a074ba0`
+  - [x] Враждебное второе мнение по тестам (`/code-review`, новый контекст) — 10 находок, устранены
+  - [ ] Приёмка владельцем: `pnpm test` / `test:e2e` / `e2e` руками, CI-job зелёный на PR
 
 ## Стадия 10 — полный docker compose, `DOCX → PDF`
 
