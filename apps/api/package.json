@@ -25,6 +25,7 @@
     "db:migrate:test": "node scripts/migrate-test-db.mjs"
   },
   "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^7.3.4",
     "@convert-hub/shared": "workspace:*",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
