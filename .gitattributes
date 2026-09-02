@@ -1,0 +1,5 @@
+# Скрипты и Dockerfile исполняются в Linux-контейнере — всегда LF,
+# независимо от core.autocrlf на машине разработчика (иначе `/bin/sh^M`).
+*.sh text eol=lf
+docker/*.Dockerfile text eol=lf
+*.mjs text eol=lf
