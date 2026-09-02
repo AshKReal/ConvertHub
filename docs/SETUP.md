@@ -9,10 +9,11 @@
 | Компонент | Состояние |
 |---|---|
 | `apps/web` — Angular 22, Tailwind 4 | Главная и страница конвертации на моках, тема, три языка |
-| `apps/api` — NestJS 11 | `POST /v1/convert` (`JPG⇄PNG`, `PNG→JPG`, `PDF→DOCX`; 002, 005), `GET /v1/files/{id}/download` (003), единый формат ошибок (026), `/v1/auth/*` — email+пароль, JWT access+refresh (007), восстановление/смена пароля, удаление аккаунта (009, `docs/AUTH.md`) |
-| `apps/api` — Prisma 6 / PostgreSQL | Схема `users`/`files`/`conversions`, миграции в `apps/api/src/prisma/migrations/` (спека 003) |
+| `apps/api` — NestJS 11 | `POST /v1/convert` — все четыре направления (`JPG⇄PNG`, `PNG→JPG`, `PDF→DOCX` через Python, `DOCX→PDF` через Gotenberg; 002, 005, 018), `GET /v1/files/{id}/download` (003), единый формат ошибок (026), `/v1/auth/*` — email+пароль, JWT access+refresh (007), восстановление/смена пароля, удаление аккаунта (009, `docs/AUTH.md`) |
+| `apps/api` — Prisma 6 / PostgreSQL | Схема `users`/`files`/`conversions`/`identities`/`api_keys`/`refresh_tokens`/`password_reset_tokens`, миграции в `apps/api/src/prisma/migrations/` |
 | `packages/shared` | Реестр направлений конвертации, коды ошибок, лимиты; собирается в `dist/` |
-| `docker-compose.yml` | `postgres:17-alpine`, `redis:7-alpine` (оба с healthcheck), `mailhog/mailhog:v1.0.1` (без — образ минимальный, нечем его написать) |
+| `docker-compose.yml` | Инфраструктура: `postgres:17-alpine`, `redis:7-alpine` (healthcheck), `mailhog`, `minio` + `minio-init` (спека 016), `gotenberg` (спека 018, изолированная сеть). Собранный `api` — под профилем `full` (спека 016). `web` — не в compose (Vercel, `ARCHITECTURE.md` §10) |
+| `docker/api.Dockerfile` | Multi-stage образ бэкенда (спека 016): node + libvips + Python/`pdf2docx`, `prisma migrate deploy` в entrypoint |
 | Тесты (спека 015) | Vitest: юнит во всех трёх пакетах (🔒-валидаторы, автомат зоны загрузки, pipes, квота) + e2e-слой `apps/api` (`supertest` + `convert_hub_test`). Playwright: браузерный минимум (`apps/web/e2e/`). Раздел «Тесты» ниже |
 | CI (`.github/workflows/ci.yml`) | job `check` — `typecheck`/`lint`/`test` (юнит), без сервисов; job `e2e` — postgres+redis, `apps/api` supertest + Playwright. На push/PR в `main`/`backend` |
 
@@ -36,16 +37,35 @@ pnpm --filter @convert-hub/shared build   # apps/web и apps/api импорти�
 pnpm dev:web                              # http://localhost:4200
 ```
 
-Бэкенд и базы поднимаются отдельно и на текущем этапе не нужны фронтенду — сеть в стадиях 0–3 не используется:
+Бэкенд и базы:
 
 ```bash
-docker compose up -d                      # postgres, redis, mailhog
+docker compose up -d                      # инфраструктура: postgres, redis, mailhog, minio(+init), gotenberg
 pnpm --filter api exec prisma migrate dev # применить миграции к пустой БД (спека 003)
 pnpm dev:api                              # http://localhost:3000
 ```
 
+`docker compose up -d` поднимает только инфраструктуру — собранный `api` под профилем: `docker compose --profile
+full up -d` (спека 016; так `api` запускается в контейнере с `STORAGE_DRIVER=s3` против MinIO). Для разработки с
+горячей перезагрузкой — `pnpm dev:api` снаружи, без профиля.
+
 `LOCAL_STORAGE_DIR` (см. переменные ниже) должна существовать и лежать вне репозитория — `LocalDiskStorage` падает
-на старте, если это не так.
+на старте, если это не так. При `STORAGE_DRIVER=local` (умолчание) файлы результатов идут на диск; `s3` — в MinIO
+(`docker compose up -d` его уже поднял и создал бакет).
+
+**`DOCX → PDF` локально (спека 018):** Gotenberg портов наружу не публикует (изоляция, `ARCHITECTURE.md` §2/§13),
+поэтому `pnpm dev:api` снаружи его не видит. Варианты: `docker compose --profile full up -d` (конвертация внутри
+контейнера `api`) либо локальный `docker-compose.override.yml`, публикующий порт:
+
+```yaml
+# docker-compose.override.yml (не коммитить — ослабляет изоляцию)
+services:
+  gotenberg:
+    ports: ["127.0.0.1:3001:3000"]
+```
+
+и `GOTENBERG_URL=http://localhost:3001` в `apps/api/.env`. Без Gotenberg `DOCX→PDF` даёт `CONVERSION_FAILED`,
+остальные три направления работают.
 
 Проверки перед тем, как считать работу законченной:
 
@@ -70,6 +90,8 @@ pnpm lint
 | `REDIS_PORT` | нет | `6379` | по умолчанию `6379` |
 | `MAILHOG_SMTP_PORT` | нет | `1025` | по умолчанию `1025` — этот порт указывает `SMTP_HOST`/`SMTP_PORT` в `apps/api/.env` |
 | `MAILHOG_WEB_PORT` | нет | `8025` | по умолчанию `8025` — веб-интерфейс, см. «Где смотреть письма» |
+| `MINIO_ROOT_USER` `MINIO_ROOT_PASSWORD` | нет | `minioadmin` | по умолчанию `minioadmin`/`minioadmin` (спека 016). Совпадает с `S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY` в `apps/api/.env` при `STORAGE_DRIVER=s3` |
+| `MINIO_PORT` `MINIO_CONSOLE_PORT` `MINIO_BUCKET` | нет | `9000` / `9001` / `convert-hub` | по умолчанию как в примере; `minio-init` создаёт бакет на старте |
 | `DATABASE_URL` | пока нет | `postgresql://convert_hub:change-me@localhost:5432/convert_hub` | Ничего: читает только `docker compose`/Prisma CLI при прямом вызове из корня; приложение и `prisma migrate` читают одноимённую переменную из `apps/api/.env` (ниже) |
 | `REDIS_URL` | нет | `redis://localhost:6379` | Ничего для docker compose; переменную с тем же значением читает `apps/api` (спека 012) — см. таблицу `apps/api/.env` ниже |
 
@@ -98,6 +120,12 @@ pnpm lint
 | `GOOGLE_REDIRECT_URI` | **да** | `http://localhost:3000/v1/auth/google/callback` | Старт падает: схема требует валидный URL. Должен буквально совпадать с authorized redirect URI в настройках Client ID — иначе Google отказывает с `redirect_uri_mismatch`, не наш код |
 | `LOG_LEVEL` | нет | `info` | По умолчанию `info` (спека 014, `pino`). Значение вне `fatal`/`error`/`warn`/`info`/`debug`/`trace`/`silent` роняет старт |
 | `METRICS_TOKEN` | **да** | 16+ случайных символов | Старт падает: `GET /metrics` (спека 014) закрыт `Authorization: Bearer <этот токен>`, дефолта нет намеренно |
+| `STORAGE_DRIVER` | нет | `local` | По умолчанию `local` (`LocalDiskStorage` + `GET /v1/storage/local/raw`). `s3` — `S3Storage` (MinIO / R2, спека 016). Значение вне `local`/`s3` роняет старт |
+| `S3_ENDPOINT` `S3_BUCKET` `S3_ACCESS_KEY_ID` `S3_SECRET_ACCESS_KEY` | при `s3` | `http://localhost:9000` / `convert-hub` / `minioadmin` / `minioadmin` | При `STORAGE_DRIVER=s3` старт падает, если хоть одна не задана. При `local` игнорируются. `LOCAL_STORAGE_DIR`/`SIGNED_URL_SECRET` остаются обязательными и в режиме `s3` (держите заглушками) |
+| `S3_PUBLIC_ENDPOINT` | нет | `http://localhost:9000` | Хост в presigned URL для браузера. Не задан → `S3_ENDPOINT`. Нужен, когда приложение видит хранилище под другим именем, чем клиент (например `minio:9000` в compose) |
+| `S3_REGION` | нет | `us-east-1` | По умолчанию `us-east-1` |
+| `S3_FORCE_PATH_STYLE` | нет | `true` | По умолчанию `true` (MinIO требует path-style; R2 — оба варианта) |
+| `GOTENBERG_URL` | нет | `http://localhost:3001` | По умолчанию `http://localhost:3001`. Адрес Gotenberg для `DOCX→PDF` (спека 018). Недостижим → это направление даёт `CONVERSION_FAILED`, остальные работают. В `--profile full` — `http://gotenberg:3000` |
 
 `NODE_ENV=production` отключает `pino-pretty` — логи в stdout сырым JSON (одна запись — одна строка), как ждёт
 сборщик. В деве — человекочитаемый формат.
@@ -191,7 +219,6 @@ Google (`invalid_client`), не `500` у нас — это ожидаемо, н�
 | Что | Где появится |
 |---|---|
 | Сиды | Отдельного решения нет; сущностей для сида пока не существует |
-| `GET /v1/files` (список, пагинация), квота, автоснятие `save` | Спека 010 |
-| Реальное объектное хранилище вместо `LocalDiskStorage` | Спека 016 |
-| Сервисы `api` и `web` в `docker-compose.yml`, Dockerfile | Спека 016 |
-| Gotenberg и MinIO | Спека 016 |
+| Реальный деплой (Railway, Vercel, R2, домены, публикация образа) | Спека 017 |
+| Оптимизация размера образа `api` (~1.5 ГБ: node + libvips + PyMuPDF) | Отдельно / спека 017 |
+| Публикация порта Gotenberg для `pnpm dev:api` без `--profile full` | Локальный `docker-compose.override.yml` (см. «Первый запуск») |
