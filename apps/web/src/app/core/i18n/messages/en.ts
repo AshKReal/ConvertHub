@@ -193,19 +193,15 @@ export const EN_MESSAGES = {
 
   'apiDocs.title': 'API documentation',
   'apiDocs.intro':
-    'Base URL https://api.convert-hub.io/v1. HTTPS only — plain HTTP requests are rejected, not redirected. This is a stub reference; the generated OpenAPI schema and an interactive explorer land later.',
+    'Base URL https://api.convert-hub.io/v1. HTTPS only — plain HTTP requests are rejected, not redirected. The endpoint list below is read from the generated OpenAPI schema.',
   'apiDocs.auth.title': 'Authentication',
   'apiDocs.auth.description':
     'Every request carries a bearer API key issued from the API keys page.',
   'apiDocs.endpoints.title': 'Endpoints',
-  'apiDocs.endpoints.convert': 'Convert a file (multipart)',
-  'apiDocs.endpoints.listFiles': 'List your files, cursor pagination',
-  'apiDocs.endpoints.downloadFile': '302 to a signed download link',
-  'apiDocs.endpoints.deleteFile': 'Delete a file, idempotent',
-  'apiDocs.endpoints.listConversions': 'Conversion history, including failures',
-  'apiDocs.endpoints.formats': 'Supported directions and limits, no key required',
-  'apiDocs.endpoints.me': 'Account, quota, remaining rate limit',
-  'apiDocs.endpoints.health': 'For the hosting platform',
+  'apiDocs.schema.loading': 'Loading the schema…',
+  'apiDocs.schema.unavailable':
+    'The schema is unavailable right now — the reference below still applies.',
+  'apiDocs.schema.full': 'Full machine-readable schema:',
   'apiDocs.limits.title': 'Limits',
   'apiDocs.limits.fileSize': 'File size: up to {value}',
   'apiDocs.limits.quota': 'Storage quota: {value} per account',

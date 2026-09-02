@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Статус | draft — план ждёт ревью владельца |
+| Статус | код написан, приёмка владельцем не пройдена |
 | Зависит от | 012, 023 |
 | Источник | ТЗ п. 6.7, `TECH-SPEC.md` §7.1 («`securitySchemes: http/bearer`»), `packages/shared` |
 | Критичность | обычная |
@@ -171,13 +171,13 @@
 
 ## Чек-лист
 
-- [ ] `apps/api`: `@asteasolutions/zod-to-openapi@^7.3.4` в зависимостях
-- [ ] `modules/openapi/openapi.registry.ts` — `extendZodWithOpenApi`, регистрация компонентов из `packages/shared` + `Problem`
-- [ ] `modules/openapi/openapi.paths.ts` — три операции (`POST /v1/convert`, `GET /v1/files`, `GET /v1/files/{id}/download`)
-- [ ] `modules/openapi/openapi.document.ts` — `OpenApiGeneratorV31`, кеш; `openapi.controller.ts` — `GET /v1/openapi.json`; `openapi.module.ts` → `app.module.ts`
-- [ ] `docs/AUTH.md` — строка про `GET /v1/openapi.json`
-- [ ] Фронт: `data/api-docs.api.ts` (`injectOpenApiQuery`), `api-docs-page.{ts,html}` на схему, удаление `model/endpoint.ts` и `apiDocs.endpoints.*`
-- [ ] Ручная проверка: валидатор OpenAPI 3.1 + curl (`/v1/openapi.json`, изменение Zod-схемы) + браузер (три эндпоинта, плашка при сбое, обе темы, три языка, 320px)
+- [x] `apps/api`: `@asteasolutions/zod-to-openapi@^7.3.4` в зависимостях
+- [x] `modules/openapi/openapi.document.ts` — `buildDocument()`: динамический `import()` `zod`/`shared`/`zod-to-openapi` (ESM, один инстанс zod — CJS-контекст nest иначе даёт второй), `extendZodWithOpenApi`, `Problem` из `ERROR_CODES`, три операции из Zod-схем `packages/shared`, `OpenApiGeneratorV31`, кеш. `registry`/`paths` отдельными файлами не понадобились — всё в одной async-функции из-за ESM-границы
+- [x] `openapi.controller.ts` — `GET /v1/openapi.json` (публичный, `Cache-Control: public, max-age=300`); `openapi.module.ts` → `app.module.ts`
+- [x] `docs/AUTH.md` — строка про `GET /v1/openapi.json`
+- [x] Фронт: `data/api-docs.api.ts` (`injectOpenApiEndpointsQuery`, TanStack Query), `api-docs-page.{ts,html}` на схему (загрузка/ошибка/список + ссылка на raw), удаление `model/endpoint.ts` и `apiDocs.endpoints.*`, +`apiDocs.schema.*` в en/ru/uk
+- [x] Проверка: `@redocly/cli lint` → «Your API description is valid» (0 ошибок, 2 стилевых warning — `operation-2xx-response` на 302-редиректе download, `info-license-strict`); `paths` ровно 3; `Problem.code` enum = 28 = `Object.keys(ERROR_CODES).length`; multipart body = `target/save/quality/background/file` из `convertRequestSchema`
+- [ ] Браузер: `/api-docs` — три эндпоинта из схемы, плашка при заблокированном `/v1/openapi.json`, обе темы, три языка, 320px — в батч-приёмку
 
 ### Приёмка
 
