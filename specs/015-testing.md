@@ -230,31 +230,31 @@ e2e-слоем `apps/api` — он уже есть и бьёт по настоя
 
 ### Чек-лист — второй проход
 
-- [ ] Фикстуры `apps/api/test/fixtures/` + `README.md`
-- [ ] `conversion-direction.validator.spec.ts`
-- [ ] `magic-bytes.validator.spec.ts`
-- [ ] `pdf-page-count.validator.spec.ts`
-- [ ] `pixel-count.validator.spec.ts`
-- [ ] `zod-validation.pipe.spec.ts`
-- [ ] `convert-form.schema.spec.ts`
-- [ ] `files.service.quota.spec.ts`
-- [ ] `quota.e2e-spec.ts`
-- [ ] `dropzone.spec.ts`
-- [ ] `format.spec.ts`
-- [ ] Playwright: конфиг + `@playwright/test` + `webServer`
-- [ ] 4 Playwright-спеки
-- [ ] `ci.yml`: job `e2e`
-- [ ] `docs/SETUP.md` — Playwright локально
-- [ ] `pnpm test` с корня зелёный без Docker
-- [ ] `pnpm typecheck` / `pnpm lint` зелёные (`apps/web/e2e/` в охвате)
+- [x] Фикстуры `apps/api/test/fixtures/` + `README.md` + `generate.mjs` + `.gitattributes`
+- [x] `conversion-direction.validator.spec.ts`
+- [x] `magic-bytes.validator.spec.ts`
+- [x] `pdf-page-count.validator.spec.ts`
+- [x] `pixel-count.validator.spec.ts`
+- [x] `zod-validation.pipe.spec.ts`
+- [x] `convert-form.schema.spec.ts`
+- [x] `files.service.quota.spec.ts`
+- [x] `quota.e2e-spec.ts`
+- [x] `dropzone.spec.ts` (TestBed + HttpTestingController; `quotaFull` — за e2e, `vi.mock` относительных путей Angular-раннер запрещает)
+- [x] `format.spec.ts`
+- [x] Playwright: `playwright.config.ts` + `@playwright/test` + `webServer` (API на `convert_hub_test`, `ng serve`) + `tsconfig.e2e.json` + `e2e-db.mjs`
+- [x] 4 Playwright-спеки (`guest-convert`, `user-convert`, `oversize-rejected`, `quota-full`)
+- [x] `ci.yml`: job `e2e` (postgres+redis, обе БД+миграции, `playwright install`, `api test:e2e` + `web e2e` + `e2e:typecheck`)
+- [x] `docs/SETUP.md` — раздел Playwright
+- [x] `pnpm test` с корня зелёный без Docker (shared 5 / api 47 / web 19)
+- [x] `pnpm typecheck` / `pnpm lint` зелёные (`apps/web/e2e/` в охвате через `tsconfig.e2e.json`)
 
 ### Приёмка — второй проход
 
-- [ ] Тест-кейсы прогнаны; красный→зелёный проверен хотя бы раз (сломать валидатор — тест падает)
-- [ ] `pnpm test` + `pnpm test:e2e` + Playwright зелёные локально
+- [x] Тест-кейсы прогнаны; красный→зелёный проверен (сломать `assertPdfPageLimit` порог — `pdf-page-count.validator.spec.ts` падает, вернуть — зелёный)
+- [x] `pnpm test` + `pnpm test:e2e` (6/6) + Playwright (4/4) зелёные локально; dev-БД `convert_hub` не тронута
 - [ ] CI job `e2e` зелёный на PR
 - [ ] Враждебное второе мнение: новый чат, только тесты, без плана
-- [ ] `git diff` — только тесты/фикстуры/конфиги/доки, ноль строк продакшен-кода (кроме `.spec.ts`)
+- [x] `git diff` — только `*.spec.ts` / фикстуры / конфиги / `e2e/` / доки, ноль строк продакшен-кода `apps/*/src` вне `.spec.ts`
 
 ### После мержа — второй проход
 
