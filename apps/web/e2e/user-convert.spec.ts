@@ -1,6 +1,5 @@
 import {
   convertFile,
-  E2E_EMAIL_PREFIX,
   expect,
   FIXTURE_JPG,
   registerViaUi,
@@ -14,14 +13,16 @@ import { cleanupUsers } from './support/db';
  * умолчанию (спека 010 — вошедший сохраняет без отдельного чекбокса) и
  * видит файл в `/files`.
  */
+const email = uniqueEmail();
+
 test.afterAll(() => {
-  cleanupUsers(E2E_EMAIL_PREFIX);
+  cleanupUsers(email);
 });
 
 test('a signed-in user converts a file and sees it saved in /files', async ({
   page,
 }) => {
-  await registerViaUi(page, uniqueEmail());
+  await registerViaUi(page, email);
 
   await page.goto('/convert/jpg-to-png');
   await convertFile(page, FIXTURE_JPG);

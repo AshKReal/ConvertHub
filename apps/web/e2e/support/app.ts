@@ -12,8 +12,10 @@ export const FIXTURE_JPG = resolve(
   'sample.jpg',
 );
 
-/** Общий префикс тестовых учёток — по нему же идёт уборка. */
-export const E2E_EMAIL_PREFIX = 'e2e-pw-';
+// Каждый спек генерит свой email и убирает ровно его (`cleanupUsers(email)`) —
+// общей уборки «всё по префиксу» нет намеренно: она была бы завязана на
+// `workers: 1` (параллельный спек стёр бы чужого пользователя посреди теста).
+const E2E_EMAIL_PREFIX = 'e2e-pw-';
 
 export const uniqueEmail = (): string =>
   `${E2E_EMAIL_PREFIX}${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
@@ -59,5 +61,5 @@ export async function registerViaUi(page: Page, email: string): Promise<void> {
 /** Выбрать файл в зоне загрузки и запустить конвертацию. */
 export async function convertFile(page: Page, filePath: string): Promise<void> {
   await page.locator('input[type="file"]').setInputFiles(filePath);
-  await page.getByRole('button', { name: 'Convert' }).click();
+  await page.getByRole('button', { name: 'Convert', exact: true }).click();
 }

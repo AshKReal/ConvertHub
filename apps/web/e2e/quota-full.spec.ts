@@ -2,7 +2,6 @@ import { USER_STORAGE_QUOTA_BYTES } from '@convert-hub/shared';
 
 import {
   convertFile,
-  E2E_EMAIL_PREFIX,
   expect,
   FIXTURE_JPG,
   registerViaUi,
@@ -16,14 +15,15 @@ import { cleanupUsers, setStorageUsage } from './support/db';
  * не сохраняется — сервер отдаёт результат с `X-Save-Skipped-Reason`
  * (спека 010), фронт показывает тост, в `/files` файла нет.
  */
+const email = uniqueEmail();
+
 test.afterAll(() => {
-  cleanupUsers(E2E_EMAIL_PREFIX);
+  cleanupUsers(email);
 });
 
 test('conversion at a full quota downloads but does not save the file', async ({
   page,
 }) => {
-  const email = uniqueEmail();
   await registerViaUi(page, email);
   setStorageUsage(email, USER_STORAGE_QUOTA_BYTES);
 

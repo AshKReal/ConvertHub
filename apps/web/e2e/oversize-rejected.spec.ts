@@ -37,6 +37,8 @@ test('an over-limit file is rejected in the dropzone without a request', async (
   await page.locator('input[type="file"]').setInputFiles(oversizePath);
 
   await expect(page.getByText(/the limit is/i)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Convert' })).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Convert', exact: true }),
+  ).toHaveCount(0);
   expect(convertRequests).toEqual([]);
 });

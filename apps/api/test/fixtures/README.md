@@ -13,11 +13,14 @@ node apps/api/test/fixtures/generate.mjs
 |---|---|---|
 | `sample.jpg` | `sharp` 8×8, сплошной цвет, `.jpeg()` | magic bytes = `image/jpeg` |
 | `sample.png` | `sharp` 8×8, сплошной цвет, `.png()` | magic bytes = `image/png`; валидный маленький PNG для `assertWithinPixelLimit` |
-| `huge-dimensions.png` | настоящий 1×1 PNG, в IHDR перезаписаны width/height на 60000×60000, пересчитан CRC чанка | decompression bomb: заголовок заявляет 3.6 млрд пикселей при 90 байтах на диске → `IMAGE_TOO_LARGE`, не `FILE_CORRUPTED` |
+| `oversized-dimensions.png` | настоящий 1×1 PNG, в IHDR перезаписаны width/height на 8000×8000, пересчитан CRC чанка | decompression bomb: заголовок заявляет 64 Мп (> `MAX_IMAGE_PIXELS` 50 Мп) при 90 байтах на диске → `IMAGE_TOO_LARGE`, не `FILE_CORRUPTED`. 8000×8000 — обычный размер кадра, ни один загрузчик не отбрасывает его как «слишком большой заголовок» |
+| `exactly-50mp.png` | тот же приём, IHDR 10000×5000 | ровно `MAX_IMAGE_PIXELS` (50 000 000) — граница, исключения быть не должно |
 | `sample.pdf` | `pdf-lib`, 1 пустая страница | валидный PDF в пределах лимита страниц |
 | `exactly-50.pdf` | `pdf-lib`, 50 страниц | ровно `MAX_PDF_PAGES` — граница, исключения быть не должно |
 | `many-pages.pdf` | `pdf-lib`, 51 страница | `MAX_PDF_PAGES + 1` → `TOO_MANY_PAGES` |
 | `not-an-image.txt` | обычный текст | нет сигнатуры → `detectFileType` возвращает `undefined`; `sharp`/`pdf-lib` не разбирают → `FILE_CORRUPTED` |
+
+`generate.mjs` считает CRC-32 сам (не `node:zlib#crc32`, тот есть только с Node 22.2) — скрипт-источник истины воспроизводится на любом Node 22.x.
 
 Чего здесь нет намеренно:
 

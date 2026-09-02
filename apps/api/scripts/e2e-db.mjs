@@ -11,6 +11,18 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 
+// Предохранитель против потери данных: `cleanup` делает `deleteMany` с
+// FK-каскадом. Если `DATABASE_URL` случайно указывает на не-тестовую БД
+// (TEST_DATABASE_URL == DATABASE_URL), лучше упасть, чем стереть dev-данные.
+const dbUrl = process.env.DATABASE_URL ?? '';
+const dbName = dbUrl.split('/').pop()?.split('?')[0] ?? '';
+if (!dbName.endsWith('_test')) {
+  console.error(
+    `refusing to run: DATABASE_URL points at "${dbName || '(unknown)'}", not a *_test database`,
+  );
+  process.exit(1);
+}
+
 const [command, ...args] = process.argv.slice(2);
 const prisma = new PrismaClient();
 

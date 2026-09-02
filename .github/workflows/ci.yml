@@ -87,9 +87,15 @@ jobs:
       - run: pnpm --filter @convert-hub/shared build
       - run: pnpm --filter api db:generate
 
-      # convert_hub уже создан сервисом; вторую БД — руками, затем миграции
-      # в обе (apps/api читает convert_hub, Playwright-API — convert_hub_test).
-      - run: PGPASSWORD=change-me psql -h localhost -U convert_hub -d convert_hub -c "CREATE DATABASE convert_hub_test;"
+      # convert_hub уже создан сервисом; вторую БД — идемпотентно (retry шага
+      # не должен падать на «уже существует»), затем миграции в обе
+      # (apps/api читает convert_hub, Playwright-API — convert_hub_test).
+      - env:
+          PGPASSWORD: change-me
+        run: |
+          psql -h localhost -U convert_hub -d convert_hub -tc \
+            "SELECT 1 FROM pg_database WHERE datname='convert_hub_test'" | grep -q 1 \
+            || createdb -h localhost -U convert_hub convert_hub_test
       - run: pnpm --filter api exec prisma migrate deploy
       - run: pnpm --filter api db:migrate:test
 

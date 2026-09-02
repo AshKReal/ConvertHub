@@ -64,10 +64,13 @@ describe('assertPdfPageLimit', () => {
     expect(error.getStatus()).toBe(422);
   });
 
-  it('maps unparseable bytes to FILE_CORRUPTED', async () => {
+  it('maps bytes with no PDF header to FILE_CORRUPTED', async () => {
+    // Нет сигнатуры `%PDF` вовсе — pdf-lib отказывает детерминированно
+    // («No PDF header found»), в отличие от «полу-битого» PDF, где поведение
+    // парсера зависит от версии.
     const garbage = await writeTemp(
       'garbage.pdf',
-      Buffer.from('%PDF-1.7 then random noise \x00\x01\x02', 'binary'),
+      Buffer.from('this is not a pdf at all', 'utf8'),
     );
     const error = await rejection(assertPdfPageLimit(garbage));
     expect(bodyOf(error).code).toBe('FILE_CORRUPTED' satisfies ErrorCode);

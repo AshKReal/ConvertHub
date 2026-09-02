@@ -29,13 +29,19 @@ describe('assertWithinPixelLimit', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('passes an image whose declared pixels are exactly MAX_IMAGE_PIXELS (boundary)', async () => {
+    await expect(
+      assertWithinPixelLimit(fixture('exactly-50mp.png')),
+    ).resolves.toBeUndefined();
+  });
+
   it('rejects a decompression bomb by its declared dimensions, before decoding', async () => {
     const error = await rejection(
-      assertWithinPixelLimit(fixture('huge-dimensions.png')),
+      assertWithinPixelLimit(fixture('oversized-dimensions.png')),
     );
     expect(bodyOf(error)).toEqual({
       code: 'IMAGE_TOO_LARGE' satisfies ErrorCode,
-      meta: { actual_pixels: 60000 * 60000, max_pixels: MAX_IMAGE_PIXELS },
+      meta: { actual_pixels: 8000 * 8000, max_pixels: MAX_IMAGE_PIXELS },
     });
     expect(error.getStatus()).toBe(422);
   });
