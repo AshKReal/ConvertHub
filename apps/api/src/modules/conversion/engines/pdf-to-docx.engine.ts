@@ -4,6 +4,7 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Logger } from '@nestjs/common';
+import { CONVERSION_TIMEOUT_SECONDS } from '@convert-hub/shared';
 import { AppException } from '../../../common/exceptions/app.exception';
 import type { ConvertOptions } from '../models/convert-options.model';
 import type { ConversionEngine } from './engine.interface';
@@ -11,10 +12,10 @@ import type { ConversionEngine } from './engine.interface';
 const logger = new Logger('PdfToDocxEngine');
 const PYTHON_COMMAND = 'python';
 const SCRIPT_PATH = join(process.cwd(), 'python', 'pdf_to_docx.py');
-/** TECH-SPEC.md §6 — общий лимит конвертации, не только для этого движка. Владелец
- * подтвердил оставить как есть, даже зная, что сложные реальные PDF (000, повторная
- * проверка на реальном файле) укладываются не всегда — см. спеку 005, "Мои тест-кейсы". */
-const TIMEOUT_MS = 60_000;
+/** TECH-SPEC.md §6 — общий лимит конвертации, `packages/shared` (спека 018 убрала
+ * дубль). Владелец подтвердил оставить как есть, даже зная, что сложные реальные
+ * PDF (000) укладываются не всегда — см. спеку 005, "Мои тест-кейсы". */
+const TIMEOUT_MS = CONVERSION_TIMEOUT_SECONDS * 1000;
 
 /**
  * Дочерний процесс на каждый вызов, не постоянный сайдкар (решение владельца,

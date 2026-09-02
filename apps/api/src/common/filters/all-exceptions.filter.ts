@@ -73,10 +73,14 @@ export class AllExceptionsFilter implements ExceptionFilter<unknown> {
       ...(meta ? { meta } : {}),
     };
 
-    // Спека 012. `RATE_LIMIT_EXCEEDED` несёт `retry_after_seconds` в `meta` —
-    // продублировать стандартным заголовком `Retry-After` (TECH-SPEC.md §7.5).
+    // `retry_after_seconds` в `meta` дублируется стандартным `Retry-After`
+    // (TECH-SPEC.md §7.5): `RATE_LIMIT_EXCEEDED` (012) и `SERVICE_OVERLOADED`
+    // (018 — пул документных конвертаций переполнен).
     const retryAfter = meta?.['retry_after_seconds'];
-    if (code === 'RATE_LIMIT_EXCEEDED' && typeof retryAfter === 'number') {
+    if (
+      (code === 'RATE_LIMIT_EXCEEDED' || code === 'SERVICE_OVERLOADED') &&
+      typeof retryAfter === 'number'
+    ) {
       res.setHeader('Retry-After', String(retryAfter));
     }
 
