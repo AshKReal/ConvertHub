@@ -154,11 +154,21 @@ services:
       S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
       S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       S3_FORCE_PATH_STYLE: "true"
-      # LOCAL_STORAGE_DIR/SIGNED_URL_SECRET обязательны и в режиме s3 (заглушки).
+      # LOCAL_STORAGE_DIR в режиме s3 не используется — LocalDiskStorage не
+      # создаётся, схеме нужна только непустая строка.
       LOCAL_STORAGE_DIR: /tmp/converthub-unused
-      SIGNED_URL_SECRET: unused-in-s3-mode-but-schema-requires-32-plus-chars
-      JWT_SECRET: ${JWT_SECRET:-change-me-to-32-plus-random-characters-in-prod}
-      METRICS_TOKEN: ${METRICS_TOKEN:-change-me-16-plus}
+      # Секреты берутся из корневого .env. Дефолты ниже — заведомо нерабочие:
+      # `NODE_ENV=production` + маркер `change-me` роняют старт контейнера с
+      # внятным сообщением (`config/env.ts`, REVIEW-FINDINGS.md INFRA-01).
+      # Раньше здесь стояли значения, которые проходили проверку длины, и
+      # стенд поднимался с ключом подписи из публичного репозитория.
+      #
+      # НЕ `:?` — оно вычисляется при разборе файла независимо от профиля и
+      # сломало бы `docker compose up -d` (только инфраструктура, без `api`).
+      # Сгенерировать: openssl rand -base64 32
+      SIGNED_URL_SECRET: ${SIGNED_URL_SECRET:-change-me-set-a-real-secret-in-dot-env}
+      JWT_SECRET: ${JWT_SECRET:-change-me-set-a-real-secret-in-dot-env}
+      METRICS_TOKEN: ${METRICS_TOKEN:-change-me-set-a-real-token}
       SMTP_HOST: ${SMTP_HOST:-mailhog}
       SMTP_PORT: "1025"
       SMTP_FROM: ${SMTP_FROM:-noreply@convert-hub.local}

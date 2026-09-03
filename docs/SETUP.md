@@ -49,6 +49,18 @@ pnpm dev:api                              # http://localhost:3000
 full up -d` (спека 016; так `api` запускается в контейнере с `STORAGE_DRIVER=s3` против MinIO). Для разработки с
 горячей перезагрузкой — `pnpm dev:api` снаружи, без профиля.
 
+**Профилю `full` нужны настоящие секреты в корневом `.env`** — `JWT_SECRET`, `SIGNED_URL_SECRET`,
+`METRICS_TOKEN`. Контейнер `api` работает с `NODE_ENV=production`, а `config/env.ts` в этом режиме отказывается
+стартовать, если в секрете виден маркер плейсхолдера (`change-me` и т.п.) — иначе стенд поднялся бы с ключом
+подписи JWT, лежащим в публичном репозитории (`REVIEW-FINDINGS.md`, INFRA-01). Сгенерировать:
+
+```bash
+openssl rand -base64 32   # для JWT_SECRET и SIGNED_URL_SECRET, по одному на каждый
+openssl rand -base64 16   # для METRICS_TOKEN
+```
+
+На базовый `docker compose up -d` (только инфраструктура) это не влияет — контейнер `api` там не запускается.
+
 `LOCAL_STORAGE_DIR` (см. переменные ниже) должна существовать и лежать вне репозитория — `LocalDiskStorage` падает
 на старте, если это не так. При `STORAGE_DRIVER=local` (умолчание) файлы результатов идут на диск; `s3` — в MinIO
 (`docker compose up -d` его уже поднял и создал бакет).
