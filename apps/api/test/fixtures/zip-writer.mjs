@@ -1,7 +1,14 @@
-// Минимальный ZIP-райтер (store, без сжатия). В apps/api нет zip-библиотеки,
-// а нужны ровно две вещи: собрать настоящий .docx и собрать «бомбу», у
-// которой центральный каталог ВРЁТ про несжатый размер. Используется и
+// Минимальный ZIP-райтер. В apps/api нет zip-библиотеки, а нужны ровно две
+// вещи: собрать настоящий .docx и собрать «бомбу». Используется и
 // `generate.mjs` (фикстуры), и `docx-zip-bomb.validator.spec.ts` (границы).
+//
+// Бомбы бывают двух видов, и райтер обязан уметь обе (🔒 BE-DOCX-01):
+// - «лживая декларация» — store, центральный каталог ВРЁТ про несжатый размер
+//   (`declaredUncompressed`). Ловится дешёвым предфильтром.
+// - «настоящее раздутие» — `deflate: true`, поток честно разворачивается в
+//   мегабайты, а заголовок при этом может заявлять сколько угодно мало.
+//   Ловится только фактической распаковкой, ради чего фикс и делался.
+import { deflateRawSync } from 'node:zlib';
 
 const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
   let c = n;
@@ -22,9 +29,16 @@ export const crc32 = (buf) => {
 const DOS_DATE_TIME = Buffer.from([0x00, 0x00, 0x21, 0x00]); // 1980-01-01 00:00
 
 /**
- * entries: [{ name, data, declaredUncompressed? }]. `declaredUncompressed`
- * (по умолчанию = data.length) — то, что пишется в оба заголовка как
- * «несжатый размер». Переопределяя его, получаем бомбу.
+ * entries: [{ name, data, declaredUncompressed?, deflate?, method?, truncateCompressed? }].
+ *
+ * - `declaredUncompressed` (по умолчанию = data.length) — что пишется в оба
+ *   заголовка как «несжатый размер». Переопределяя его, получаем бомбу.
+ * - `deflate: true` — данные реально сжимаются (метод 8). Без него метод 0.
+ * - `method` — записать в заголовки произвольный номер метода, не трогая сами
+ *   данные (для проверки отказа на неизвестном методе).
+ * - `truncateCompressed: n` — отрезать n байт с конца сжатого потока и
+ *   уменьшить на них `compressedSize`. Даёт заголовки, которые сходятся, и
+ *   оборванный DEFLATE внутри — это `FILE_CORRUPTED`, а не бомба.
  */
 export function buildZip(entries) {
   const locals = [];
@@ -33,15 +47,23 @@ export function buildZip(entries) {
 
   for (const entry of entries) {
     const nameBuf = Buffer.from(entry.name, 'utf8');
+    // CRC всегда по НЕсжатым данным — так требует формат.
     const crc = crc32(entry.data);
-    const compSize = entry.data.length;
+    const deflated = entry.deflate === true;
+    const full = deflated ? deflateRawSync(entry.data) : entry.data;
+    const payload =
+      entry.truncateCompressed === undefined
+        ? full
+        : full.subarray(0, full.length - entry.truncateCompressed);
+    const method = entry.method ?? (deflated ? 8 : 0);
+    const compSize = payload.length;
     const uncompSize = entry.declaredUncompressed ?? entry.data.length;
 
     const local = Buffer.alloc(30 + nameBuf.length);
     local.writeUInt32LE(0x04034b50, 0);
     local.writeUInt16LE(20, 4);
     local.writeUInt16LE(0, 6);
-    local.writeUInt16LE(0, 8); // store
+    local.writeUInt16LE(method, 8);
     DOS_DATE_TIME.copy(local, 10);
     local.writeUInt32LE(crc, 14);
     local.writeUInt32LE(compSize, 18);
@@ -49,14 +71,14 @@ export function buildZip(entries) {
     local.writeUInt16LE(nameBuf.length, 26);
     local.writeUInt16LE(0, 28);
     nameBuf.copy(local, 30);
-    locals.push(local, entry.data);
+    locals.push(local, payload);
 
     const central = Buffer.alloc(46 + nameBuf.length);
     central.writeUInt32LE(0x02014b50, 0);
     central.writeUInt16LE(20, 4);
     central.writeUInt16LE(20, 6);
     central.writeUInt16LE(0, 8);
-    central.writeUInt16LE(0, 10); // store
+    central.writeUInt16LE(method, 10);
     DOS_DATE_TIME.copy(central, 12);
     central.writeUInt32LE(crc, 16);
     central.writeUInt32LE(compSize, 20);
@@ -71,7 +93,7 @@ export function buildZip(entries) {
     nameBuf.copy(central, 46);
     centrals.push(central);
 
-    offset += local.length + entry.data.length;
+    offset += local.length + payload.length;
   }
 
   const centralDir = Buffer.concat(centrals);
