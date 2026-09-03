@@ -108,6 +108,48 @@ if (env.STORAGE_DRIVER === 's3') {
   }
 }
 
+/**
+ * Плейсхолдеры из `.env.example` и `docker-compose.yml` проходят проверку
+ * длины (`.min(32)`/`.min(16)`) — без этой проверки прод поднялся бы с ключом
+ * подписи JWT, лежащим в публичном репозитории: кто угодно подписал бы токен
+ * на любой `sub`, `/metrics` был бы открыт (`REVIEW-FINDINGS.md`, INFRA-01).
+ * Ловим по маркеру, а не по точному совпадению: плейсхолдеры в репозитории
+ * меняются, «change-me» в секрете — всегда ошибка конфигурации.
+ *
+ * Только в `production`: в dev и test заглушки — норма и цена бдительности
+ * нулевой пользы.
+ */
+const PLACEHOLDER_MARKERS = [
+  'change-me',
+  'changeme',
+  'unused-in-s3',
+  'example',
+];
+
+if (env.NODE_ENV === 'production') {
+  const weak = (
+    [
+      ['JWT_SECRET', env.JWT_SECRET],
+      ['SIGNED_URL_SECRET', env.SIGNED_URL_SECRET],
+      ['METRICS_TOKEN', env.METRICS_TOKEN],
+    ] as const
+  )
+    .filter(([, value]) =>
+      PLACEHOLDER_MARKERS.some((marker) =>
+        value.toLowerCase().includes(marker),
+      ),
+    )
+    .map(([name]) => name);
+
+  if (weak.length > 0) {
+    throw new Error(
+      `NODE_ENV=production, но ${weak.join(', ')} содержит плейсхолдер. ` +
+        'Сгенерируйте реальные значения: openssl rand -base64 32 ' +
+        '(docs/DEPLOYMENT.md §5).',
+    );
+  }
+}
+
 /** Полностью типизированная конфигурация S3 — вызывать только когда `env.STORAGE_DRIVER === 's3'` (иначе бросит). */
 export interface S3Config {
   readonly endpoint: string;
