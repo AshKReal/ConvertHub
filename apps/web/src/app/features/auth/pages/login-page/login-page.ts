@@ -3,12 +3,24 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import type { AppError } from '../../../../core/interceptors/error-interceptor';
+import type { MessageKey } from '../../../../core/i18n/messages';
 import { AuthService } from '../../../../core/services/auth';
 import { I18nService } from '../../../../core/services/i18n';
 import { ToastService } from '../../../../core/services/toast';
 import { Button } from '../../../../shared/ui/button/button';
 import { Input } from '../../../../shared/ui/input/input';
 import { OauthButtons } from '../../components/oauth-buttons/oauth-buttons';
+
+/**
+ * Значение `?oauthError=` (ставит `auth.controller.ts#oauthErrorParam`) → ключ
+ * словаря. Всё, чего здесь нет, тост не показывает: неизвестный параметр —
+ * не повод пугать пользователя.
+ */
+const OAUTH_ERROR_MESSAGE_KEYS: Record<string, MessageKey | undefined> = {
+  conflict: 'auth.oauth.conflictError',
+  unverified: 'auth.oauth.unverifiedError',
+  failed: 'auth.oauth.failedError',
+};
 
 @Component({
   selector: 'app-login-page',
@@ -30,10 +42,9 @@ export class LoginPage {
    */
   constructor() {
     const oauthError = this.route.snapshot.queryParamMap.get('oauthError');
-    if (oauthError === 'conflict') {
-      this.toast.show('danger', this.i18n.t('auth.oauth.conflictError'));
-    } else if (oauthError === 'failed') {
-      this.toast.show('danger', this.i18n.t('auth.oauth.failedError'));
+    const messageKey = OAUTH_ERROR_MESSAGE_KEYS[oauthError ?? ''];
+    if (messageKey !== undefined) {
+      this.toast.show('danger', this.i18n.t(messageKey));
     }
   }
 

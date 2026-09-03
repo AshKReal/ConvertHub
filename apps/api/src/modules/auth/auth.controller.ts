@@ -23,6 +23,7 @@ import {
   resetPasswordRequestSchema,
   type AuthResponse,
   type ChangePasswordRequest,
+  type ErrorCode,
   type ForgotPasswordRequest,
   type LoginRequest,
   type MeResponse,
@@ -178,13 +179,9 @@ export class AuthController {
       this.setRefreshCookie(res, session);
       res.redirect(302, env.CORS_ORIGIN);
     } catch (error) {
-      const isConflict =
-        error instanceof AppException &&
-        (error.getResponse() as AppExceptionBody).code ===
-          'OAUTH_ACCOUNT_CONFLICT';
       res.redirect(
         302,
-        `${env.CORS_ORIGIN}/login?oauthError=${isConflict ? 'conflict' : 'failed'}`,
+        `${env.CORS_ORIGIN}/login?oauthError=${oauthErrorParam(error)}`,
       );
     }
   }
@@ -364,4 +361,30 @@ export class AuthController {
 function readRefreshCookie(req: Request): string | undefined {
   const cookies = req.cookies as Record<string, string | undefined> | undefined;
   return cookies?.[REFRESH_COOKIE_NAME];
+}
+
+/**
+ * Код ошибки → значение `?oauthError=` для фронта (`login-page.ts`). Всё, что
+ * не перечислено, схлопывается в `failed`: причины вроде просроченного
+ * `state`, сбоя сети или отказа на экране согласия пользователю неразличимы и
+ * не обязаны быть (`docs/SECURITY.md` §6).
+ *
+ * Разбирать отдельно стоит только то, на что пользователь может повлиять, —
+ * иначе он видит «попробуйте ещё раз» и крутится в цикле.
+ *
+ * `OAUTH_ACCOUNT_CONFLICT` после 🔒 BE-OAUTH-01 больше не бросается ни из
+ * одного пути; строка оставлена, потому что код всё ещё в контракте
+ * `packages/shared` — удаление из контракта не место в security-фиксе.
+ */
+const OAUTH_ERROR_PARAMS: Partial<Record<ErrorCode, string>> = {
+  EMAIL_NOT_VERIFIED: 'unverified',
+  OAUTH_ACCOUNT_CONFLICT: 'conflict',
+};
+
+function oauthErrorParam(error: unknown): string {
+  if (!(error instanceof AppException)) {
+    return 'failed';
+  }
+  const { code } = error.getResponse() as AppExceptionBody;
+  return OAUTH_ERROR_PARAMS[code] ?? 'failed';
 }
