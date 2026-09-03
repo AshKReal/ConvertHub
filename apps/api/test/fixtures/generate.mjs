@@ -71,16 +71,37 @@ await writeFile(out('not-an-image.txt'), 'just some text, no magic bytes here\n'
 const docx = docxEntries();
 await writeFile(out('sample.docx'), buildZip(docx));
 
-// Бомба: тот же docx, но центральный каталог заявляет 500 МиБ несжатого на
-// `word/document.xml` при паре сотен байт на диске — превышает и коэффициент
-// (MAX_DOCX_UNZIP_RATIO), и абсолютный предел (MAX_DOCX_UNZIP_BYTES). Больше
-// 4 ГиБ в обычный ZIP не заявить — там uint32, для этого нужен ZIP64.
+// Бомба №1, «лживая декларация»: тот же docx, но центральный каталог заявляет
+// 500 МиБ несжатого на `word/document.xml` при паре сотен байт на диске —
+// превышает и коэффициент (MAX_DOCX_UNZIP_RATIO), и абсолютный предел
+// (MAX_DOCX_UNZIP_BYTES). Больше 4 ГиБ в обычный ZIP не заявить — там uint32,
+// для этого нужен ZIP64. Ловится дешёвым предфильтром по заголовкам.
 await writeFile(
   out('zip-bomb.docx'),
   buildZip(
     docx.map((e) =>
       e.name === 'word/document.xml'
         ? { ...e, declaredUncompressed: 500 * 1024 * 1024 }
+        : e,
+    ),
+  ),
+);
+
+// Бомба №2, «настоящее раздутие» (🔒 BE-DOCX-01): заголовки скромничают (100
+// байт), а DEFLATE-поток честно разворачивается в 40 МиБ при нескольких
+// килобайтах на диске. Предфильтр по заявленному её НЕ видит — ловит только
+// фактическая распаковка. Файл в репозитории маленький: нули жмутся ~1000:1.
+await writeFile(
+  out('zip-bomb-deflate.docx'),
+  buildZip(
+    docx.map((e) =>
+      e.name === 'word/document.xml'
+        ? {
+            ...e,
+            data: Buffer.alloc(40 * 1024 * 1024),
+            deflate: true,
+            declaredUncompressed: 100,
+          }
         : e,
     ),
   ),

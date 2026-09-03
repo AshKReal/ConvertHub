@@ -174,6 +174,15 @@ LibreOffice запускается в отдельном контейнере (G
   `SUPPORTED_MIMES` включает
   `application/vnd.openxmlformats-officedocument.wordprocessingml.document` (и, возможно, `application/zip` —
   `file-type` на .docx может отдавать любой из двух; проверить и внести оба в маппинг направления).
+> **Изменено 2026-09-03, 🔒 BE-DOCX-01.** Пункты ниже описывают исходную постановку: считать заявленный
+> несжатый размер и не распаковывать. Постановка была **неверной** — заявленный размер пишет тот, кто прислал
+> файл, поэтому архив с крошечными числами в заголовках и DEFLATE-потоком на гигабайты проходил обе проверки.
+> Реализация теперь меряет ФАКТИЧЕСКУЮ распаковку (`node:zlib.createInflateRaw`, счёт выходных байт с обрывом
+> по бюджету), а проверка по заявленному осталась дешёвым предфильтром. `TECH-SPEC.md` §9 при этом не менялся:
+> он требовал «лимит коэффициента распаковки 100:1», и именно ему код теперь и соответствует.
+> `MAX_DOCX_UNZIP_BYTES` снижен 200 → 50 МиБ (BE-DOCX-04): распаковка считается до взятия слота пула, значит
+> потолок работы на один запрос — это и есть абсолютный предел. Разбор — `REVIEW-FINDINGS.md`.
+
 - Новый `assertDocxWithinUnzipLimit(filePath)`:
   - Читает **центральный каталог** ZIP (в конце файла: EOCD → записи), берёт заявленный несжатый размер
     (`uncompressed size`) каждой записи. Не распаковывает.
@@ -268,10 +277,13 @@ LibreOffice запускается в отдельном контейнере (G
 - [x] `document-pool.service.ts` — семафор 8 + очередь + ожидание 10 с → `SERVICE_OVERLOADED` + `retry_after_seconds`; вызов в `conversion.service.ts` только для `DOCX`, `release()` во вложенном `finally`; `all-exceptions.filter.ts` — `Retry-After` для `SERVICE_OVERLOADED`; метрика `converthub_document_pool_active`
 - [x] 🔒 `validators/conversion-direction.validator.ts` — снят `.filter(docx-to-pdf)` (`file-type` на реальном .docx отдаёт docx-MIME, не `application/zip` — проверено фикстурой) — **отдельный коммит**
 - [x] 🔒 `validators/docx-zip-bomb.validator.ts` — разбор центрального каталога ZIP, `> MAX_DOCX_UNZIP_BYTES` ИЛИ `> fileSize*RATIO` → `FILE_TOO_LARGE` (`actual_size_bytes`/`max_size_bytes` в `meta`), EOCD не найден / запись не парсится / ZIP64-sentinel → `FILE_CORRUPTED`; вызов до пула и до движка — **отдельный коммит**
+- [x] 🔒 **2026-09-03, BE-DOCX-01:** там же — фактическая распаковка каждой записи (`createInflateRaw`, счёт выходных байт, обрыв по бюджету, память O(чанка)); заявленный размер понижен до предфильтра; неизвестный метод сжатия и оборванный DEFLATE → `FILE_CORRUPTED`; `MAX_DOCX_UNZIP_BYTES` 200 → 50 МиБ (BE-DOCX-04)
 - [x] `output-mime.ts` — `target: 'pdf'` → `application/pdf`
 - [x] Фикстуры: `test/fixtures/zip-writer.mjs`+`.d.mts` (общий ZIP-райтер), `sample.docx` (LibreOffice его конвертирует), `zip-bomb.docx`; `conversion-direction.validator.spec.ts` переписан
+- [x] **2026-09-03, BE-DOCX-01:** райтер умеет DEFLATE, произвольный номер метода и обрыв потока; новая фикстура `zip-bomb-deflate.docx` (41 КБ на диске → 40 МиБ на выходе, в заголовках заявлено 100 байт); `test/fixtures/README.md` приведён в порядок (утверждал, что `.docx`-фикстур нет намеренно — устарело с 018)
 - [x] Юнит: `docx-zip-bomb.validator.spec.ts` (валиден / бомба / ровно на границе ratio / +1 байт / не-zip / обрезанный / ZIP64-sentinel), `document-pool.service.spec.ts` (8 проходят, 9-я ждёт, таймаут → `SERVICE_OVERLOADED`, `release` передаёт слот / декрементит гейдж), `document.engine.spec.ts` (маршрут/форма/маппинг таймаута/не-2xx/сети)
-- [x] `apps/api/test/docx-pdf.e2e-spec.ts` за `E2E_DOCX=1` — реальный docx → PDF, zip-bomb → `413` (проверено с поднятым Gotenberg: 2/2)
+- [x] **2026-09-03, BE-DOCX-01:** +7 кейсов — лживая декларация с реальным раздутием, честный DEFLATE, ровно `MAX_DOCX_UNZIP_BYTES` фактических / +1 байт, оборванный DEFLATE → `FILE_CORRUPTED`, неизвестный метод, локальный заголовок за границей файла. Красный→зелёный: без фактической распаковки красные ровно 5 из них, прежние 9 зелёные. Два оставшихся (честный DEFLATE и «ровно `MAX_DOCX_UNZIP_BYTES`») проверяют, что валидатор НЕ отказывает, и потому зелёные в обоих прогонах по построению — это их назначение, а не пробел
+- [x] `apps/api/test/docx-pdf.e2e-spec.ts` за `E2E_DOCX=1` — реальный docx → PDF, zip-bomb → `413`, лживая бомба → `413` (проверено с поднятым Gotenberg: 3/3)
 - [x] Ручная проверка функциональная: настоящий docx → `200` PDF; бомба → `413 FILE_TOO_LARGE` с числами; `jpg→png` без регрессий; standalone Gotenberg с `read_only`+`tmpfs`+`HOME=/tmp` конвертирует (изоляция не мешает); порт не опубликован, сети наружу нет
 - [x] `pnpm typecheck` / `pnpm lint` / `pnpm test` (shared 5 / api 68 / web 19) / `pnpm test:e2e` (6, docx-спек skipped без флага) / `pnpm e2e` — зелёные
 

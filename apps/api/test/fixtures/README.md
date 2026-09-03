@@ -19,14 +19,20 @@ node apps/api/test/fixtures/generate.mjs
 | `exactly-50.pdf` | `pdf-lib`, 50 страниц | ровно `MAX_PDF_PAGES` — граница, исключения быть не должно |
 | `many-pages.pdf` | `pdf-lib`, 51 страница | `MAX_PDF_PAGES + 1` → `TOO_MANY_PAGES` |
 | `not-an-image.txt` | обычный текст | нет сигнатуры → `detectFileType` возвращает `undefined`; `sharp`/`pdf-lib` не разбирают → `FILE_CORRUPTED` |
+| `sample.docx` | `zip-writer.mjs`, три обязательные части OOXML, store | минимальный валидный `.docx` (спека 018) |
+| `zip-bomb.docx` | тот же docx, в каталоге заявлено 500 МиБ на `word/document.xml` | бомба «лживая декларация»: заголовки врут, данных нет. Ловится дешёвым предфильтром по заявленному размеру |
+| `zip-bomb-deflate.docx` | тот же docx, `word/document.xml` = 40 МиБ нулей под DEFLATE, в заголовках заявлено 100 байт | бомба «настоящее раздутие» (🔒 BE-DOCX-01): предфильтр её не видит, ловит только фактическая распаковка. 41 КБ на диске → 40 МиБ на выходе |
 
 `generate.mjs` считает CRC-32 сам (не `node:zlib#crc32`, тот есть только с Node 22.2) — скрипт-источник истины воспроизводится на любом Node 22.x.
 
+ZIP-райтера в зависимостях `apps/api` нет, поэтому `zip-writer.mjs` — свой,
+минимальный: store, DEFLATE (`node:zlib`), плюс возможность соврать в
+заголовках. Он же используется напрямую из
+`docx-zip-bomb.validator.spec.ts`, где архивы строятся в памяти под конкретную
+границу и на диск не попадают.
+
 Чего здесь нет намеренно:
 
-- **`.docx`** — в зависимостях `apps/api` нет zip-райтера; кейс «реальный DOCX
-  mime → `UNSUPPORTED_FILE_TYPE`» покрыт на уровне `conversion-direction.validator.spec.ts`
-  фейковым `FileTypeResult`, движок `docx-to-pdf` всё равно только в 018.
 - **зашифрованный PDF** — `pdf-lib` не пишет шифрование. Текущий валидатор
   ловит зашифрованный PDF в общий `FILE_CORRUPTED` (отдельный
   `FILE_PASSWORD_PROTECTED` — в движке 005, не в валидаторе); проверяется
