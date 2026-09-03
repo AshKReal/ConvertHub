@@ -93,4 +93,23 @@ describe.skipIf(!runDocxE2e)('POST /v1/convert — DOCX to PDF (e2e)', () => {
       'FILE_TOO_LARGE' satisfies ErrorCode,
     );
   });
+
+  it('rejects a bomb that lies in its headers (🔒 BE-DOCX-01)', async () => {
+    // 41 КБ на диске, заголовки заявляют 100 байт, DEFLATE разворачивается в
+    // 40 МиБ. Отличается от кейса выше тем, что проверку по заявленному
+    // размеру проходит — отказ даёт только фактическая распаковка.
+    const response = await request(app.getHttpServer())
+      .post('/v1/convert')
+      .set('Authorization', `Bearer ${token}`)
+      .field('target', 'pdf')
+      .attach('file', fixture('zip-bomb-deflate.docx'), {
+        filename: 'zip-bomb-deflate.docx',
+        contentType: DOCX_MIME,
+      })
+      .expect(413);
+
+    expect((response.body as { code: string }).code).toBe(
+      'FILE_TOO_LARGE' satisfies ErrorCode,
+    );
+  });
 });
