@@ -17,7 +17,6 @@ import { OauthButtons } from '../../components/oauth-buttons/oauth-buttons';
  * не повод пугать пользователя.
  */
 const OAUTH_ERROR_MESSAGE_KEYS: Record<string, MessageKey | undefined> = {
-  conflict: 'auth.oauth.conflictError',
   unverified: 'auth.oauth.unverifiedError',
   failed: 'auth.oauth.failedError',
 };

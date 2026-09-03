@@ -71,8 +71,6 @@ export const EN_MESSAGES = {
   'auth.error.emailTaken': 'This email is already registered',
   'auth.oauth.google': 'Continue with Google',
   'auth.oauth.telegram': 'Continue with Telegram',
-  'auth.oauth.conflictError':
-    "This Google account's email is already registered. Sign in with your password, then link Google from your profile.",
   'auth.oauth.unverifiedError':
     'Google has not confirmed this email address, so we cannot sign you in with it. Verify the address with Google, or sign in with an email and password.',
   'auth.oauth.failedError': "Google sign-in didn't work. Please try again.",
@@ -122,7 +120,8 @@ export const EN_MESSAGES = {
   'profile.deleteAccount.cancel': 'Cancel',
 
   'error.invalidApiKey': 'Invalid or revoked API key. Check the key or issue a new one.',
-  'error.emailNotVerified': 'Confirm your email before continuing — check your inbox for the link.',
+  'error.emailNotVerified':
+    "Your sign-in provider hasn't confirmed this email address. Verify it there, or sign in with an email and password.",
   'error.fileNotFound':
     'This file is no longer available — it may have expired or the link is invalid.',
   'error.fileTooLarge': 'File is {actual}, the limit is {max}. Choose a smaller file.',

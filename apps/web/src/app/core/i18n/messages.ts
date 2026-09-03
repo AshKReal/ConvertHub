@@ -45,10 +45,6 @@ export const ERROR_MESSAGE_KEYS: Record<ErrorCode, MessageKey> = {
   FILE_NOT_FOUND: 'error.fileNotFound',
   API_KEY_NOT_FOUND: 'error.apiKeyNotFound',
   EMAIL_ALREADY_REGISTERED: 'auth.error.emailTaken',
-  // Callback google/callback (008) ловит этот код сам и превращает в редирект
-  // `?oauthError=conflict` — сюда interceptor попадает, только если код придёт
-  // с эндпоинта, который его не разбирает (тот же случай, что INVALID_CREDENTIALS выше).
-  OAUTH_ACCOUNT_CONFLICT: 'auth.oauth.conflictError',
   // Тот же текст, что кнопка «отвязать» в профиле (008) показывает как тултип до запроса.
   LAST_LOGIN_METHOD: 'profile.providers.unlinkBlocked',
   IDEMPOTENCY_KEY_CONFLICT: 'error.idempotencyConflict',
