@@ -69,6 +69,8 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'auth.oauth.telegram': 'Войти через Telegram',
   'auth.oauth.conflictError':
     'Этот email от Google уже зарегистрирован. Войдите паролем, затем привяжите Google из профиля.',
+  'auth.oauth.unverifiedError':
+    'Google не подтвердил этот адрес, поэтому войти по нему нельзя. Подтвердите адрес в Google или войдите по email и паролю.',
   'auth.oauth.failedError': 'Не получилось войти через Google. Попробуйте ещё раз.',
   'auth.forgotPassword.title': 'Восстановление пароля',
   'auth.forgotPassword.hint':

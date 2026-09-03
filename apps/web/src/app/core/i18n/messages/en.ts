@@ -73,6 +73,8 @@ export const EN_MESSAGES = {
   'auth.oauth.telegram': 'Continue with Telegram',
   'auth.oauth.conflictError':
     "This Google account's email is already registered. Sign in with your password, then link Google from your profile.",
+  'auth.oauth.unverifiedError':
+    'Google has not confirmed this email address, so we cannot sign you in with it. Verify the address with Google, or sign in with an email and password.',
   'auth.oauth.failedError': "Google sign-in didn't work. Please try again.",
   'auth.forgotPassword.title': 'Reset your password',
   'auth.forgotPassword.hint': "Enter the email you signed up with and we'll send a reset link.",

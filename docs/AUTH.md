@@ -23,7 +23,7 @@ providers: []}`, других способов входа тогда ещё не
 | `POST` | `/refresh` | — (refresh-токен из cookie) | `{accessToken, user}` | refresh-cookie | `UNAUTHENTICATED` (401) |
 | `POST` | `/logout` | — (refresh-токен из cookie, опционально) | — (`204`) | — | — (идемпотентно, всегда `204`) |
 | `GET` | `/google/start` | — | `302` на Google | — | — (полная навигация браузера, не JSON) |
-| `GET` | `/google/callback` | — (`code`/`state` в query, от Google) | `302` на фронт | — | — (все отказы — редирект `?oauthError=conflict\|failed`, не JSON-код — см. ниже) |
+| `GET` | `/google/callback` | — (`code`/`state` в query, от Google) | `302` на фронт | — | — (все отказы — редирект `?oauthError=unverified\|conflict\|failed`, не JSON-код — см. ниже) |
 | `DELETE` | `/identities/:provider` | — | — (`204`, идемпотентно) | `Authorization: Bearer <accessToken>` | `INVALID_PARAMETER` (422 — неизвестный провайдер), `LAST_LOGIN_METHOD` (409), `UNAUTHENTICATED` (401) |
 | `POST` | `/forgot-password` | `{email}` | — (`200`, всегда одно и то же тело) | — | `INVALID_PARAMETER` (422), `RATE_LIMIT_EXCEEDED` (429) |
 | `POST` | `/reset-password` | `{token, password}` | — (`200`) | — | `INVALID_PARAMETER` (422), `INVALID_RESET_TOKEN` (400), `RATE_LIMIT_EXCEEDED` (429) |
@@ -77,19 +77,38 @@ email на стороне Google может смениться.
 9. Фронт грузится заново → обычный restoreSession() (уже существующий, 007) подхватывает cookie — accessToken никогда не оказывается в URL
 ```
 
-**Вход или привязка (`loginOrLinkIdentity`).** `identities` уже содержит этот `provider_uid` → вход на связанный
-аккаунт. Не содержит: email свободен → новый аккаунт (`passwordHash: null`) + `identities`-строка одной
-транзакцией. Email занят существующим аккаунтом и Google подтвердил владение (`email_verified: true`) →
-`identities`-строка добавляется к существующему аккаунту (привязка). Email занят, но `email_verified: false` →
-`OAUTH_ACCOUNT_CONFLICT` (409) — не линковать (`AUTH-RULES.md`: привязка только при подтверждённом провайдером
-email — иначе вектор захвата чужого аккаунта неподтверждённым адресом) и не создавать второй аккаунт с тем же
-email (`users.email` уникален).
+**Вход или привязка (`loginOrLinkIdentity`).** Порядок проверок важен:
+
+1. `identities` уже содержит этот `provider_uid` → вход на связанный аккаунт. Флаг `email_verified` здесь **не
+   смотрится**: владение доказано в момент привязки, и если провайдер позже перевернёт флаг, выкидывать
+   пользователя нельзя.
+2. Иначе `email_verified: false` → `EMAIL_NOT_VERIFIED` (403). Отказ и привязке, **и созданию аккаунта**.
+   Проверка стоит **до** запроса `users` — ответ не зависит от того, существует ли аккаунт (`AUTH-RULES.md`,
+   «утечка существования аккаунта»).
+3. Иначе (`email_verified: true`): email свободен → новый аккаунт (`passwordHash: null`) + `identities`-строка
+   одной транзакцией; email занят → `identities`-строка добавляется к существующему аккаунту (привязка).
+
+Шаг 2 закрывает pre-hijacking (`REVIEW-FINDINGS.md`, BE-OAUTH-01): раньше проверка стояла только на ветке
+привязки, и атакующий с `email_verified: false` заводил аккаунт на чужой адрес до того, как жертва
+зарегистрируется. Когда та входила своим Google с тем же адресом, её identity привязывалась к аккаунту
+атакующего. Покрыто `apps/api/test/oauth-link.e2e-spec.ts`.
+
+`OAUTH_ACCOUNT_CONFLICT` (409) после этого не бросается ни из одного пути; код остаётся в контракте
+`packages/shared` и в маппинге контроллера.
 
 **`google/callback` — единственный маршрут, где исключения ловятся сами, не летят в `AllExceptionsFilter`** —
 Google приводит сюда браузер полной навигацией, `application/problem+json` через неё не отдать. Любой отказ
-(`state` не совпал/просрочен, сеть, `OAUTH_ACCOUNT_CONFLICT`, пользователь отменил согласие) — редирект на
-`/login?oauthError=conflict` (только конфликт email) или `?oauthError=failed` (всё остальное); фронт (008) читает
-параметр и показывает тост, форма входа/регистрации не зависает.
+(`state` не совпал/просрочен, сеть, неподтверждённый email, пользователь отменил согласие) — редирект на
+`/login?oauthError=…`; фронт (008) читает параметр и показывает тост, форма входа/регистрации не зависает:
+
+| `?oauthError=` | Когда | Тост |
+|---|---|---|
+| `unverified` | `EMAIL_NOT_VERIFIED` | «Google не подтвердил этот адрес…» |
+| `conflict` | `OAUTH_ACCOUNT_CONFLICT` (сейчас недостижим) | «этот email уже занят» |
+| `failed` | всё остальное | «Не получилось войти через Google» |
+
+Отдельно разбирается только то, на что пользователь может повлиять: просроченный `state`, сеть и отказ Google
+ему неразличимы и не обязаны быть (`docs/SECURITY.md` §6).
 
 **Отвязка.** `DELETE /identities/:provider` идемпотентна (не привязан — `204`, не ошибка), но `AUTH-RULES.md`
 запрещает отвязку последнего способа входа: если после отвязки не останется ни пароля, ни другой `identities`-
