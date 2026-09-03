@@ -372,13 +372,12 @@ function readRefreshCookie(req: Request): string | undefined {
  * Разбирать отдельно стоит только то, на что пользователь может повлиять, —
  * иначе он видит «попробуйте ещё раз» и крутится в цикле.
  *
- * `OAUTH_ACCOUNT_CONFLICT` после 🔒 BE-OAUTH-01 больше не бросается ни из
- * одного пути; строка оставлена, потому что код всё ещё в контракте
- * `packages/shared` — удаление из контракта не место в security-фиксе.
+ * Причина здесь ровно одна, и таблица на один вход — не педантизм: она
+ * держит перечисление явным, чтобы следующий код попадал в неё осознанно,
+ * а не расширял `if` до оракула (BE-OAUTH-07 — как раз про такой код).
  */
 const OAUTH_ERROR_PARAMS: Partial<Record<ErrorCode, string>> = {
   EMAIL_NOT_VERIFIED: 'unverified',
-  OAUTH_ACCOUNT_CONFLICT: 'conflict',
 };
 
 function oauthErrorParam(error: unknown): string {

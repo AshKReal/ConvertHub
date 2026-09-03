@@ -41,8 +41,11 @@ GitHub из исходного ТЗ не реализуется вовсе, Tele
 - Тот же Google-аккаунт повторно → тот же пользователь, не дубль.
 - Google-аккаунт с новым email → новый пользователь без пароля.
 - Google-аккаунт с email существующего пользователя и `email_verified: true` → привязка к нему.
-- Google-аккаунт с email существующего пользователя и `email_verified: false` → отказ, редирект на
-  `/login?oauthError=conflict`, тост с объяснением, ничего не меняется.
+- Google-аккаунт с `email_verified: false` → отказ, редирект на `/login?oauthError=unverified`, тост с
+  объяснением, ничего не меняется. Отказ одинаковый и когда email занят, и когда свободен: аккаунт по
+  неподтверждённому адресу не создаётся тоже. **Изменено 2026-09-03 фиксом 🔒 BE-OAUTH-01** — до него проверка
+  стояла только на ветке привязки, отказ был `oauthError=conflict`, а на свободном email аккаунт молча
+  создавался (pre-hijacking + оракул существования аккаунта). См. `docs/AUTH.md`, `REVIEW-FINDINGS.md`.
 - Пользователь отменил согласие на экране Google или сбой сети/Google → `/login?oauthError=failed`.
 - Профиль: карточка Google — «Отвязать», задизейблена с тултипом, если это единственный способ входа.
 - Профиль: аккаунт без пароля — форма смены пароля скрыта, вместо неё ссылка на «Забыли пароль» (009).
@@ -51,7 +54,7 @@ GitHub из исходного ТЗ не реализуется вовсе, Tele
 
 | Ситуация | Что видит пользователь | Код |
 |---|---|---|
-| Email от Google занят чужим неподтверждённым аккаунтом | Редирект `/login?oauthError=conflict`, тост | `OAUTH_ACCOUNT_CONFLICT` (409) |
+| Google не подтвердил владение email (занят он или свободен — ответ один) | Редирект `/login?oauthError=unverified`, тост | `EMAIL_NOT_VERIFIED` (403) |
 | `state`/`code_verifier` не совпал, просрочен, не найден; сбой обмена кода; отказ Google | Редирект `/login?oauthError=failed`, тост | — (не JSON, редирект) |
 | Отвязка единственного способа входа | Кнопка задизейблена заранее; при гонке — тост | `LAST_LOGIN_METHOD` (409) |
 | Неизвестный `:provider` в `DELETE /identities/:provider` | — (curl/API-клиент) | `INVALID_PARAMETER` (422) |
@@ -64,7 +67,8 @@ GitHub из исходного ТЗ не реализуется вовсе, Tele
 - [x] Новый Google-аккаунт → новый `User` (`passwordHash: null`) + `Identity`, сессия выдана
 - [x] Тот же `providerUid` повторно → тот же `userId`, не дубль (включая гонку параллельных колбэков — P2002 перехватывается)
 - [x] Email существующего аккаунта + `email_verified: true` → привязка к нему, не новый аккаунт
-- [x] Email существующего аккаунта + `email_verified: false` → `OAUTH_ACCOUNT_CONFLICT`, аккаунт не тронут
+- [x] `email_verified: false` → `EMAIL_NOT_VERIFIED`; существующий аккаунт не тронут, на свободном email
+  аккаунт **не создаётся** (🔒 BE-OAUTH-01, `apps/api/test/oauth-link.e2e-spec.ts`)
 - [x] `DELETE /identities/:provider` отвязывает, когда есть другой способ входа; `LAST_LOGIN_METHOD`, когда это последний
 - [x] `PATCH /password` на аккаунте без пароля → `INVALID_CREDENTIALS`, не падает
 - [x] `GET /me`/`login`/`register`/`refresh` возвращают реальные `hasPassword`/`providers`
@@ -116,7 +120,8 @@ GitHub из исходного ТЗ не реализуется вовсе, Tele
 ## Чек-лист
 
 - [x] Prisma: `Identity`, `User.passwordHash` nullable, миграция
-- [x] `packages/shared`: `OAUTH_ACCOUNT_CONFLICT`/`LAST_LOGIN_METHOD`, `oauthProviderSchema`, `hasPassword`/`providers` в `authUserSchema`
+- [x] `packages/shared`: `LAST_LOGIN_METHOD`, `oauthProviderSchema`, `hasPassword`/`providers` в `authUserSchema`
+  (был ещё `OAUTH_ACCOUNT_CONFLICT` — удалён 2026-09-03, BE-OAUTH-07)
 - [x] `modules/auth/google-oauth.service.ts`, `modules/auth/oauth-state.service.ts`
 - [x] `auth.service.ts`: `loginOrLinkIdentity`/`unlinkIdentity`; `account.service.ts`: null-passwordHash guard
 - [x] `auth.controller.ts`: `google/start`, `google/callback`, `DELETE identities/:provider`, расширенный `me`
@@ -147,10 +152,13 @@ GitHub из исходного ТЗ не реализуется вовсе, Tele
   новых сравнений паролей/хешей в этой спеке нет
 - [x] Тип файла по сигнатуре — не относится (нет загрузки файлов)
 - [x] Имя файла от клиента нигде не используется как путь — не относится
-- [x] Каждый `catch` различает причины — P2002 в `loginOrLinkIdentity` (гонка identity vs прочее), `google/callback` (state/сеть/`OAUTH_ACCOUNT_CONFLICT` — разные `oauthError`)
+- [x] Каждый `catch` различает причины — P2002 в `loginOrLinkIdentity` (гонка identity vs прочее), `google/callback` (state/сеть/`EMAIL_NOT_VERIFIED` — разные `oauthError`)
 - [x] В лог не попадают секреты — `GoogleOauthService` не логирует `client_secret`/`code`/`access_token`
-- [x] Ошибка не раскрывает существование чужого аккаунта сверх необходимого — `OAUTH_ACCOUNT_CONFLICT` говорит
-  уже аутентифицированному через Google пользователю о его же email, не оракул для постороннего
+- [x] Ошибка не раскрывает существование чужого аккаунта — `EMAIL_NOT_VERIFIED` бросается **до** запроса
+  `users`, ответ одинаков на занятый и свободный email. Прежняя формулировка этого пункта («`OAUTH_ACCOUNT_CONFLICT`
+  говорит уже аутентифицированному через Google пользователю о его же email, не оракул для постороннего») была
+  **неверна**: код бросался ровно там, где Google владение адресом не подтвердил, — аутентифицированности не
+  было. Исправлено 🔒 BE-OAUTH-01 + BE-OAUTH-07, разбор — `docs/SECURITY.md` §6
 - [x] Ресурсы освобождаются в `finally` — не относится (нет файловых хендлов); `oauth_state` — одноразовая
   запись, удаляется в `consume()` до любых дальнейших веток, даже при ошибке позже
 

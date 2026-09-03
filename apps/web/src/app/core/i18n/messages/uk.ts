@@ -67,8 +67,6 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'auth.error.emailTaken': 'Цей email вже зареєстровано',
   'auth.oauth.google': 'Увійти через Google',
   'auth.oauth.telegram': 'Увійти через Telegram',
-  'auth.oauth.conflictError':
-    'Цей email від Google вже зареєстровано. Увійдіть паролем, потім прив’яжіть Google з профілю.',
   'auth.oauth.unverifiedError':
     'Google не підтвердив цю адресу, тому увійти за нею не можна. Підтвердьте адресу в Google або увійдіть за email і паролем.',
   'auth.oauth.failedError': 'Не вдалося увійти через Google. Спробуйте ще раз.',
@@ -120,7 +118,7 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
 
   'error.invalidApiKey': 'Ключ API недійсний або відкликаний. Перевірте ключ або випустіть новий.',
   'error.emailNotVerified':
-    'Підтвердьте email, перш ніж продовжити — перевірте пошту, там посилання.',
+    'Провайдер входу не підтвердив цю адресу. Підтвердіть її там або увійдіть за email і паролем.',
   'error.fileNotFound':
     'Файл недоступний — можливо, термін зберігання минув або посилання недійсне.',
   'error.fileTooLarge': 'Файл важить {actual}, ліміт — {max}. Виберіть файл меншого розміру.',

@@ -67,8 +67,6 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'auth.error.emailTaken': 'Этот email уже зарегистрирован',
   'auth.oauth.google': 'Войти через Google',
   'auth.oauth.telegram': 'Войти через Telegram',
-  'auth.oauth.conflictError':
-    'Этот email от Google уже зарегистрирован. Войдите паролем, затем привяжите Google из профиля.',
   'auth.oauth.unverifiedError':
     'Google не подтвердил этот адрес, поэтому войти по нему нельзя. Подтвердите адрес в Google или войдите по email и паролю.',
   'auth.oauth.failedError': 'Не получилось войти через Google. Попробуйте ещё раз.',
@@ -120,7 +118,7 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
 
   'error.invalidApiKey': 'Ключ API недействителен или отозван. Проверьте ключ или выпустите новый.',
   'error.emailNotVerified':
-    'Подтвердите email, прежде чем продолжить — проверьте почту, там ссылка.',
+    'Провайдер входа не подтвердил этот адрес. Подтвердите его там или войдите по email и паролю.',
   'error.fileNotFound':
     'Файл недоступен — возможно, срок хранения истёк или ссылка недействительна.',
   'error.fileTooLarge': 'Файл весит {actual}, лимит — {max}. Выберите файл меньшего размера.',

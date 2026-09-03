@@ -23,7 +23,7 @@ providers: []}`, других способов входа тогда ещё не
 | `POST` | `/refresh` | — (refresh-токен из cookie) | `{accessToken, user}` | refresh-cookie | `UNAUTHENTICATED` (401) |
 | `POST` | `/logout` | — (refresh-токен из cookie, опционально) | — (`204`) | — | — (идемпотентно, всегда `204`) |
 | `GET` | `/google/start` | — | `302` на Google | — | — (полная навигация браузера, не JSON) |
-| `GET` | `/google/callback` | — (`code`/`state` в query, от Google) | `302` на фронт | — | — (все отказы — редирект `?oauthError=unverified\|conflict\|failed`, не JSON-код — см. ниже) |
+| `GET` | `/google/callback` | — (`code`/`state` в query, от Google) | `302` на фронт | — | — (все отказы — редирект `?oauthError=unverified\|failed`, не JSON-код — см. ниже) |
 | `DELETE` | `/identities/:provider` | — | — (`204`, идемпотентно) | `Authorization: Bearer <accessToken>` | `INVALID_PARAMETER` (422 — неизвестный провайдер), `LAST_LOGIN_METHOD` (409), `UNAUTHENTICATED` (401) |
 | `POST` | `/forgot-password` | `{email}` | — (`200`, всегда одно и то же тело) | — | `INVALID_PARAMETER` (422), `RATE_LIMIT_EXCEEDED` (429) |
 | `POST` | `/reset-password` | `{token, password}` | — (`200`) | — | `INVALID_PARAMETER` (422), `INVALID_RESET_TOKEN` (400), `RATE_LIMIT_EXCEEDED` (429) |
@@ -93,8 +93,11 @@ email на стороне Google может смениться.
 зарегистрируется. Когда та входила своим Google с тем же адресом, её identity привязывалась к аккаунту
 атакующего. Покрыто `apps/api/test/oauth-link.e2e-spec.ts`.
 
-`OAUTH_ACCOUNT_CONFLICT` (409) после этого не бросается ни из одного пути; код остаётся в контракте
-`packages/shared` и в маппинге контроллера.
+`OAUTH_ACCOUNT_CONFLICT` (409) после этого не бросался ни из одного пути и **удалён из контракта**
+(`REVIEW-FINDINGS.md`, BE-OAUTH-07). Вернуть его нельзя: единственная ситуация, где он возникал, — занятый
+email + неподтверждённое владение, а различимый ответ на неё и есть оракул существования аккаунта. Посторонний
+с любым неподтверждённым Google на чужой адрес отличал бы `409` (аккаунт есть) от молчаливого создания
+(аккаунта нет) и перебирал бы реестр пользователей. Шаг 2 отвечает одинаково в обоих случаях именно поэтому.
 
 **`google/callback` — единственный маршрут, где исключения ловятся сами, не летят в `AllExceptionsFilter`** —
 Google приводит сюда браузер полной навигацией, `application/problem+json` через неё не отдать. Любой отказ
@@ -104,8 +107,10 @@ Google приводит сюда браузер полной навигацие�
 | `?oauthError=` | Когда | Тост |
 |---|---|---|
 | `unverified` | `EMAIL_NOT_VERIFIED` | «Google не подтвердил этот адрес…» |
-| `conflict` | `OAUTH_ACCOUNT_CONFLICT` (сейчас недостижим) | «этот email уже занят» |
 | `failed` | всё остальное | «Не получилось войти через Google» |
+
+Причина ровно одна: отдельно объясняется только то, на что пользователь может повлиять. Просроченный `state`,
+сбой сети и отказ на экране согласия ему неразличимы и не обязаны быть (`docs/SECURITY.md` §6).
 
 Отдельно разбирается только то, на что пользователь может повлиять: просроченный `state`, сеть и отказ Google
 ему неразличимы и не обязаны быть (`docs/SECURITY.md` §6).

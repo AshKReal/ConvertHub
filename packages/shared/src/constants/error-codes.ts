@@ -11,14 +11,13 @@ export const ERROR_CODES = {
   INVALID_CREDENTIALS: { status: 401, retryable: false },
   /** Access-токен отсутствует/просрочен/невалиден на защищённом маршруте (спека 007) — интерцептор фронта обязан повторить запрос после refresh, отсюда retryable. */
   UNAUTHENTICATED: { status: 401, retryable: true },
+  /** Провайдер OAuth не подтвердил владение email (спека 008, 🔒 BE-OAUTH-01) — отказ и привязке, и созданию аккаунта. Бросается до запроса `users`, поэтому не различает «аккаунт есть» и «аккаунта нет». Регистрация по паролю верификации email не требует (AUTH-RULES.md §5), других источников у кода нет. */
   EMAIL_NOT_VERIFIED: { status: 403, retryable: false },
   FILE_NOT_FOUND: { status: 404, retryable: false },
   /** Перевыпуск/отзыв чужого или несуществующего ключа (спека 011) — 404, а не 403, чтобы «нет такого» и «не твой» были неотличимы (AUTH-RULES.md, critical-zones). */
   API_KEY_NOT_FOUND: { status: 404, retryable: false },
   /** Регистрация: email уже занят (спека 007) — в отличие от логина/сброса пароля, здесь раскрытие существования аккаунта не запрещено (AUTH-RULES.md §2 перечисляет только логин и восстановление). */
   EMAIL_ALREADY_REGISTERED: { status: 409, retryable: false },
-  /** Google вернул email другого существующего аккаунта, но не подтвердил владение им (спека 008) — автолинковка запрещена (AUTH-RULES.md, OAuth), второй аккаунт с тем же email завести нельзя (User.email уникален). */
-  OAUTH_ACCOUNT_CONFLICT: { status: 409, retryable: false },
   /** Попытка отвязать единственный оставшийся способ входа (спека 008, AUTH-RULES.md: «НИКОГДА не разрешать отвязку последнего способа входа»). */
   LAST_LOGIN_METHOD: { status: 409, retryable: false },
   /** Повтор `POST /v1/convert` с тем же `Idempotency-Key`, пока первый запрос ещё выполняется (спека 012). Не `retryable` автоматически — клиент решает, когда первый закончится. */
