@@ -63,18 +63,15 @@ describe('assertSupportedDirection', () => {
     );
   });
 
-  it('throws UNSUPPORTED_FILE_TYPE for a real DOCX — docx-to-pdf has no engine yet (018)', () => {
-    const thrown = catchThrown(() =>
+  it('returns the docx-to-pdf direction for a DOCX + target pdf (018 сняла исключение)', () => {
+    expect(
       assertSupportedDirection(
         detected(
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         ),
         'pdf',
       ),
-    );
-    expect(responseCode(thrown)).toBe(
-      'UNSUPPORTED_FILE_TYPE' satisfies ErrorCode,
-    );
+    ).toMatchObject({ id: 'docx-to-pdf', target: 'pdf' });
   });
 
   it('throws FILE_TYPE_MISMATCH for a supported type whose target does not match (PNG + target pdf)', () => {

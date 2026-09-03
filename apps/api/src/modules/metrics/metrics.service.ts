@@ -50,6 +50,13 @@ export class MetricsService implements OnModuleInit {
     registers: [this.registry],
   });
 
+  /** Спека 018. Занятых слотов пула документных конвертаций (Gotenberg) — inc/dec в `DocumentPoolService`. 014 отложил эту метрику сюда. */
+  readonly documentPoolActive = new Gauge({
+    name: 'converthub_document_pool_active',
+    help: 'DOCX->PDF conversions currently holding a document-pool slot.',
+    registers: [this.registry],
+  });
+
   private readonly storageUsedBytes = new Gauge({
     name: 'converthub_storage_used_bytes',
     help: 'Sum of users.storage_used_bytes.',

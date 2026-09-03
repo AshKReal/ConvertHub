@@ -218,15 +218,21 @@
 
 ## Стадия 10 — полный docker compose, `DOCX → PDF`
 
-- [ ] **016** `containerization`
-  - [ ] Расширить `docker-compose.yml`: `gotenberg` (без сети наружу, `read_only`, `tmpfs /tmp`, `cap_drop: ALL`, лимит памяти), `minio`
-  - [ ] `S3Storage implements Storage`, привязка в DI вместо `LocalDiskStorage` (проверочное свойство: ноль строк в `conversion.service.ts`)
-  - [ ] `docker/api.Dockerfile`, multi-stage
-  - [ ] `.github/workflows/ci.yml`
-- [ ] **018** 🔒 `docx-pdf`
-  - [ ] `DocumentEngine implements ConversionEngine` — HTTP POST в Gotenberg
-  - [ ] Таймаут `CONVERSION_TIMEOUT`, семафор пула документов (8), ожидание до 10 с → `503` + `Retry-After`
-  - [ ] Подключение второй реализации `ConversionEngine` без изменения сигнатуры интерфейса (005) и без изменения `conversion.service.ts`
+**016 + 018 — одна ветка `docker`, один PR** (решение владельца, `SPECS.md`). Коммиты по номерам, 🔒-файлы 018 отдельно.
+
+- [ ] **016** `containerization` — `specs/016-containerization.md`
+  - [x] `docker-compose.yml`: `minio` + `minio-init` (основной набор), `gotenberg` (018), `api` под профилем `full`
+  - [x] `S3Storage implements Storage` + переключатель `STORAGE_DRIVER` (не жёсткий флип — тестовый стек не требует MinIO); фабрика в `storage.module.ts`; проверочное свойство: ноль строк в `conversion.service.ts`/`files.service.ts` для 016
+  - [x] `docker/api.Dockerfile`, multi-stage (node + libvips + Python; `prisma migrate deploy` в entrypoint); `.dockerignore`
+  - [x] `.github/workflows/ci.yml` — job `docker` (build + smoke `/health` `/ready`)
+  - [x] `HealthService` — проверка объектного хранилища в `/ready` при `s3`
+  - [ ] Приёмка владельцем: критерии из спеки руками, `git diff` без `conversion.service.ts`/`files.service.ts`, враждебное второе мнение
+- [ ] **018** 🔒 `docx-pdf` — `specs/018-docx-pdf.md`
+  - [x] `DocumentEngine implements ConversionEngine` — `fetch` в Gotenberg, `AbortSignal.timeout` → `CONVERSION_TIMEOUT`, не-2xx/сеть → `CONVERSION_FAILED`; сигнатура интерфейса не менялась
+  - [x] `DocumentPoolService` — семафор 8 + очередь + ожидание 10 с → `SERVICE_OVERLOADED` + `Retry-After`; вызов только для DOCX, `release` в `finally`
+  - [x] 🔒 снято исключение `docx-to-pdf` из `conversion-direction.validator.ts` + `docx-zip-bomb.validator.ts` (ratio 100 + абсолютный предел по центральному каталогу ZIP, без распаковки) — отдельные коммиты
+  - [x] Фикстуры (`sample.docx`, `zip-bomb.docx`, `zip-writer.mjs`), юнит (валидатор бомбы, пул, движок), `apps/api/test/docx-pdf.e2e-spec.ts` за `E2E_DOCX=1`
+  - [ ] Приёмка владельцем построчно (🔒): все точки входа DOCX, тип по сигнатуре, `catch` различает причины, ресурсы в `finally`, бомба без распаковки; враждебное второе мнение
 
 ## Стадия 11 — развёртывание
 

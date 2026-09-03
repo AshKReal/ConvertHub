@@ -97,3 +97,28 @@ export const IDEMPOTENCY_TTL_SECONDS = 24 * 60 * 60;
  * `API_KEY_LIMIT_REACHED`; перевыпуск числа не увеличивает и предел не задевает.
  */
 export const MAX_ACTIVE_API_KEYS = 3;
+
+/**
+ * Спека 018. Таймаут одной конвертации (TECH-SPEC.md §6). Един для всех
+ * движков — раньше `PdfToDocxEngine` держал собственный `TIMEOUT_MS`.
+ */
+export const CONVERSION_TIMEOUT_SECONDS = 60;
+
+/**
+ * Спека 018 (TECH-SPEC.md §6). Пул одновременных документных конвертаций
+ * (`DOCX→PDF` через Gotenberg): запрос сверх `DOCUMENT_POOL_SIZE` ждёт до
+ * `DOCUMENT_POOL_WAIT_SECONDS`, затем `SERVICE_OVERLOADED` + `Retry-After`.
+ * Отдельно от лимита одновременности «3 на пользователя» (005) — тот про
+ * идентичность, этот про ресурс LibreOffice.
+ */
+export const DOCUMENT_POOL_SIZE = 8;
+export const DOCUMENT_POOL_WAIT_SECONDS = 10;
+
+/**
+ * Спека 018 (TECH-SPEC.md §9). DOCX — это ZIP: защита от бомбы распаковки.
+ * Отклоняем, если суммарный заявленный несжатый размер содержимого больше
+ * `MAX_DOCX_UNZIP_RATIO`× размера файла ЛИБО больше `MAX_DOCX_UNZIP_BYTES`
+ * абсолютно. Считается по центральному каталогу архива, без распаковки.
+ */
+export const MAX_DOCX_UNZIP_RATIO = 100;
+export const MAX_DOCX_UNZIP_BYTES = 200 * 1024 * 1024;

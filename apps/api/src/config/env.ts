@@ -46,8 +46,97 @@ const envSchema = z.object({
     .default('info'),
   /** Спека 014. `Authorization: Bearer <токен>` на `GET /metrics` — иначе `401`. Без дефолта, как секрет. */
   METRICS_TOKEN: z.string().min(16),
+  /**
+   * Спека 016. Драйвер объектного хранилища. `local` (умолчание) —
+   * `LocalDiskStorage` + `GET /v1/storage/local/raw`, как со спеки 003:
+   * локальная разработка и весь тестовый стек (`test:e2e`, Playwright, CI job
+   * `e2e`) не начинают требовать поднятый MinIO. `s3` — `S3Storage`, MinIO
+   * локально / Cloudflare R2 в проде (TECH-SPEC.md §3.1).
+   */
+  STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+  /**
+   * Спека 016. Обязательны при `STORAGE_DRIVER=s3` (проверка после `parse`
+   * ниже). `LOCAL_STORAGE_DIR`/`SIGNED_URL_SECRET` при этом остаются
+   * обязательными безусловно — сознательный компромисс: делать их условными
+   * значит протащить `string | undefined` в `signed-url.util.ts` и
+   * `local-disk-raw.controller.ts` (зона `critical-zones.md`), цена не стоит
+   * того. В `s3`-режиме держите их заглушками (`docs/SETUP.md`).
+   */
+  S3_ENDPOINT: z.string().url().optional(),
+  /** Публичный хост хранилища для presigned URL — из compose приложение видит MinIO как `http://minio:9000`, а браузер клиента как `http://localhost:9000`. Не задан → `S3_ENDPOINT`. */
+  S3_PUBLIC_ENDPOINT: z.string().url().optional(),
+  S3_REGION: z.string().min(1).default('us-east-1'),
+  S3_BUCKET: z.string().min(1).optional(),
+  S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+  S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+  /** MinIO требует path-style (`http://host/bucket/key`), не virtual-hosted; R2 поддерживает оба. Дефолт `true` безопаснее. `z.enum` + transform по тем же граблям, что `SMTP_SECURE`. */
+  S3_FORCE_PATH_STYLE: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  /**
+   * Спека 018. HTTP-адрес Gotenberg (конвертер DOCX→PDF). В `--profile full`
+   * — `http://gotenberg:3000` (внутренняя сеть compose). Недостижим →
+   * `docx-to-pdf` даёт `CONVERSION_FAILED`, остальные направления работают
+   * (`ARCHITECTURE.md` §9). Дефолт — под docker-compose.override.yml с
+   * опубликованным портом (docs/SETUP.md).
+   */
+  GOTENBERG_URL: z.string().url().default('http://localhost:3001'),
 });
 
 export type Env = z.infer<typeof envSchema>;
 
 export const env: Env = envSchema.parse(process.env);
+
+// Условная обязательность S3-переменных — падаем на старте, а не на первом
+// запросе (`ARCHITECTURE.md` §4.3). `superRefine` внутри схемы дал бы
+// `S3_* : string | undefined` в типе и там, где `s3Config()` их гарантирует
+// — отдельная явная проверка чище.
+if (env.STORAGE_DRIVER === 's3') {
+  const missing = (
+    [
+      'S3_ENDPOINT',
+      'S3_BUCKET',
+      'S3_ACCESS_KEY_ID',
+      'S3_SECRET_ACCESS_KEY',
+    ] as const
+  ).filter((key) => env[key] === undefined);
+  if (missing.length > 0) {
+    throw new Error(
+      `STORAGE_DRIVER=s3 требует ${missing.join(', ')} (docs/SETUP.md, раздел про хранилище).`,
+    );
+  }
+}
+
+/** Полностью типизированная конфигурация S3 — вызывать только когда `env.STORAGE_DRIVER === 's3'` (иначе бросит). */
+export interface S3Config {
+  readonly endpoint: string;
+  readonly publicEndpoint: string;
+  readonly region: string;
+  readonly bucket: string;
+  readonly accessKeyId: string;
+  readonly secretAccessKey: string;
+  readonly forcePathStyle: boolean;
+}
+
+export function s3Config(): S3Config {
+  if (
+    env.S3_ENDPOINT === undefined ||
+    env.S3_BUCKET === undefined ||
+    env.S3_ACCESS_KEY_ID === undefined ||
+    env.S3_SECRET_ACCESS_KEY === undefined
+  ) {
+    throw new Error(
+      's3Config() вызван без полной конфигурации S3 — STORAGE_DRIVER != s3?',
+    );
+  }
+  return {
+    endpoint: env.S3_ENDPOINT,
+    publicEndpoint: env.S3_PUBLIC_ENDPOINT ?? env.S3_ENDPOINT,
+    region: env.S3_REGION,
+    bucket: env.S3_BUCKET,
+    accessKeyId: env.S3_ACCESS_KEY_ID,
+    secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+    forcePathStyle: env.S3_FORCE_PATH_STYLE,
+  };
+}

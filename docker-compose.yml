@@ -49,5 +49,137 @@ services:
       - "${MAILHOG_SMTP_PORT:-1025}:1025"
       - "${MAILHOG_WEB_PORT:-8025}:8025"
 
+  # Спека 016. S3-совместимое хранилище для STORAGE_DRIVER=s3 (умолчание всё
+  # ещё local, docs/SETUP.md). В основном наборе, не под профилем: чтобы
+  # `pnpm dev:api` снаружи мог работать в режиме s3 без `--profile full`.
+  minio:
+    image: minio/minio:RELEASE.2025-04-08T15-41-24Z
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Одноразовый: создаёт бакет и выходит. Приложение само бакет не создаёт —
+  # лишние права и размытая граница (specs/016 «Отвергнутые варианты»).
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-08T15-39-49Z
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >-
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin} &&
+      mc mb --ignore-existing local/${MINIO_BUCKET:-convert-hub}
+      "
+
+  # Спека 018. Конвертер DOCX→PDF (LibreOffice). Изоляция — это и есть смысл
+  # (ARCHITECTURE.md §2, граница 2): только internal-сеть `converter` (без
+  # исходящей сети и без порта наружу — ARCHITECTURE.md §13), без БД,
+  # read_only, tmpfs на /tmp + HOME (LibreOffice требует writable HOME),
+  # cap_drop ALL, лимиты памяти/процессов. Достижим только из контейнера
+  # `api` (`docker compose --profile full`); для docx→pdf при `pnpm dev:api`
+  # снаружи — опубликовать порт локальным docker-compose.override.yml
+  # (docs/SETUP.md).
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    restart: unless-stopped
+    command:
+      - gotenberg
+      - --chromium-disable-javascript=true
+      - --chromium-allow-list=file:///tmp/.*
+    networks:
+      - converter
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      HOME: /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 1g
+    pids_limit: 256
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Спека 016. Образ бэкенда под профилем `full`: `docker compose up -d`
+  # поднимает только инфраструктуру и не ломает dev-цикл с горячей
+  # перезагрузкой (ARCHITECTURE.md §10); `docker compose --profile full up -d`
+  # добавляет собранный api. Хосты — контейнерные (postgres/redis/minio),
+  # не localhost.
+  api:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    restart: unless-stopped
+    networks:
+      - default
+      - converter
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      gotenberg:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:4200}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+      STORAGE_DRIVER: s3
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: http://localhost:${MINIO_PORT:-9000}
+      S3_BUCKET: ${MINIO_BUCKET:-convert-hub}
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_FORCE_PATH_STYLE: "true"
+      # LOCAL_STORAGE_DIR/SIGNED_URL_SECRET обязательны и в режиме s3 (заглушки).
+      LOCAL_STORAGE_DIR: /tmp/converthub-unused
+      SIGNED_URL_SECRET: unused-in-s3-mode-but-schema-requires-32-plus-chars
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-32-plus-random-characters-in-prod}
+      METRICS_TOKEN: ${METRICS_TOKEN:-change-me-16-plus}
+      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_PORT: "1025"
+      SMTP_FROM: ${SMTP_FROM:-noreply@convert-hub.local}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-unset.apps.googleusercontent.com}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-unset}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:3000/v1/auth/google/callback}
+      GOTENBERG_URL: http://gotenberg:3000
+    ports:
+      - "${API_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+networks:
+  # Спека 018. Без исходящей сети у Gotenberg — граница изоляции конвертера
+  # (ARCHITECTURE.md §2). `api` состоит и в `default`, и здесь.
+  converter:
+    internal: true
+
 volumes:
   postgres-data:
+  minio-data:
