@@ -164,7 +164,21 @@ export class AuthService {
   ): Promise<IssuedSession> {
     const identity = await this.findIdentity(provider, providerUid);
     if (identity !== null) {
+      // Уже привязан — владение доказано в момент привязки. Если провайдер
+      // позже перевернёт `email_verified`, выкидывать его нельзя.
       return this.issueSession(identity);
+    }
+
+    // 🔒 BE-OAUTH-01. Неподтверждённый провайдером email не даёт ни привязки,
+    // ни СОЗДАНИЯ аккаунта. Раньше проверка стояла только на ветке привязки, и
+    // атакующий заводил аккаунт на чужой email (`email_verified: false`) до
+    // того, как жертва зарегистрируется; когда та входила своим Google с тем же
+    // адресом, её identity привязывалась к аккаунту атакующего (pre-hijacking).
+    //
+    // Бросаем ДО запроса `existingUser`: ответ не должен зависеть от того,
+    // существует ли аккаунт (`AUTH-RULES.md`, «утечка существования аккаунта»).
+    if (!emailVerified) {
+      throw new AppException('EMAIL_NOT_VERIFIED');
     }
 
     const normalizedEmail = normalizeEmail(email);
@@ -189,14 +203,8 @@ export class AuthService {
         return this.issueSession({ ...created, hasPassword: false });
       }
 
-      if (!emailVerified) {
-        // AUTH-RULES.md: привязка только при подтверждённом провайдером
-        // email — иначе вектор захвата чужого аккаунта. Второй аккаунт с
-        // тем же email тоже не завести (`User.email` уникален) — явная
-        // ошибка, не тихий отказ.
-        throw new AppException('OAUTH_ACCOUNT_CONFLICT');
-      }
-
+      // Сюда доходим только с `emailVerified === true` — проверка поднята
+      // выше, чтобы накрыть и создание аккаунта (🔒 BE-OAUTH-01).
       await this.prisma.identity.create({
         data: { id: ulid(), userId: existingUser.id, provider, providerUid },
       });
