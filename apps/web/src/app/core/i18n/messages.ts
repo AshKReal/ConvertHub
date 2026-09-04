@@ -76,5 +76,4 @@ export const ERROR_MESSAGE_KEYS: Record<ErrorCode, MessageKey> = {
 export const LOGIN_PROVIDER_LABEL_KEYS: Record<LoginProvider, MessageKey> = {
   password: 'profile.providers.password',
   google: 'profile.providers.google',
-  telegram: 'profile.providers.telegram',
 };

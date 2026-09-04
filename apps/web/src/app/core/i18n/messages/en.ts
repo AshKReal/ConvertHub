@@ -70,7 +70,6 @@ export const EN_MESSAGES = {
   'auth.error.passwordTooShort': 'Password must be at least {min} characters',
   'auth.error.emailTaken': 'This email is already registered',
   'auth.oauth.google': 'Continue with Google',
-  'auth.oauth.telegram': 'Continue with Telegram',
   'auth.oauth.unverifiedError':
     'Google has not confirmed this email address, so we cannot sign you in with it. Verify the address with Google, or sign in with an email and password.',
   'auth.oauth.failedError': "Google sign-in didn't work. Please try again.",
@@ -104,7 +103,6 @@ export const EN_MESSAGES = {
   'profile.providers.title': 'Connected sign-in methods',
   'profile.providers.password': 'Password',
   'profile.providers.google': 'Google',
-  'profile.providers.telegram': 'Telegram',
   'profile.providers.connected': 'Connected',
   'profile.providers.notConnected': 'Not connected',
   'profile.providers.unlink': 'Unlink',

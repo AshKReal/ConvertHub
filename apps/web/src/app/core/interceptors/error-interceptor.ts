@@ -23,7 +23,16 @@ interface ProblemDetails {
   readonly meta?: Readonly<Record<string, string | number>>;
 }
 
-const FALLBACK_CODE: ErrorCode = 'CONVERSION_FAILED';
+/**
+ * `INTERNAL_ERROR`, не `CONVERSION_FAILED`: сюда попадает ЛЮБОЙ ответ без
+ * распознанного `code` — 401 на `/v1/auth/me`, обрыв сети, страница-заглушка
+ * от прокси. Прежний фолбэк объявлял конвертацию неудавшейся на каждый такой
+ * случай; на живом деплое ошибка регистрации показывалась пользователю как
+ * «конвертация неожиданно завершилась ошибкой». Реестр кодов заводит
+ * `INTERNAL_ERROR` ровно для этого — «вне доменных кодов, не только
+ * конвертация» (`packages/shared`).
+ */
+const FALLBACK_CODE: ErrorCode = 'INTERNAL_ERROR';
 
 /**
  * Подключён в `app.config.ts` вместе с первым реальным сетевым вызовом (026).

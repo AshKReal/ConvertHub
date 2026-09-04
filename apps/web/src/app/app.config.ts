@@ -13,6 +13,7 @@ import { firstValueFrom } from 'rxjs';
 import { authInterceptor } from './core/interceptors/auth-interceptor';
 import { errorInterceptor } from './core/interceptors/error-interceptor';
 import { requestIdInterceptor } from './core/interceptors/request-id-interceptor';
+import { shouldRetryQuery } from './core/query-retry';
 import { AuthService } from './core/services/auth';
 import { routes } from './app.routes';
 
@@ -33,6 +34,13 @@ export const appConfig: ApplicationConfig = {
     // Спека 010 — подключается вместе с первым серверным списком
     // (ARCHITECTURE.md §6.2), не раньше: до этого серверных данных, которые
     // нужно кешировать/инвалидировать, в приложении не было.
-    provideTanStackQuery(new QueryClient()),
+    //
+    // `retry` задан явно: дефолтные три попытки с бэкоффом повторяли и
+    // безнадёжное (401 гостя), а каждая попытка возвращала страницу в
+    // состояние загрузки — список файлов мигал скелетоном. Правило и его
+    // обоснование — `core/query-retry.ts`.
+    provideTanStackQuery(
+      new QueryClient({ defaultOptions: { queries: { retry: shouldRetryQuery } } }),
+    ),
   ],
 };

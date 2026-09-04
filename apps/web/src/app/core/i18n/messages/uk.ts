@@ -66,7 +66,6 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'auth.error.passwordTooShort': 'Пароль має бути не коротшим за {min} символів',
   'auth.error.emailTaken': 'Цей email вже зареєстровано',
   'auth.oauth.google': 'Увійти через Google',
-  'auth.oauth.telegram': 'Увійти через Telegram',
   'auth.oauth.unverifiedError':
     'Google не підтвердив цю адресу, тому увійти за нею не можна. Підтвердьте адресу в Google або увійдіть за email і паролем.',
   'auth.oauth.failedError': 'Не вдалося увійти через Google. Спробуйте ще раз.',
@@ -101,7 +100,6 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'profile.providers.title': 'Способи входу',
   'profile.providers.password': 'Пароль',
   'profile.providers.google': 'Google',
-  'profile.providers.telegram': 'Telegram',
   'profile.providers.connected': 'Підключено',
   'profile.providers.notConnected': 'Не підключено',
   'profile.providers.unlink': "Відв'язати",
