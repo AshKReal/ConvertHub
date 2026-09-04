@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/v1/:path*",
-      "destination": "https://REPLACE-WITH-RAILWAY-HOST.up.railway.app/v1/:path*"
+      "destination": "https://converthub-production.up.railway.app/v1/:path*"
     },
     {
       "source": "/(.*)",

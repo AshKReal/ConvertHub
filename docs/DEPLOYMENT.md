@@ -100,15 +100,15 @@ gotenberg --chromium-disable-javascript=true --chromium-allow-list=file:///tmp/.
 **Это безопасно только при одном экземпляре** — при нескольких инстансах миграции пойдут параллельно, тогда
 их надо выносить в отдельный шаг деплоя.
 
-Домен Railway генерируется (`convert-hub-api.up.railway.app`) — он нужен как цель прокси. Публичным он
+Домен Railway генерируется (`converthub-production.up.railway.app`) — он нужен как цель прокси. Публичным он
 остаётся и напрямую: так проверяются `/health`, `/ready`, `/metrics` мимо Vercel.
 
 ### Переменные окружения (полный список — схема `apps/api/src/config/env.ts`)
 
 Значение вне схемы роняет процесс на старте, а не на первом запросе — это задумано.
 Ниже `convert-hub-api-nine.vercel.app` — реальный домен проекта на Vercel, выданный при создании (§7);
-подставлен как есть, копировать можно без замены. Хост Railway (`convert-hub-api.up.railway.app`) — ещё
-пример: он станет известен в §4 и до тех пор остаётся `REPLACE-WITH-RAILWAY-HOST` в `vercel.json`.
+подставлен как есть, копировать можно без замены. Хост Railway
+(`converthub-production.up.railway.app`) — тоже реальный и уже вписан в `vercel.json`.
 
 | Переменная | Значение | Примечание |
 |---|---|---|
@@ -189,8 +189,9 @@ outputDirectory   apps/web/dist/web/browser
 
 Три вещи, ради которых `vercel.json` вообще существует:
 
-1. **Прокси** — `/v1/:path*` уходит на Railway. Идёт первым правилом. Именно сюда вписывается хост из §5:
-   в репозитории лежит `REPLACE-WITH-RAILWAY-HOST` и его надо заменить.
+1. **Прокси** — `/v1/:path*` уходит на Railway. Идёт первым правилом. Сюда вписывается хост из §5 —
+   сейчас `converthub-production.up.railway.app`. При первом деплое там стоит `REPLACE-WITH-RAILWAY-HOST`:
+   хост Railway ещё не существует, когда `vercel.json` уже нужен (§1).
 2. **SPA-fallback** — всё остальное на `/index.html`. Без него прямая ссылка `/login`, `/files` или
    `/reset-password/<токен>` из письма даёт 404: файлов по этим путям нет, маршрутизация клиентская.
    Правила `rewrites` применяются после проверки файловой системы, поэтому реальные ассеты не затеняются.
@@ -208,8 +209,8 @@ outputDirectory   apps/web/dist/web/browser
 
 ## 8. Домены
 
-Собственный домен не нужен: используются выданные `convert-hub-api-nine.vercel.app` (уже существует) и
-хост Railway вида `convert-hub-api.up.railway.app` (появится в §4). DNS настраивать нечего.
+Собственный домен не нужен: используются выданные `convert-hub-api-nine.vercel.app` и
+`converthub-production.up.railway.app`. Оба существуют, DNS настраивать нечего.
 
 Если домен появится — прикрепить его к проекту Vercel и заменить домен Vercel во всех трёх местах:
 `CORS_ORIGIN`, `GOOGLE_REDIRECT_URI` и Authorized-поля Google. Прокси при этом остаётся рабочим и менять его
@@ -223,7 +224,7 @@ Refresh-токен живёт в cookie `HttpOnly; Secure; SameSite=Lax; Path=/v
 (`apps/api/src/modules/auth/auth.controller.ts#setRefreshCookie`, обоснование — `TECH-SPEC.md` §8.2).
 
 `SameSite=Lax` означает: cookie уходит на XHR только если запрос **same-site**. `convert-hub-api-nine.vercel.app` и
-`convert-hub-api.up.railway.app` — **разные сайты**: у них нет общего регистрируемого домена. Обращайся фронт
+`converthub-production.up.railway.app` — **разные сайты**: у них нет общего регистрируемого домена. Обращайся фронт
 к Railway напрямую, `POST /v1/auth/refresh` не получил бы cookie никогда, и пользователя выбрасывало бы через
 15 минут — на истечении access-токена.
 
@@ -260,7 +261,7 @@ Refresh-токен живёт в cookie `HttpOnly; Secure; SameSite=Lax; Path=/v
 3. **Railway**: Postgres → Redis → Gotenberg → `api` (§3–5). Записать домен `api`.
 4. **Google OAuth**: боевой клиент с redirect URI на домене Vercel (§6).
 5. Переменные Railway (§5) — теперь известны оба имени. Дождаться, пока `api` станет healthy:
-   `curl https://<railway-host>/health`.
+   `curl https://converthub-production.up.railway.app/health`.
 6. Заменить `REPLACE-WITH-RAILWAY-HOST` в `vercel.json`, закоммитить, запушить → Vercel пересоберёт сам.
 7. Smoke (§11).
 
@@ -271,16 +272,16 @@ Refresh-токен живёт в cookie `HttpOnly; Secure; SameSite=Lax; Path=/v
 Напрямую к Railway, мимо прокси:
 
 ```bash
-curl https://<railway-host>/health
+curl https://converthub-production.up.railway.app/health
 # → 200 {"status":"ok"}
 
-curl https://<railway-host>/ready
+curl https://converthub-production.up.railway.app/ready
 # → 200 {"status":"ok","checks":{"db":"up","redis":"up","storage":"up"}}
 #   storage:"down" → неверные R2-креды или у токена нет прав на HeadBucket (INFRA-03)
 
-curl -H "Authorization: Bearer $METRICS_TOKEN" https://<railway-host>/metrics
+curl -H "Authorization: Bearer $METRICS_TOKEN" https://converthub-production.up.railway.app/metrics
 # → 200 text/plain, converthub_* и process_*/nodejs_*
-curl https://<railway-host>/metrics
+curl https://converthub-production.up.railway.app/metrics
 # → 401
 ```
 
@@ -341,7 +342,7 @@ curl https://convert-hub-api-nine.vercel.app/v1/openapi.json
 | Контейнер `api` не стартует, в логе «содержит плейсхолдер» | В `JWT_SECRET`/`SIGNED_URL_SECRET`/`METRICS_TOKEN` осталось значение из `.env.example` — так и задумано (`INFRA-01`), см. §5 |
 | `DOCX→PDF` даёт `CONVERSION_FAILED`, остальное работает | `GOTENBERG_URL` не резолвится, или у Gotenberg нет writable `HOME`/`/tmp` |
 | Долгая сборка / дорогие build-минуты | Образ ~1.5 ГБ: node + libvips + Python/PyMuPDF (`INFRA-07`) |
-| `/ready` вечно `degraded`, storage `down` | Токен R2 без прав на `HeadBucket` — проверка в health использует именно его (`INFRA-03`) |
+| `/ready` вечно `degraded`, storage `down` | Проверка в health зовёт `HeadBucket` — операцию уровня бакета (`INFRA-03`). На R2 токен `Object Read & Write`, ограниченный бакетом, её проходит (проверено), но политика S3 строго на `GetObject`/`PutObject` даст `403`. Токен не расширять до admin — дефект в пробе, а не в правах |
 
 ---
 
