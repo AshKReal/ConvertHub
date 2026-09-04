@@ -135,6 +135,8 @@ gotenberg --chromium-disable-javascript=true --chromium-allow-list=file:///tmp/.
 | `SMTP_HOST` | хост провайдера | |
 | `SMTP_PORT` | `587` или `465` | |
 | `SMTP_SECURE` | `false` для 587 (STARTTLS), `true` для 465 | строка `'true'`/`'false'`, не булев — см. докблок в `env.ts` |
+| `SMTP_USER` | у Resend — `resend` | **обязательна в проде.** Без пары контейнер не стартует (`INFRA-12`) |
+| `SMTP_PASSWORD` | у Resend — API-ключ | то же. Задаётся только вместе с `SMTP_USER` |
 | `SMTP_FROM` | `noreply@example.com` | должен пройти верификацию у провайдера |
 
 **`CORS_ORIGIN` — это не только CORS.** Тем же значением приложение пользуется как базой фронта: редирект
@@ -318,6 +320,8 @@ curl https://convert-hub.vercel.app/v1/openapi.json
 | Ссылка из письма сброса ведёт на голый API | `CORS_ORIGIN` = домен Railway вместо Vercel (§5) |
 | Конвертация большого файла падает, маленький проходит | потолок тела у прокси Vercel (§9) — откат по §9 |
 | Контейнер `api` не стартует, в логе Prisma | БД недоступна в момент старта — `prisma migrate deploy` в entrypoint падает первым |
+| Контейнер `api` не стартует, в логе «SMTP_USER/SMTP_PASSWORD не заданы» | В проде пара обязательна: анонимную отправку не принимает ни один провайдер, и без неё молча ломалось бы только восстановление пароля (`INFRA-12`). Задать обе — или ни одной, но тогда не `production` |
+| Контейнер `api` не стартует, в логе «задаются только парой» | Задана половина `SMTP_USER`/`SMTP_PASSWORD` — почти всегда опечатка (`INFRA-12`) |
 | Контейнер `api` не стартует, в логе «содержит плейсхолдер» | В `JWT_SECRET`/`SIGNED_URL_SECRET`/`METRICS_TOKEN` осталось значение из `.env.example` — так и задумано (`INFRA-01`), см. §5 |
 | `DOCX→PDF` даёт `CONVERSION_FAILED`, остальное работает | `GOTENBERG_URL` не резолвится, или у Gotenberg нет writable `HOME`/`/tmp` |
 | Долгая сборка / дорогие build-минуты | Образ ~1.5 ГБ: node + libvips + Python/PyMuPDF (`INFRA-07`) |

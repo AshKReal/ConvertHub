@@ -35,6 +35,21 @@ const envSchema = z.object({
     .default('false')
     .transform((value) => value === 'true'),
   SMTP_FROM: z.string().email(),
+  /**
+   * Логин и пароль SMTP. `optional`, потому что локальный MailHog
+   * (`docker-compose.yml`) принимает почту анонимно и требовать их в dev
+   * значило бы выдумывать значения ради проверки.
+   *
+   * В проде анонимных релеев не существует: Resend, Postmark, SES и Mailgun
+   * требуют AUTH без исключений (у Resend это `resend` + API-ключ). Поэтому
+   * ниже, при `NODE_ENV=production`, отсутствие пары — ошибка старта, а не
+   * молчаливо сломанное восстановление пароля (`INFRA-12`).
+   *
+   * Пара «или обе, или ни одной»: половина конфигурации — всегда опечатка,
+   * и она ловится тем же блоком в любом окружении.
+   */
+  SMTP_USER: z.string().min(1).optional(),
+  SMTP_PASSWORD: z.string().min(1).optional(),
   /** Спека 008. Google Cloud Console → OAuth 2.0 Client ID (Web application). Без дефолта, как остальные секреты. */
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
@@ -148,6 +163,31 @@ if (env.NODE_ENV === 'production') {
         '(docs/DEPLOYMENT.md §5).',
     );
   }
+
+  /**
+   * Без AUTH почта в проде не уходит никуда: провайдеры отвергают анонимную
+   * отправку, `MailService.send()` падает, и ломается ровно восстановление
+   * пароля — то есть отказ виден пользователю, а не на старте. Меняем на
+   * отказ при старте по той же логике, что и с плейсхолдерами (`INFRA-12`).
+   */
+  if (env.SMTP_USER === undefined || env.SMTP_PASSWORD === undefined) {
+    throw new Error(
+      'NODE_ENV=production, но SMTP_USER/SMTP_PASSWORD не заданы. ' +
+        'Провайдеры не принимают анонимную отправку — восстановление пароля ' +
+        'молча не работало бы (docs/DEPLOYMENT.md §5).',
+    );
+  }
+}
+
+/**
+ * Половина пары — всегда опечатка, и в dev тоже: анонимный MailHog нужен
+ * без обеих, провайдер — с обеими. Проверка вне `production`-блока намеренно.
+ */
+if ((env.SMTP_USER === undefined) !== (env.SMTP_PASSWORD === undefined)) {
+  throw new Error(
+    'SMTP_USER и SMTP_PASSWORD задаются только парой: ' +
+      'обе для провайдера, ни одной для анонимного релея вроде MailHog.',
+  );
 }
 
 /** Полностью типизированная конфигурация S3 — вызывать только когда `env.STORAGE_DRIVER === 's3'` (иначе бросит). */

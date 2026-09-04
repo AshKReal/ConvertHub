@@ -127,6 +127,8 @@ pnpm lint
 | `SMTP_PORT` | **да** | `1025` | Старт падает: нечисловое/неположительное значение не проходит схему |
 | `SMTP_SECURE` | нет | `false` | По умолчанию `false` — так принимает MailHog; реальному провайдеру на 465/587 понадобится `true` |
 | `SMTP_FROM` | **да** | `noreply@convert-hub.local` | Старт падает: схема требует валидный email |
+| `SMTP_USER` | нет локально, **да в проде** | не задавать | MailHog принимает анонимно. Задаётся только парой с `SMTP_PASSWORD` — на половине пары старт падает в любом окружении. При `NODE_ENV=production` обязательна вся пара: анонимную отправку не принимает ни один провайдер (`INFRA-12`) |
+| `SMTP_PASSWORD` | нет локально, **да в проде** | не задавать | То же. У Resend это API-ключ при `SMTP_USER=resend` |
 | `GOOGLE_CLIENT_ID` | **да** | `xxx.apps.googleusercontent.com` | Старт падает: `GoogleOauthService` (спека 008) не может собрать authorize URL |
 | `GOOGLE_CLIENT_SECRET` | **да** | из Google Cloud Console | Старт падает: без него не пройдёт обмен `code` на токен |
 | `GOOGLE_REDIRECT_URI` | **да** | `http://localhost:3000/v1/auth/google/callback` | Старт падает: схема требует валидный URL. Должен буквально совпадать с authorized redirect URI в настройках Client ID — иначе Google отказывает с `redirect_uri_mismatch`, не наш код |
@@ -211,7 +213,9 @@ pnpm e2e
 Первый реальный отправитель — `AccountService` (спека 009): восстановление/смена пароля шлют письма через
 `MailModule` (`apps/api/src/modules/auth/auth.module.ts` его импортирует).
 
-В проде — любой SMTP-провайдер через те же четыре переменные, конкретный выбор — спека 017 (deployment).
+В проде — любой SMTP-провайдер через те же переменные плюс `SMTP_USER`/`SMTP_PASSWORD`: анонимную
+отправку не принимает никто, поэтому вне `development` пара обязательна (`INFRA-12`). Конкретный выбор
+провайдера — спека 017 (deployment).
 
 ## OAuth credentials
 

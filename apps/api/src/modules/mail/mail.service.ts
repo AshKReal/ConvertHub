@@ -20,10 +20,20 @@ export interface MailMessage {
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
+  /**
+   * `auth` появляется только когда пара задана целиком. Локальный MailHog
+   * принимает анонимно и на переданном `auth` отвечал бы ошибкой; провайдер
+   * без `auth` отвергает отправку. Пару валидирует `env.ts` — здесь остаётся
+   * выбор между двумя рабочими режимами, а не проверка (`INFRA-12`).
+   */
   private readonly transporter: Transporter = createTransport({
     host: env.SMTP_HOST,
     port: env.SMTP_PORT,
     secure: env.SMTP_SECURE,
+    auth:
+      env.SMTP_USER !== undefined && env.SMTP_PASSWORD !== undefined
+        ? { user: env.SMTP_USER, pass: env.SMTP_PASSWORD }
+        : undefined,
   });
 
   async send(message: MailMessage): Promise<void> {
