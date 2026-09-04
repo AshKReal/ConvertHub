@@ -9,9 +9,20 @@
       </span>
       <div>
         <h1 class="font-heading text-heading text-text">{{ i18n.t('profile.title') }}</h1>
-        <p class="text-body-sm text-text-secondary">{{ currentUser.email }}</p>
       </div>
     </div>
+
+    <!-- Email — только для чтения: он же идентификатор аккаунта и цель ссылки
+         восстановления пароля, менять его нечем (сервер такого маршрута не
+         имеет). Поэтому текст в рамке, а не отключённое поле ввода: disabled
+         input выглядит как временно недоступный, а не как неизменяемый. -->
+    <section class="flex flex-col gap-2">
+      <h2 class="font-heading text-heading-sm text-text">{{ i18n.t('profile.email.title') }}</h2>
+      <p class="rounded-lg border border-hairline bg-surface px-4 py-3 text-body-sm text-text">
+        {{ currentUser.email }}
+      </p>
+      <p class="text-caption text-text-muted">{{ i18n.t('profile.email.immutable') }}</p>
+    </section>
 
     <section class="flex flex-col gap-4">
       <h2 class="font-heading text-heading-sm text-text">

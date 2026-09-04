@@ -19,7 +19,6 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
 
   'home.title': 'Конвертуйте файли за секунди',
   'home.subtitle': 'JPG, PNG, DOCX і PDF — перетягніть файл, виберіть формат, заберіть результат.',
-  'home.cta': 'Конвертувати JPG → PNG',
   'home.directions.heading': 'Виберіть напрямок',
 
   'direction.open': 'Відкрити {from} → {to}',
@@ -98,6 +97,8 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'profile.changePassword.noPassword': 'У цього акаунта ще немає пароля.',
   'profile.changePassword.setPasswordLink': 'Задати пароль',
   'profile.providers.title': 'Способи входу',
+  'profile.email.title': 'Email',
+  'profile.email.immutable': 'Email змінити не можна — за ним розпізнається акаунт.',
   'profile.providers.password': 'Пароль',
   'profile.providers.google': 'Google',
   'profile.providers.connected': 'Підключено',
