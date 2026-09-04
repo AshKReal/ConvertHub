@@ -106,13 +106,15 @@ gotenberg --chromium-disable-javascript=true --chromium-allow-list=file:///tmp/.
 ### Переменные окружения (полный список — схема `apps/api/src/config/env.ts`)
 
 Значение вне схемы роняет процесс на старте, а не на первом запросе — это задумано.
-Ниже `convert-hub.vercel.app` — ваш домен Vercel из §7.
+Ниже `convert-hub-api-nine.vercel.app` — реальный домен проекта на Vercel, выданный при создании (§7);
+подставлен как есть, копировать можно без замены. Хост Railway (`convert-hub-api.up.railway.app`) — ещё
+пример: он станет известен в §4 и до тех пор остаётся `REPLACE-WITH-RAILWAY-HOST` в `vercel.json`.
 
 | Переменная | Значение | Примечание |
 |---|---|---|
 | `NODE_ENV` | `production` | отключает `pino-pretty`, включает `Secure` на refresh-cookie |
 | `PORT` | `3000` | |
-| `CORS_ORIGIN` | `https://convert-hub.vercel.app` | **домен Vercel**, не Railway. Больше, чем CORS, — см. ниже |
+| `CORS_ORIGIN` | `https://convert-hub-api-nine.vercel.app` | **домен Vercel**, не Railway. Больше, чем CORS, — см. ниже |
 | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` | |
 | `REDIS_URL` | `${{Redis.REDIS_URL}}` | rate limit + идемпотентность; при недоступности fail-open |
 | `JWT_SECRET` | 32+ случайных символа | `openssl rand -base64 32` |
@@ -131,7 +133,7 @@ gotenberg --chromium-disable-javascript=true --chromium-allow-list=file:///tmp/.
 | `GOTENBERG_URL` | `http://gotenberg.railway.internal:3000` | приватная сеть, не публичный домен |
 | `GOOGLE_CLIENT_ID` | из Google Cloud Console | |
 | `GOOGLE_CLIENT_SECRET` | из Google Cloud Console | |
-| `GOOGLE_REDIRECT_URI` | `https://convert-hub.vercel.app/v1/auth/google/callback` | **домен Vercel**, см. §6 |
+| `GOOGLE_REDIRECT_URI` | `https://convert-hub-api-nine.vercel.app/v1/auth/google/callback` | **домен Vercel**, см. §6 |
 | `SMTP_HOST` | хост провайдера | |
 | `SMTP_PORT` | `587` или `465` | |
 | `SMTP_SECURE` | `false` для 587 (STARTTLS), `true` для 465 | строка `'true'`/`'false'`, не булев — см. докблок в `env.ts` |
@@ -160,9 +162,9 @@ gotenberg --chromium-disable-javascript=true --chromium-allow-list=file:///tmp/.
 
 Google Cloud Console → **APIs & Services → Credentials** → OAuth client ID, тип **Web application**.
 
-- **Authorized redirect URIs**: `https://convert-hub.vercel.app/v1/auth/google/callback` — ровно то же, что в
+- **Authorized redirect URIs**: `https://convert-hub-api-nine.vercel.app/v1/auth/google/callback` — ровно то же, что в
   `GOOGLE_REDIRECT_URI`. Расхождение в одном символе → Google отвечает `redirect_uri_mismatch`.
-- **Authorized JavaScript origins**: `https://convert-hub.vercel.app`
+- **Authorized JavaScript origins**: `https://convert-hub-api-nine.vercel.app`
 
 **Почему домен Vercel, а не Railway — самое неочевидное место деплоя.** Кнопка «Войти через Google» — это
 полная навигация браузера на `/v1/auth/google/start`, то есть на Vercel. Прокси доносит её до Railway, тот
@@ -206,8 +208,8 @@ outputDirectory   apps/web/dist/web/browser
 
 ## 8. Домены
 
-Собственный домен не нужен: используются выданные `convert-hub.vercel.app` и
-`convert-hub-api.up.railway.app`. DNS настраивать нечего.
+Собственный домен не нужен: используются выданные `convert-hub-api-nine.vercel.app` (уже существует) и
+хост Railway вида `convert-hub-api.up.railway.app` (появится в §4). DNS настраивать нечего.
 
 Если домен появится — прикрепить его к проекту Vercel и заменить домен Vercel во всех трёх местах:
 `CORS_ORIGIN`, `GOOGLE_REDIRECT_URI` и Authorized-поля Google. Прокси при этом остаётся рабочим и менять его
@@ -220,7 +222,7 @@ outputDirectory   apps/web/dist/web/browser
 Refresh-токен живёт в cookie `HttpOnly; Secure; SameSite=Lax; Path=/v1/auth`
 (`apps/api/src/modules/auth/auth.controller.ts#setRefreshCookie`, обоснование — `TECH-SPEC.md` §8.2).
 
-`SameSite=Lax` означает: cookie уходит на XHR только если запрос **same-site**. `convert-hub.vercel.app` и
+`SameSite=Lax` означает: cookie уходит на XHR только если запрос **same-site**. `convert-hub-api-nine.vercel.app` и
 `convert-hub-api.up.railway.app` — **разные сайты**: у них нет общего регистрируемого домена. Обращайся фронт
 к Railway напрямую, `POST /v1/auth/refresh` не получил бы cookie никогда, и пользователя выбрасывало бы через
 15 минут — на истечении access-токена.
@@ -285,11 +287,21 @@ curl https://<railway-host>/metrics
 Через прокси — проверяет, что `vercel.json` вообще работает:
 
 ```bash
-curl https://convert-hub.vercel.app/v1/openapi.json
-# → 200 application/json. 404 или HTML → прокси не сработал, правило /v1/:path* не первое
+curl https://convert-hub-api-nine.vercel.app/v1/openapi.json
+# → 200 application/json — всё работает.
+#
+# Два отказа ниже оба дают 404, но причины у них противоположные — различай по телу:
+#
+# → HTML со страницей приложения — прокси не сработал вообще: запрос поймал SPA-fallback,
+#   значит правило /v1/:path* не первое в rewrites — либо vercel.json вообще не прочитан
+#   (Root Directory проекта не корень репозитория — Vercel ищет конфиг именно там, см. §7)
+#
+# → {"status":"error","code":404,"message":"Application not found"} — прокси КАК РАЗ РАБОТАЕТ.
+#   Это ответ края Railway: запрос дошёл, но сервиса с таким именем нет. Обычно значит, что в
+#   vercel.json остался REPLACE-WITH-RAILWAY-HOST (§10 шаг 6). Нормальное состояние до §4.
 ```
 
-В браузере на `https://convert-hub.vercel.app`:
+В браузере на `https://convert-hub-api-nine.vercel.app`:
 
 1. Регистрация → вход. **Перезагрузить страницу** — сессия обязана пережить. Это главная проверка того, ради
    чего взят прокси (§9). Не пережила — cookie не first-party, смотреть, точно ли запрос шёл на домен Vercel.
@@ -299,7 +311,7 @@ curl https://convert-hub.vercel.app/v1/openapi.json
    Отказ при работающих остальных направлениях означает, что `GOTENBERG_URL` не резолвится.
 4. `PDF → DOCX` — проверяет, что Python и `pdf2docx` реально попали в образ.
 5. Файл > 10 МБ — отклоняется зоной загрузки, запрос не уходит.
-6. Открыть `https://convert-hub.vercel.app/reset-password/whatever` **в новой вкладке** — должна открыться
+6. Открыть `https://convert-hub-api-nine.vercel.app/reset-password/whatever` **в новой вкладке** — должна открыться
    страница приложения, а не 404. Это проверка SPA-fallback (§7); тем же путём приходят из письма.
 7. Вход через Google — полный цикл до возврата на фронт. Проверяет §6.
 8. Забыли пароль → письмо реально приходит, ссылка в нём ведёт на домен Vercel (проверяет `CORS_ORIGIN`).
@@ -310,6 +322,9 @@ curl https://convert-hub.vercel.app/v1/openapi.json
 
 | Симптом | Причина |
 |---|---|
+| Сборка Vercel падает на `nest build` и десятках ошибок TS в `apps/api` | Root Directory проекта = `apps/api`. API на Vercel не собирается **по замыслу** — там только статика и прокси (§7). Сами ошибки (`@convert-hub/shared` не найден, нет типов Prisma) — шум: не отработали ни сборка `shared`, ни `prisma generate` |
+| Сборка падает на `Cannot find module '@convert-hub/shared'` в десятках файлов `apps/web` | Root Directory = `apps/web`, а не корень. `packages/shared/dist` в `.gitignore` и собирается `buildCommand`'ом из `vercel.json` — а его Vercel читает **из Root Directory**, то есть не видит (§7) |
+| Сборка падает на «command "build" not found» в корне | Root Directory выставлен верно, но `vercel.json` ещё не на собираемой ветке: в корневом `package.json` скрипта `build` нет вовсе |
 | Пустая белая страница на Vercel | Output Directory `dist/web` вместо `dist/web/browser` |
 | Все запросы фронта в 404, отдаётся HTML вместо JSON | `REPLACE-WITH-RAILWAY-HOST` не заменён, либо правило `/v1/:path*` стоит после SPA-fallback и тот его перехватывает |
 | 404 на `/login`, `/files`, `/reset-password/...` при заходе по прямой ссылке | нет SPA-fallback в `vercel.json` (§7) |
