@@ -4,17 +4,21 @@ import {
   Delete,
   Get,
   HttpCode,
+  Inject,
   Param,
   Patch,
   Post,
   Req,
   Res,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { IdentityProvider } from '@prisma/client';
 import {
   AUTH_RATE_LIMIT_MAX,
   AUTH_RATE_LIMIT_WINDOW_SECONDS,
+  AVATAR_UPLOAD_RATE,
   JWT_REFRESH_TTL_SECONDS,
   changePasswordRequestSchema,
   forgotPasswordRequestSchema,
@@ -50,11 +54,19 @@ import {
 } from '../../common/rate-limit/rate-limiter.service';
 import { env } from '../../config/env';
 import { PrismaService } from '../../prisma/prisma.service';
+import { STORAGE, type Storage } from '../storage/storage.interface';
 import { AccountService } from './account.service';
 import {
+  cleanupAvatarTempDir,
+  createAvatarFileInterceptor,
+} from './avatar-file.interceptor';
+import { AvatarService } from './avatar.service';
+import {
+  AUTH_USER_SELECT,
   AuthService,
   PROVIDER_FROM_PUBLIC,
   PROVIDER_LABELS,
+  presentAuthUser,
   type IssuedSession,
 } from './auth.service';
 import { GoogleOauthService } from './google-oauth.service';
@@ -82,10 +94,12 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly accountService: AccountService,
+    private readonly avatarService: AvatarService,
     private readonly rateLimiter: RateLimiterService,
     private readonly prisma: PrismaService,
     private readonly google: GoogleOauthService,
     private readonly oauthState: OauthStateService,
+    @Inject(STORAGE) private readonly storage: Storage,
   ) {}
 
   @Post('register')
@@ -266,6 +280,43 @@ export class AuthController {
     return this.accountService.updateProfile(userId, body);
   }
 
+  /**
+   * Спека 029. Лимит частоты — по пользователю, не по IP: маршрут за
+   * `JwtGuard`, и ограничиваем мы РЕСУРС (один запрос запускает `sharp` на
+   * двухмегабайтном файле), а не перебор секрета. Обоснование расширения
+   * `AUTH-RULES.md` §2 — в `packages/shared` рядом с самим лимитом.
+   */
+  @Post('avatar')
+  @UseGuards(JwtGuard)
+  // 200, не дефолтный для `@Post` 201: адресуемого ресурса не создаётся —
+  // аватар у пользователя один и заменяется, а тело ответа это сам
+  // пользователь. Тот же приём, что `register`/`login`.
+  @HttpCode(200)
+  @UseInterceptors(createAvatarFileInterceptor())
+  async uploadAvatar(
+    @CurrentUser() userId: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Req() req: Request,
+  ): Promise<AuthUser> {
+    await this.rateLimiter.consume(`avatar:${userId}`, AVATAR_UPLOAD_RATE);
+    try {
+      if (file === undefined) {
+        throw new AppException('INVALID_PARAMETER');
+      }
+      await this.avatarService.replace(userId, file.path);
+      return (await this.loadAuthUser(userId)).authUser;
+    } finally {
+      await cleanupAvatarTempDir(req.avatarTempDir);
+    }
+  }
+
+  @Delete('avatar')
+  @UseGuards(JwtGuard)
+  async deleteAvatar(@CurrentUser() userId: string): Promise<AuthUser> {
+    await this.avatarService.remove(userId);
+    return (await this.loadAuthUser(userId)).authUser;
+  }
+
   @Delete('account')
   @UseGuards(JwtGuard)
   @HttpCode(204)
@@ -287,37 +338,44 @@ export class AuthController {
     // окно между `deleteAccount` и естественным истечением токена реально.
     // Риск принят осознанно: если он случится, это всплывёт как
     // `INTERNAL_ERROR` (026), не тихо.
-    const user = await this.prisma.user.findUniqueOrThrow({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        passwordHash: true,
-        firstName: true,
-        lastName: true,
-        storageUsedBytes: true,
-        identities: { select: { provider: true } },
-      },
-    });
+    const { authUser, storageUsedBytes } = await this.loadAuthUser(userId);
     return {
-      id: user.id,
-      email: user.email,
-      hasPassword: user.passwordHash !== null,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      providers: user.identities.map(
-        (identity) => PROVIDER_LABELS[identity.provider],
-      ),
+      ...authUser,
       // Спека 010. Живой запрос за квотой (TanStack Query `['me']`,
       // apps/web/core/services/me.ts) — единственная причина, по которой
       // `GET /me` вообще остался отдельным маршрутом, не просто полем
       // ответа `login`/`register`/`refresh` (снэпшот сессии, не то же самое).
-      storageUsedBytes: user.storageUsedBytes,
+      // Аватар в неё НЕ входит — он вне квоты (029).
+      storageUsedBytes,
     };
   }
 
   private ipKey(req: Request): string {
     return hashIp(req.ip ?? req.socket.remoteAddress ?? 'unknown');
+  }
+
+  /**
+   * Спека 029. Один читатель на три маршрута — `me`, загрузку и удаление
+   * аватара. Отдаёт и квоту: она нужна только `me`, но собирается тем же
+   * запросом, а не вторым.
+   */
+  private async loadAuthUser(
+    userId: string,
+  ): Promise<{ authUser: AuthUser; storageUsedBytes: number }> {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: {
+        ...AUTH_USER_SELECT,
+        storageUsedBytes: true,
+        identities: { select: { provider: true } },
+      },
+    });
+    const authUser = await presentAuthUser(
+      this.storage,
+      { ...user, hasPassword: user.passwordHash !== null },
+      user.identities.map((identity) => PROVIDER_LABELS[identity.provider]),
+    );
+    return { authUser, storageUsedBytes: user.storageUsedBytes };
   }
 
   private respond(res: Response, session: IssuedSession): AuthResponse {

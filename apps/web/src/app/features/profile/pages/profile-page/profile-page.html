@@ -1,12 +1,20 @@
 @if (user(); as currentUser) {
   <div class="mx-auto flex max-w-[560px] flex-col gap-10 px-6 py-16">
     <div class="flex items-center gap-4">
-      <span
-        class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent-subtle font-heading text-heading-sm text-text"
-        [attr.aria-label]="currentUser.email"
-      >
-        {{ currentUser.email.charAt(0).toUpperCase() }}
-      </span>
+      @if (currentUser.avatarUrl; as avatarUrl) {
+        <img
+          class="h-14 w-14 shrink-0 rounded-full object-cover"
+          [src]="avatarUrl"
+          [alt]="i18n.t('profile.avatar.alt')"
+        />
+      } @else {
+        <span
+          class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent-subtle font-heading text-heading-sm text-text"
+          [attr.aria-label]="currentUser.email"
+        >
+          {{ (currentUser.firstName ?? currentUser.email).charAt(0).toUpperCase() }}
+        </span>
+      }
       <div>
         <h1 class="font-heading text-heading text-text">{{ i18n.t('profile.title') }}</h1>
         <!-- Имени нет у аккаунтов, созданных до 029 — обратной засыпки не было,
@@ -18,6 +26,36 @@
         }
       </div>
     </div>
+
+    <section class="flex flex-col gap-3">
+      <h2 class="font-heading text-heading-sm text-text">{{ i18n.t('profile.avatar.title') }}</h2>
+      <p class="text-body-sm text-text-secondary">
+        {{ i18n.t('profile.avatar.hint', { max: i18n.formatBytes(maxAvatarSize) }) }}
+      </p>
+      <div class="flex items-center gap-3">
+        <!-- Скрытый input + label вместо кнопки: файловый диалог открывается
+             только по действию пользователя над самим input'ом. -->
+        <label
+          class="inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-strong bg-surface px-[18px] text-label text-text transition-colors duration-150 hover:bg-surface-muted"
+          [class.pointer-events-none]="avatarBusy()"
+          [class.opacity-60]="avatarBusy()"
+        >
+          {{ i18n.t('profile.avatar.upload') }}
+          <input
+            type="file"
+            class="sr-only"
+            accept="image/jpeg,image/png"
+            [disabled]="avatarBusy()"
+            (change)="onAvatarPicked($event)"
+          />
+        </label>
+        @if (currentUser.avatarUrl !== null) {
+          <app-button variant="ghost" [disabled]="avatarBusy()" (click)="removeAvatar()">
+            {{ i18n.t('profile.avatar.remove') }}
+          </app-button>
+        }
+      </div>
+    </section>
 
     <section class="flex flex-col gap-4">
       <h2 class="font-heading text-heading-sm text-text">{{ i18n.t('profile.name.title') }}</h2>

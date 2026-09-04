@@ -73,47 +73,56 @@ describe('POST /v1/auth/register, GET /v1/auth/me (e2e)', () => {
   /**
    * Спека 029. Имя собирается в шести местах, и пропущенный маппер не падает,
    * а теряет имя после F5 — то есть именно на `GET /me`, а не на регистрации.
-   * Проверяем через второй запрос, а не через тело `register`.
+   * Проверяем вторым запросом, а не телом `register`.
+   *
+   * Регистрация здесь одна на четыре проверки намеренно: `AUTH_RATE_LIMIT_MAX`
+   * считается по хешу IP, а из теста он у всех спеков один. Отдельная
+   * регистрация на каждый случай упирается в 429 — и это не помеха тестам, а
+   * работающий лимит, ослаблять его ради удобства нельзя.
    */
-  it('возвращает имя в GET /v1/auth/me, не только в ответе регистрации', async () => {
+  it('имя переживает второй запрос, обрезается и меняется через PATCH', async () => {
     const registration = await request(app.getHttpServer())
       .post('/v1/auth/register')
       .send({
-        email: `me-${email}`,
+        email: `profile-${email}`,
         password: 'correcthorsebatterystaple',
-        firstName: 'Грейс',
-        lastName: 'Хоппер',
+        firstName: '  Грейс  ',
+        lastName: '  Хоппер  ',
       })
       .expect(200);
-    const { accessToken } = authResponseSchema.parse(registration.body);
+    const { accessToken, user } = authResponseSchema.parse(registration.body);
 
-    const response = await request(app.getHttpServer())
+    // Пробелы по краям обрезаны, а не сохранены: `trim` в схеме стоит ДО
+    // ограничений длины.
+    expect(user.firstName).toBe('Грейс');
+    expect(user.lastName).toBe('Хоппер');
+
+    const me = await request(app.getHttpServer())
       .get('/v1/auth/me')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
+    expect(me.body).toMatchObject({ firstName: 'Грейс', lastName: 'Хоппер' });
 
-    expect(response.body).toMatchObject({
-      firstName: 'Грейс',
-      lastName: 'Хоппер',
-    });
-  });
-
-  it('обрезает пробелы по краям имени, а не сохраняет их', async () => {
-    const response = await request(app.getHttpServer())
-      .post('/v1/auth/register')
-      .send({
-        email: `trim-${email}`,
-        password: 'correcthorsebatterystaple',
-        firstName: '  Ада  ',
-        lastName: '  Лавлейс  ',
-      })
+    const updated = await request(app.getHttpServer())
+      .patch('/v1/auth/profile')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ firstName: 'Ада', lastName: 'Лавлейс' })
       .expect(200);
+    expect(updated.body).toMatchObject({
+      firstName: 'Ада',
+      lastName: 'Лавлейс',
+    });
 
-    const body = authResponseSchema.parse(response.body);
-    expect(body.user.firstName).toBe('Ада');
-    expect(body.user.lastName).toBe('Лавлейс');
+    // Тот же токен продолжает работать: смена имени сессию не отзывает
+    // (`docs/AUTH.md` — отличие от смены пароля).
+    const after = await request(app.getHttpServer())
+      .get('/v1/auth/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    expect(after.body).toMatchObject({ firstName: 'Ада' });
   });
 
+  /** Лимит частоты не расходуется: схема отклоняет тело до входа в обработчик. */
   it('отклоняет имя из одних пробелов', async () => {
     const response = await request(app.getHttpServer())
       .post('/v1/auth/register')
@@ -127,38 +136,6 @@ describe('POST /v1/auth/register, GET /v1/auth/me (e2e)', () => {
 
     const body = errorBodySchema.parse(response.body);
     expect(body.code).toBe('INVALID_PARAMETER' satisfies ErrorCode);
-  });
-
-  it('PATCH /v1/auth/profile меняет имя и отдаёт обновлённого пользователя', async () => {
-    const registration = await request(app.getHttpServer())
-      .post('/v1/auth/register')
-      .send({
-        email: `patch-${email}`,
-        password: 'correcthorsebatterystaple',
-        firstName: 'Ада',
-        lastName: 'Лавлейс',
-      })
-      .expect(200);
-    const { accessToken } = authResponseSchema.parse(registration.body);
-
-    const updated = await request(app.getHttpServer())
-      .patch('/v1/auth/profile')
-      .set('Authorization', `Bearer ${accessToken}`)
-      .send({ firstName: 'Грейс', lastName: 'Хоппер' })
-      .expect(200);
-
-    expect(updated.body).toMatchObject({
-      firstName: 'Грейс',
-      lastName: 'Хоппер',
-    });
-
-    // Тот же токен продолжает работать: смена имени сессии не отзывает
-    // (docs/AUTH.md — отличие от смены пароля).
-    const after = await request(app.getHttpServer())
-      .get('/v1/auth/me')
-      .set('Authorization', `Bearer ${accessToken}`)
-      .expect(200);
-    expect(after.body).toMatchObject({ firstName: 'Грейс' });
   });
 
   it('rejects a second registration with the same email', async () => {

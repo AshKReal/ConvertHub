@@ -5,6 +5,7 @@ import { JwtGuard } from '../../common/guards/jwt.guard';
 import { MailModule } from '../mail/mail.module';
 import { StorageModule } from '../storage/storage.module';
 import { AccountService } from './account.service';
+import { AvatarService } from './avatar.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { GoogleOauthService } from './google-oauth.service';
@@ -33,6 +34,7 @@ import { TokenService } from './token.service';
   providers: [
     AuthService,
     AccountService,
+    AvatarService,
     TokenService,
     GoogleOauthService,
     OauthStateService,

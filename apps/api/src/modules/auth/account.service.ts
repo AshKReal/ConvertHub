@@ -12,8 +12,10 @@ import { STORAGE, type Storage } from '../storage/storage.interface';
 import { MailService } from '../mail/mail.service';
 import {
   ARGON2_OPTIONS,
+  AUTH_USER_SELECT,
   PROVIDER_LABELS,
   normalizeEmail,
+  presentAuthUser,
 } from './auth.service';
 import { generateOpaqueToken, hashOpaqueToken } from './token.service';
 
@@ -178,25 +180,16 @@ export class AccountService {
       where: { id: userId },
       data: { firstName: input.firstName, lastName: input.lastName },
       select: {
-        id: true,
-        email: true,
-        passwordHash: true,
-        firstName: true,
-        lastName: true,
+        ...AUTH_USER_SELECT,
         identities: { select: { provider: true } },
       },
     });
 
-    return {
-      id: user.id,
-      email: user.email,
-      hasPassword: user.passwordHash !== null,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      providers: user.identities.map(
-        (identity) => PROVIDER_LABELS[identity.provider],
-      ),
-    };
+    return presentAuthUser(
+      this.storage,
+      { ...user, hasPassword: user.passwordHash !== null },
+      user.identities.map((identity) => PROVIDER_LABELS[identity.provider]),
+    );
   }
 
   async deleteAccount(userId: string): Promise<void> {
@@ -205,16 +198,26 @@ export class AccountService {
       select: { storageKey: true },
     });
 
+    // Спека 029. Аватар не строка в `files` — он вне квоты, — поэтому обход
+    // ниже его не видит и без этой строки он остался бы в хранилище навсегда
+    // после удаления аккаунта. Названо в спеке до кода именно потому, что
+    // отсутствие правки ничего не ломает: сирота копится молча.
+    const { avatarKey } = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { avatarKey: true },
+    });
+    const keys = [
+      ...files.map((file) => file.storageKey),
+      ...(avatarKey === null ? [] : [avatarKey]),
+    ];
+
     // Best-effort, по одному — как `saveConversionResult` (003): один
-    // упавший файл не должен остановить удаление остальных/аккаунта.
-    for (const file of files) {
+    // упавший объект не должен остановить удаление остальных/аккаунта.
+    for (const key of keys) {
       try {
-        await this.storage.delete(file.storageKey);
+        await this.storage.delete(key);
       } catch (error) {
-        this.logger.error(
-          `Failed to delete storage object ${file.storageKey}`,
-          error,
-        );
+        this.logger.error(`Failed to delete storage object ${key}`, error);
       }
     }
 

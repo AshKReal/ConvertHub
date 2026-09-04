@@ -93,6 +93,13 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'auth.resetPassword.requestNewLink': 'Запросити нове посилання',
 
   'profile.title': 'Профіль',
+  'profile.avatar.title': 'Аватар',
+  'profile.avatar.alt': 'Ваш аватар',
+  'profile.avatar.hint': 'JPG або PNG, до {max}. Обріжеться по квадрату.',
+  'profile.avatar.upload': 'Завантажити',
+  'profile.avatar.remove': 'Видалити',
+  'profile.avatar.uploaded': 'Аватар оновлено',
+  'profile.avatar.tooLarge': 'Зображення більше за {max}',
   'profile.name.title': "Ім'я",
   'profile.name.save': 'Зберегти',
   'profile.name.success': "Ім'я оновлено",

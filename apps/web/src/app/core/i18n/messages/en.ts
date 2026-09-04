@@ -96,6 +96,13 @@ export const EN_MESSAGES = {
   'auth.resetPassword.requestNewLink': 'Request a new link',
 
   'profile.title': 'Profile',
+  'profile.avatar.title': 'Avatar',
+  'profile.avatar.alt': 'Your avatar',
+  'profile.avatar.hint': 'JPG or PNG, up to {max}. Cropped to a square.',
+  'profile.avatar.upload': 'Upload',
+  'profile.avatar.remove': 'Remove',
+  'profile.avatar.uploaded': 'Avatar updated',
+  'profile.avatar.tooLarge': 'The image is larger than {max}',
   'profile.name.title': 'Name',
   'profile.name.save': 'Save',
   'profile.name.success': 'Name updated',
