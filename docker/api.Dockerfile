@@ -19,8 +19,14 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
 COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
 COPY packages/shared/package.json ./packages/shared/
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile
+# Без `--mount=type=cache` намеренно. Railway (билдер Metal) требует, чтобы id
+# кеша начинался с ключа его сервиса — `id=s/<service-id>-<path>` — и запрещает
+# подставлять туда переменные окружения, то есть UUID пришлось бы вшить в
+# репозиторий. Цена вшивания выше выгоды: при пересоздании сервиса кеш молча
+# перестаёт работать, а слоевой кеш Docker и так пропускает эту строку целиком,
+# пока не менялся pnpm-lock.yaml. Cache-mount экономил только повторное
+# скачивание пакетов при смене лока (INFRA-13).
+RUN pnpm install --frozen-lockfile
 
 # ---------- build: shared → prisma generate → nest build → prod-срез
 FROM deps AS build
