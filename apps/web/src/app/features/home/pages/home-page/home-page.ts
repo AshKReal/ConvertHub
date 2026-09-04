@@ -4,12 +4,11 @@ import { CONVERSION_DIRECTIONS } from '@convert-hub/shared';
 
 import { DIRECTION_DESCRIPTION_KEYS } from '../../../../core/i18n/messages';
 import { I18nService } from '../../../../core/services/i18n';
-import { Button } from '../../../../shared/ui/button/button';
 import { FormatCard } from '../../../../shared/ui/format-card/format-card';
 
 @Component({
   selector: 'app-home-page',
-  imports: [Button, FormatCard, RouterLink],
+  imports: [FormatCard, RouterLink],
   templateUrl: './home-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

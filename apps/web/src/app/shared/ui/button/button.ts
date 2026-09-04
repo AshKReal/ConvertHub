@@ -21,13 +21,22 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   imports: [NgTemplateOutlet, RouterLink],
   templateUrl: './button.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // `inline-flex` внутри shrink-wrap'ится по содержимому, поэтому одного
+  // `w-full` на внутреннем элементе мало: хост `<app-button>` по умолчанию
+  // строчный и сам сжимается. Растягиваем оба — тогда `full` работает и в
+  // колоночном flex (там хост тянется сам), и вне его.
+  host: { '[class.block]': 'full()', '[class.w-full]': 'full()' },
 })
 export class Button {
   variant = input<ButtonVariant>('primary');
   type = input<'button' | 'submit'>('button');
   disabled = input(false);
+  /** Кнопка занимает всю ширину контейнера — формы входа и регистрации. */
+  full = input(false);
   /** Задан — компонент отрисует ссылку: переход обязан быть якорем, а не кнопкой. */
   link = input<ButtonLink | null>(null);
 
-  protected readonly classes = computed(() => `${BASE_CLASSES} ${VARIANT_CLASSES[this.variant()]}`);
+  protected readonly classes = computed(
+    () => `${BASE_CLASSES} ${VARIANT_CLASSES[this.variant()]}${this.full() ? ' w-full' : ''}`,
+  );
 }

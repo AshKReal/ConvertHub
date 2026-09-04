@@ -27,7 +27,9 @@
       [errorMessage]="passwordError"
       autocomplete="current-password"
     />
-    <app-button type="submit" [disabled]="submitting()">{{ i18n.t('auth.login.submit') }}</app-button>
+    <app-button type="submit" [full]="true" [disabled]="submitting()">
+      {{ i18n.t('auth.login.submit') }}
+    </app-button>
 
     <a
       routerLink="/forgot-password"

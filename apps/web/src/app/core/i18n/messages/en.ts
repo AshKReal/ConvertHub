@@ -24,7 +24,6 @@ export const EN_MESSAGES = {
 
   'home.title': 'Convert files in seconds',
   'home.subtitle': 'JPG, PNG, DOCX and PDF — drop a file, pick the format, take the result.',
-  'home.cta': 'Convert JPG → PNG',
   'home.directions.heading': 'Pick a direction',
 
   'direction.open': 'Open {from} → {to}',
@@ -101,6 +100,8 @@ export const EN_MESSAGES = {
   'profile.changePassword.noPassword': "This account doesn't have a password yet.",
   'profile.changePassword.setPasswordLink': 'Set a password',
   'profile.providers.title': 'Connected sign-in methods',
+  'profile.email.title': 'Email',
+  'profile.email.immutable': 'The email cannot be changed — it identifies your account.',
   'profile.providers.password': 'Password',
   'profile.providers.google': 'Google',
   'profile.providers.connected': 'Connected',
