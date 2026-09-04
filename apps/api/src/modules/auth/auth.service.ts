@@ -57,6 +57,15 @@ export interface AuthUserRecord {
   readonly id: string;
   readonly email: string;
   readonly hasPassword: boolean;
+  /**
+   * Спека 029. Обязательны в ТИПЕ, хотя в БД nullable, — намеренно: поля
+   * собираются в шести местах (`register`, `login`, две ветки OAuth,
+   * `findIdentity`, `resolveRefresh`), и пропущенное не падает, а тихо
+   * теряет имя после F5. Обязательность перекладывает поиск этих мест на
+   * компилятор. `null` — аккаунт создан до 029.
+   */
+  readonly firstName: string | null;
+  readonly lastName: string | null;
 }
 
 /**
@@ -90,14 +99,22 @@ export class AuthService {
   async register(input: {
     email: string;
     password: string;
+    firstName: string;
+    lastName: string;
   }): Promise<IssuedSession> {
     const email = normalizeEmail(input.email);
     const passwordHash = await argon2.hash(input.password, ARGON2_OPTIONS);
 
     try {
       const user = await this.prisma.user.create({
-        data: { id: ulid(), email, passwordHash },
-        select: { id: true, email: true },
+        data: {
+          id: ulid(),
+          email,
+          passwordHash,
+          firstName: input.firstName,
+          lastName: input.lastName,
+        },
+        select: { id: true, email: true, firstName: true, lastName: true },
       });
       // Только что создан с паролем и без единой идентичности — тривиально,
       // без отдельного запроса.
@@ -121,7 +138,13 @@ export class AuthService {
     const email = normalizeEmail(input.email);
     const user = await this.prisma.user.findUnique({
       where: { email },
-      select: { id: true, email: true, passwordHash: true },
+      select: {
+        id: true,
+        email: true,
+        passwordHash: true,
+        firstName: true,
+        lastName: true,
+      },
     });
 
     const passwordValid = await argon2.verify(
@@ -143,6 +166,8 @@ export class AuthService {
       id: user.id,
       email: user.email,
       hasPassword: user.passwordHash !== null,
+      firstName: user.firstName,
+      lastName: user.lastName,
     });
   }
 
@@ -184,16 +209,24 @@ export class AuthService {
     const normalizedEmail = normalizeEmail(email);
     const existingUser = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
-      select: { id: true, email: true, passwordHash: true },
+      select: {
+        id: true,
+        email: true,
+        passwordHash: true,
+        firstName: true,
+        lastName: true,
+      },
     });
 
     try {
       if (existingUser === null) {
         // Новый email — коллизии по `User.email` нет, привязывать не к чему.
         const created = await this.prisma.$transaction(async (tx) => {
+          // Имя из Google-профиля не читается (029, «Не входит»): аккаунт
+          // создаётся без него, пользователь дописывает в профиле.
           const user = await tx.user.create({
             data: { id: ulid(), email: normalizedEmail, passwordHash: null },
-            select: { id: true, email: true },
+            select: { id: true, email: true, firstName: true, lastName: true },
           });
           await tx.identity.create({
             data: { id: ulid(), userId: user.id, provider, providerUid },
@@ -212,6 +245,8 @@ export class AuthService {
         id: existingUser.id,
         email: existingUser.email,
         hasPassword: existingUser.passwordHash !== null,
+        firstName: existingUser.firstName,
+        lastName: existingUser.lastName,
       });
     } catch (error) {
       if (
@@ -341,7 +376,13 @@ export class AuthService {
       });
       return tx.user.findUniqueOrThrow({
         where: { id: token.userId },
-        select: { id: true, email: true, passwordHash: true },
+        select: {
+          id: true,
+          email: true,
+          passwordHash: true,
+          firstName: true,
+          lastName: true,
+        },
       });
     });
 
@@ -360,6 +401,8 @@ export class AuthService {
       id: user.id,
       email: user.email,
       hasPassword: user.passwordHash !== null,
+      firstName: user.firstName,
+      lastName: user.lastName,
     });
 
     return {
@@ -404,7 +447,15 @@ export class AuthService {
     const identity = await this.prisma.identity.findUnique({
       where: { provider_providerUid: { provider, providerUid } },
       select: {
-        user: { select: { id: true, email: true, passwordHash: true } },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            passwordHash: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
       },
     });
     return identity === null
@@ -413,6 +464,8 @@ export class AuthService {
           id: identity.user.id,
           email: identity.user.email,
           hasPassword: identity.user.passwordHash !== null,
+          firstName: identity.user.firstName,
+          lastName: identity.user.lastName,
         };
   }
 

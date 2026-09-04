@@ -9,8 +9,38 @@
       </span>
       <div>
         <h1 class="font-heading text-heading text-text">{{ i18n.t('profile.title') }}</h1>
+        <!-- Имени нет у аккаунтов, созданных до 029 — обратной засыпки не было,
+             поэтому строка просто не показывается, а не пустеет. -->
+        @if (currentUser.firstName !== null || currentUser.lastName !== null) {
+          <p class="text-body-sm text-text-secondary">
+            {{ currentUser.firstName }} {{ currentUser.lastName }}
+          </p>
+        }
       </div>
     </div>
+
+    <section class="flex flex-col gap-4">
+      <h2 class="font-heading text-heading-sm text-text">{{ i18n.t('profile.name.title') }}</h2>
+      <form [formGroup]="nameForm" (ngSubmit)="saveName()" class="flex flex-col gap-4" novalidate>
+        <app-input
+          fieldId="profile-first-name"
+          [label]="i18n.t('auth.firstName')"
+          [control]="nameForm.controls.firstName"
+          [errorMessage]="firstNameError"
+          autocomplete="given-name"
+        />
+        <app-input
+          fieldId="profile-last-name"
+          [label]="i18n.t('auth.lastName')"
+          [control]="nameForm.controls.lastName"
+          [errorMessage]="lastNameError"
+          autocomplete="family-name"
+        />
+        <app-button type="submit" [disabled]="savingName()">
+          {{ i18n.t('profile.name.save') }}
+        </app-button>
+      </form>
+    </section>
 
     <!-- Email — только для чтения: он же идентификатор аккаунта и цель ссылки
          восстановления пароля, менять его нечем (сервер такого маршрута не

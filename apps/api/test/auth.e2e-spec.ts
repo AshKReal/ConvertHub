@@ -50,7 +50,12 @@ describe('POST /v1/auth/register, GET /v1/auth/me (e2e)', () => {
   it('registers a new user and issues an access token + refresh cookie', async () => {
     const response = await request(app.getHttpServer())
       .post('/v1/auth/register')
-      .send({ email, password: 'correcthorsebatterystaple' })
+      .send({
+        email,
+        password: 'correcthorsebatterystaple',
+        firstName: 'Ада',
+        lastName: 'Лавлейс',
+      })
       .expect(200);
 
     const body = authResponseSchema.parse(response.body);
@@ -59,14 +64,112 @@ describe('POST /v1/auth/register, GET /v1/auth/me (e2e)', () => {
       email,
       hasPassword: true,
       providers: [],
+      firstName: 'Ада',
+      lastName: 'Лавлейс',
     });
     expect(response.headers['set-cookie']?.[0]).toMatch(/^refresh_token=/);
+  });
+
+  /**
+   * Спека 029. Имя собирается в шести местах, и пропущенный маппер не падает,
+   * а теряет имя после F5 — то есть именно на `GET /me`, а не на регистрации.
+   * Проверяем через второй запрос, а не через тело `register`.
+   */
+  it('возвращает имя в GET /v1/auth/me, не только в ответе регистрации', async () => {
+    const registration = await request(app.getHttpServer())
+      .post('/v1/auth/register')
+      .send({
+        email: `me-${email}`,
+        password: 'correcthorsebatterystaple',
+        firstName: 'Грейс',
+        lastName: 'Хоппер',
+      })
+      .expect(200);
+    const { accessToken } = authResponseSchema.parse(registration.body);
+
+    const response = await request(app.getHttpServer())
+      .get('/v1/auth/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      firstName: 'Грейс',
+      lastName: 'Хоппер',
+    });
+  });
+
+  it('обрезает пробелы по краям имени, а не сохраняет их', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/v1/auth/register')
+      .send({
+        email: `trim-${email}`,
+        password: 'correcthorsebatterystaple',
+        firstName: '  Ада  ',
+        lastName: '  Лавлейс  ',
+      })
+      .expect(200);
+
+    const body = authResponseSchema.parse(response.body);
+    expect(body.user.firstName).toBe('Ада');
+    expect(body.user.lastName).toBe('Лавлейс');
+  });
+
+  it('отклоняет имя из одних пробелов', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/v1/auth/register')
+      .send({
+        email: `blank-${email}`,
+        password: 'correcthorsebatterystaple',
+        firstName: '   ',
+        lastName: 'Лавлейс',
+      })
+      .expect(422);
+
+    const body = errorBodySchema.parse(response.body);
+    expect(body.code).toBe('INVALID_PARAMETER' satisfies ErrorCode);
+  });
+
+  it('PATCH /v1/auth/profile меняет имя и отдаёт обновлённого пользователя', async () => {
+    const registration = await request(app.getHttpServer())
+      .post('/v1/auth/register')
+      .send({
+        email: `patch-${email}`,
+        password: 'correcthorsebatterystaple',
+        firstName: 'Ада',
+        lastName: 'Лавлейс',
+      })
+      .expect(200);
+    const { accessToken } = authResponseSchema.parse(registration.body);
+
+    const updated = await request(app.getHttpServer())
+      .patch('/v1/auth/profile')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ firstName: 'Грейс', lastName: 'Хоппер' })
+      .expect(200);
+
+    expect(updated.body).toMatchObject({
+      firstName: 'Грейс',
+      lastName: 'Хоппер',
+    });
+
+    // Тот же токен продолжает работать: смена имени сессии не отзывает
+    // (docs/AUTH.md — отличие от смены пароля).
+    const after = await request(app.getHttpServer())
+      .get('/v1/auth/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .expect(200);
+    expect(after.body).toMatchObject({ firstName: 'Грейс' });
   });
 
   it('rejects a second registration with the same email', async () => {
     const response = await request(app.getHttpServer())
       .post('/v1/auth/register')
-      .send({ email, password: 'correcthorsebatterystaple' })
+      .send({
+        email,
+        password: 'correcthorsebatterystaple',
+        firstName: 'Ада',
+        lastName: 'Лавлейс',
+      })
       .expect(409);
 
     const body = errorBodySchema.parse(response.body);

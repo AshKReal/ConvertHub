@@ -5,6 +5,20 @@
 
   <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-4" novalidate>
     <app-input
+      fieldId="register-first-name"
+      [label]="i18n.t('auth.firstName')"
+      [control]="form.controls.firstName"
+      [errorMessage]="firstNameError"
+      autocomplete="given-name"
+    />
+    <app-input
+      fieldId="register-last-name"
+      [label]="i18n.t('auth.lastName')"
+      [control]="form.controls.lastName"
+      [errorMessage]="lastNameError"
+      autocomplete="family-name"
+    />
+    <app-input
       fieldId="register-email"
       [label]="i18n.t('auth.email')"
       type="email"

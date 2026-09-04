@@ -47,6 +47,8 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'toast.dismiss': 'Закрити сповіщення',
 
   'auth.email': 'Email',
+  'auth.firstName': "Ім'я",
+  'auth.lastName': 'Прізвище',
   'auth.password': 'Пароль',
   'auth.or': 'або',
   'auth.login.title': 'Вхід',
@@ -60,6 +62,8 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'auth.register.hasAccount': 'Вже є акаунт?',
   'auth.register.loginLink': 'Увійти',
   'auth.error.emailRequired': 'Введіть email',
+  'auth.error.nameRequired': 'Заповніть поле',
+  'auth.error.nameTooLong': 'Не довше {max} символів',
   'auth.error.emailInvalid': 'Введіть коректний email',
   'auth.error.passwordRequired': 'Введіть пароль',
   'auth.error.passwordTooShort': 'Пароль має бути не коротшим за {min} символів',
@@ -89,6 +93,9 @@ export const UK_MESSAGES: Record<MessageKey, string> = {
   'auth.resetPassword.requestNewLink': 'Запросити нове посилання',
 
   'profile.title': 'Профіль',
+  'profile.name.title': "Ім'я",
+  'profile.name.save': 'Зберегти',
+  'profile.name.success': "Ім'я оновлено",
   'profile.changePassword.title': 'Зміна пароля',
   'profile.changePassword.currentPassword': 'Поточний пароль',
   'profile.changePassword.submit': 'Змінити пароль',
