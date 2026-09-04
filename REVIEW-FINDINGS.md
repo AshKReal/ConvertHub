@@ -662,6 +662,20 @@ Mailgun — AUTH требуют все), так что спека 009 в про�
 что и `INFRA-01`.
 - [x]
 
+### INFRA-13 · 🟠 · `Dockerfile` не собирался на Railway: cache-mount без ключа сервиса
+`docker/api.Dockerfile:22` — `RUN --mount=type=cache,id=pnpm,target=/pnpm/store`. Билдер Metal у Railway
+отвергает сборку целиком: `dockerfile invalid: flag '--mount=type=cache,id=pnpm,target=/pnpm/store' is
+missing the cacheKey prefix from its id`. Railway требует `id=s/<service-id>-<path>` и **запрещает
+переменные окружения в id**, то есть UUID сервиса пришлось бы вшить в репозиторий.
+
+Отказ до единой строки сборки: `docker compose` и CI собирали образ без нареканий, а площадка, на которую
+`docs/DEPLOYMENT.md` прямо указывает, не собирала вовсе. Найдено первой же попыткой деплоя `api`.
+
+**Сделано:** cache-mount снят. Вшивать UUID дороже, чем потерять кеш: при пересоздании сервиса он молча
+перестал бы работать, а слоевой кеш Docker и так пропускает `pnpm install`, пока не менялся лок —
+cache-mount экономил только повторное скачивание пакетов при смене лока.
+- [x]
+
 ---
 
 ---

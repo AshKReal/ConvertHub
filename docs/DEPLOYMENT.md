@@ -334,6 +334,7 @@ curl https://convert-hub-api-nine.vercel.app/v1/openapi.json
 | Google-вход возвращает «попробуйте ещё раз», в логах Google чисто | redirect URI указывает на Railway, а не на Vercel — cookie `oauth_state` не доехала (§6) |
 | Ссылка из письма сброса ведёт на голый API | `CORS_ORIGIN` = домен Railway вместо Vercel (§5) |
 | Конвертация большого файла падает, маленький проходит | потолок тела у прокси Vercel (§9) — откат по §9 |
+| Сборка Railway падает до первой строки: `dockerfile invalid: … missing the cacheKey prefix from its id` | В `Dockerfile` есть `--mount=type=cache` с обычным `id`. Railway требует `id=s/<service-id>-<path>` и не даёт подставить переменную — либо вшивать UUID, либо снять кеш. Снят (`INFRA-13`) |
 | Контейнер `api` не стартует, в логе Prisma | БД недоступна в момент старта — `prisma migrate deploy` в entrypoint падает первым |
 | Контейнер `api` не стартует, в логе «SMTP_USER/SMTP_PASSWORD не заданы» | В проде пара обязательна: анонимную отправку не принимает ни один провайдер, и без неё молча ломалось бы только восстановление пароля (`INFRA-12`). Задать обе — или ни одной, но тогда не `production` |
 | Контейнер `api` не стартует, в логе «задаются только парой» | Задана половина `SMTP_USER`/`SMTP_PASSWORD` — почти всегда опечатка (`INFRA-12`) |
