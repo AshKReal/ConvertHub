@@ -8,7 +8,7 @@ import { I18nService } from '../../../../core/services/i18n';
 import { LOGIN_PROVIDER_LABEL_KEYS } from '../../../../core/i18n/messages';
 import { ModalService } from '../../../../core/services/modal';
 import { ToastService } from '../../../../core/services/toast';
-import { MAX_NAME_LENGTH, MIN_PASSWORD_LENGTH } from '@convert-hub/shared';
+import { MAX_AVATAR_SIZE_BYTES, MAX_NAME_LENGTH, MIN_PASSWORD_LENGTH } from '@convert-hub/shared';
 import { Button } from '../../../../shared/ui/button/button';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog/confirm-dialog';
 import { Input } from '../../../../shared/ui/input/input';
@@ -46,6 +46,62 @@ export class ProfilePage {
   });
 
   protected readonly savingName = signal(false);
+  protected readonly avatarBusy = signal(false);
+  protected readonly maxAvatarSize = MAX_AVATAR_SIZE_BYTES;
+
+  /**
+   * Спека 029. Клиентская проверка размера — не замена серверной, а способ не
+   * гнать заведомо отвергнутые два мегабайта по сети (тот же приём, что
+   * `dropzone` применяет к `MAX_FILE_SIZE_BYTES`). Тип не проверяем: сервер
+   * определяет его по сигнатуре, и `accept` в диалоге — подсказка, не гарантия.
+   */
+  protected onAvatarPicked(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    // Диалог закрыли без выбора — не ошибка, просто нечего делать.
+    if (file === undefined || this.avatarBusy()) {
+      return;
+    }
+    // Сбрасываем сразу: без этого повторный выбор ТОГО ЖЕ файла не даст
+    // события `change`, и «попробовать ещё раз» после ошибки не сработает.
+    input.value = '';
+
+    if (file.size > MAX_AVATAR_SIZE_BYTES) {
+      this.toast.show(
+        'danger',
+        this.i18n.t('profile.avatar.tooLarge', {
+          max: this.i18n.formatBytes(MAX_AVATAR_SIZE_BYTES),
+        }),
+      );
+      return;
+    }
+
+    this.avatarBusy.set(true);
+    this.auth.uploadAvatar(file).subscribe({
+      next: () => {
+        this.avatarBusy.set(false);
+        this.toast.show('success', this.i18n.t('profile.avatar.uploaded'));
+      },
+      error: (error: AppError) => {
+        this.avatarBusy.set(false);
+        this.toast.show('danger', error.message);
+      },
+    });
+  }
+
+  protected removeAvatar(): void {
+    if (this.avatarBusy()) {
+      return;
+    }
+    this.avatarBusy.set(true);
+    this.auth.removeAvatar().subscribe({
+      next: () => this.avatarBusy.set(false),
+      error: (error: AppError) => {
+        this.avatarBusy.set(false);
+        this.toast.show('danger', error.message);
+      },
+    });
+  }
 
   protected readonly form = new FormGroup({
     currentPassword: new FormControl('', {

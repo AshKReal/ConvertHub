@@ -24,6 +24,12 @@ model User {
   firstName String? @map("first_name") @db.VarChar(50)
   lastName  String? @map("last_name") @db.VarChar(50)
 
+  /// Спека 029. Ключ объекта в `Storage`, не URL: подписанная ссылка живёт 15
+  /// минут и в колонке протухла бы. Строки в `files` аватар не создаёт —
+  /// он вне квоты (решение владельца), поэтому и уборка при удалении
+  /// аккаунта у него своя, отдельная от обхода `files`.
+  avatarKey String? @map("avatar_key")
+
   storageUsedBytes Int      @default(0) @map("storage_used_bytes")
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")

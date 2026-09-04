@@ -1,15 +1,32 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { IdentityProvider, Prisma } from '@prisma/client';
 import { ulid } from 'ulid';
 import {
   JWT_REFRESH_TTL_SECONDS,
   REFRESH_REUSE_GRACE_SECONDS,
+  SIGNED_URL_TTL_SECONDS,
+  type AuthUser,
   type OauthProvider,
 } from '@convert-hub/shared';
 import { AppException } from '../../common/exceptions/app.exception';
 import { PrismaService } from '../../prisma/prisma.service';
+import { STORAGE, type Storage } from '../storage/storage.interface';
 import { hashOpaqueToken, TokenService } from './token.service';
+
+/**
+ * Спека 029. Поля пользователя, из которых собирается `AuthUser`. Вынесены
+ * в константу, а не переписываются в каждом `select`: их шесть мест, и
+ * забытое поле не падает — оно тихо теряет имя или аватар после F5.
+ */
+export const AUTH_USER_SELECT = {
+  id: true,
+  email: true,
+  passwordHash: true,
+  firstName: true,
+  lastName: true,
+  avatarKey: true,
+} as const;
 
 /**
  * OWASP-минимум для argon2id — `AUTH-RULES.md` называет алгоритм, не
@@ -66,6 +83,12 @@ export interface AuthUserRecord {
    */
   readonly firstName: string | null;
   readonly lastName: string | null;
+  /**
+   * Спека 029. КЛЮЧ, не URL — наружу он не уходит никогда, `presentAuthUser`
+   * меняет его на подписанную ссылку. Обязателен в типе по той же причине,
+   * что имя: собирается в шести местах, пропущенное не падает.
+   */
+  readonly avatarKey: string | null;
 }
 
 /**
@@ -73,8 +96,35 @@ export interface AuthUserRecord {
  * объект (`backend.md`). `providers` не `readonly` — форма совпадает с
  * `AuthUser` (`packages/shared`, `z.array(...)` инферит мутируемый массив).
  */
-export interface SessionUser extends AuthUserRecord {
-  readonly providers: OauthProvider[];
+export type SessionUser = AuthUser;
+
+/**
+ * Спека 029. ЕДИНСТВЕННОЕ место, где `AuthUserRecord` превращается в то, что
+ * уходит клиенту. Раньше их было три (`withProviders`, `AccountService`,
+ * `GET /me`), и с появлением `avatarUrl` стало бы три асинхронных вызова
+ * хранилища вместо одного — а пропущенный выглядел бы как «аватар исчез
+ * после F5», не как поломка.
+ *
+ * `avatarKey` здесь и заканчивается: тип возврата — `AuthUser`, в нём ключа
+ * нет, поэтому утечь он не может даже по невнимательности.
+ */
+export async function presentAuthUser(
+  storage: Storage,
+  record: AuthUserRecord,
+  providers: OauthProvider[],
+): Promise<AuthUser> {
+  return {
+    id: record.id,
+    email: record.email,
+    hasPassword: record.hasPassword,
+    firstName: record.firstName,
+    lastName: record.lastName,
+    providers,
+    avatarUrl:
+      record.avatarKey === null
+        ? null
+        : await storage.getSignedUrl(record.avatarKey, SIGNED_URL_TTL_SECONDS),
+  };
 }
 
 export interface IssuedSession {
@@ -94,6 +144,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tokenService: TokenService,
+    @Inject(STORAGE) private readonly storage: Storage,
   ) {}
 
   async register(input: {
@@ -114,7 +165,7 @@ export class AuthService {
           firstName: input.firstName,
           lastName: input.lastName,
         },
-        select: { id: true, email: true, firstName: true, lastName: true },
+        select: AUTH_USER_SELECT,
       });
       // Только что создан с паролем и без единой идентичности — тривиально,
       // без отдельного запроса.
@@ -138,13 +189,7 @@ export class AuthService {
     const email = normalizeEmail(input.email);
     const user = await this.prisma.user.findUnique({
       where: { email },
-      select: {
-        id: true,
-        email: true,
-        passwordHash: true,
-        firstName: true,
-        lastName: true,
-      },
+      select: AUTH_USER_SELECT,
     });
 
     const passwordValid = await argon2.verify(
@@ -168,6 +213,7 @@ export class AuthService {
       hasPassword: user.passwordHash !== null,
       firstName: user.firstName,
       lastName: user.lastName,
+      avatarKey: user.avatarKey,
     });
   }
 
@@ -209,13 +255,7 @@ export class AuthService {
     const normalizedEmail = normalizeEmail(email);
     const existingUser = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
-      select: {
-        id: true,
-        email: true,
-        passwordHash: true,
-        firstName: true,
-        lastName: true,
-      },
+      select: AUTH_USER_SELECT,
     });
 
     try {
@@ -226,7 +266,7 @@ export class AuthService {
           // создаётся без него, пользователь дописывает в профиле.
           const user = await tx.user.create({
             data: { id: ulid(), email: normalizedEmail, passwordHash: null },
-            select: { id: true, email: true, firstName: true, lastName: true },
+            select: AUTH_USER_SELECT,
           });
           await tx.identity.create({
             data: { id: ulid(), userId: user.id, provider, providerUid },
@@ -247,6 +287,7 @@ export class AuthService {
         hasPassword: existingUser.passwordHash !== null,
         firstName: existingUser.firstName,
         lastName: existingUser.lastName,
+        avatarKey: existingUser.avatarKey,
       });
     } catch (error) {
       if (
@@ -376,13 +417,7 @@ export class AuthService {
       });
       return tx.user.findUniqueOrThrow({
         where: { id: token.userId },
-        select: {
-          id: true,
-          email: true,
-          passwordHash: true,
-          firstName: true,
-          lastName: true,
-        },
+        select: AUTH_USER_SELECT,
       });
     });
 
@@ -403,6 +438,7 @@ export class AuthService {
       hasPassword: user.passwordHash !== null,
       firstName: user.firstName,
       lastName: user.lastName,
+      avatarKey: user.avatarKey,
     });
 
     return {
@@ -446,17 +482,7 @@ export class AuthService {
   ): Promise<AuthUserRecord | null> {
     const identity = await this.prisma.identity.findUnique({
       where: { provider_providerUid: { provider, providerUid } },
-      select: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            passwordHash: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
+      select: { user: { select: AUTH_USER_SELECT } },
     });
     return identity === null
       ? null
@@ -466,6 +492,7 @@ export class AuthService {
           hasPassword: identity.user.passwordHash !== null,
           firstName: identity.user.firstName,
           lastName: identity.user.lastName,
+          avatarKey: identity.user.avatarKey,
         };
   }
 
@@ -475,12 +502,11 @@ export class AuthService {
       where: { userId: user.id },
       select: { provider: true },
     });
-    return {
-      ...user,
-      providers: identities.map(
-        (identity) => PROVIDER_LABELS[identity.provider],
-      ),
-    };
+    return presentAuthUser(
+      this.storage,
+      user,
+      identities.map((identity) => PROVIDER_LABELS[identity.provider]),
+    );
   }
 }
 

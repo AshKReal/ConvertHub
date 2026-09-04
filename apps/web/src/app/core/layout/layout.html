@@ -109,11 +109,19 @@
             >
               <!-- Спека 029. Имя, если оно есть; иначе email — у аккаунтов,
                    созданных до 029, имени нет и обратной засыпки не было. -->
-              <span
-                class="flex h-8 w-8 items-center justify-center rounded-full bg-accent-subtle text-text"
-              >
-                {{ (user.firstName ?? user.email).charAt(0).toUpperCase() }}
-              </span>
+              @if (user.avatarUrl; as avatarUrl) {
+                <img
+                  class="h-8 w-8 rounded-full object-cover"
+                  [src]="avatarUrl"
+                  [alt]="i18n.t('profile.avatar.alt')"
+                />
+              } @else {
+                <span
+                  class="flex h-8 w-8 items-center justify-center rounded-full bg-accent-subtle text-text"
+                >
+                  {{ (user.firstName ?? user.email).charAt(0).toUpperCase() }}
+                </span>
+              }
               <span class="hidden sm:inline">
                 {{ user.firstName !== null ? user.firstName : user.email }}
               </span>

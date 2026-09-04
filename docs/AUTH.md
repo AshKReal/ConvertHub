@@ -29,6 +29,8 @@ providers: []}`, других способов входа тогда ещё не
 | `POST` | `/reset-password` | `{token, password}` | — (`200`) | — | `INVALID_PARAMETER` (422), `INVALID_RESET_TOKEN` (400), `RATE_LIMIT_EXCEEDED` (429) |
 | `PATCH` | `/password` | `{currentPassword, newPassword}` | — (`204`) | `Authorization: Bearer <accessToken>` | `INVALID_PARAMETER` (422), `INVALID_CREDENTIALS` (401 — неверный текущий пароль, в т.ч. для чисто-Google аккаунта без пароля), `UNAUTHENTICATED` (401) |
 | `PATCH` | `/profile` | `{firstName, lastName}` | `user` (`200`) | `Authorization: Bearer <accessToken>` | `INVALID_PARAMETER` (422 — пусто после `trim` или длиннее `MAX_NAME_LENGTH`), `UNAUTHENTICATED` (401) |
+| `POST` | `/avatar` | multipart, поле `avatar` | `user` (`200`) | `Authorization: Bearer <accessToken>` | `INVALID_PARAMETER` (422 — файла нет в теле), `UNSUPPORTED_FILE_TYPE` (415 — не JPG/PNG по сигнатуре), `IMAGE_TOO_LARGE` (422), `FILE_CORRUPTED` (422), `FILE_TOO_LARGE` (413 — больше `MAX_AVATAR_SIZE_BYTES`), `RATE_LIMIT_EXCEEDED` (429), `UNAUTHENTICATED` (401) |
+| `DELETE` | `/avatar` | — | `user` (`200`, идемпотентно) | `Authorization: Bearer <accessToken>` | `UNAUTHENTICATED` (401) |
 | `DELETE` | `/account` | — | — (`204`) | `Authorization: Bearer <accessToken>` | `UNAUTHENTICATED` (401) |
 | `GET` | `/me` | — | `user` | `Authorization: Bearer <accessToken>` | `UNAUTHENTICATED` (401) |
 
@@ -58,7 +60,19 @@ API). `logout` и `DELETE /account` чистят её (`Max-Age=0`).
 `PATCH /profile` (спека 029) сессий НЕ отзывает и письма не шлёт — сознательно, а не по недосмотру. Правило
 §2 привязано к смене способа входа: имя доступа не даёт и не отнимает, поэтому выкидывать другие вкладки
 не за что. Email этим маршрутом не меняется и не меняется нигде: он идентификатор аккаунта и цель ссылки
-восстановления пароля, отдельного маршрута для него нет.
+восстановления пароля, отдельного маршрута для него нет. То же и про аватар.
+
+**`POST /avatar` — единственный auth-маршрут, принимающий файл.** Порядок проверок тот же, что у конвертации,
+и он не косметический: тип по сигнатуре (`magic-bytes.validator`) → разрешение из заголовка
+(`pixel-count.validator`, до декодирования пикселей) → только затем `sharp` читает изображение. Ключ объекта
+генерирует система (`<userId>/avatar/<ULID>.webp`), имя файла от клиента не участвует нигде.
+
+Лимит частоты на нём считается **по пользователю**, а не по хешу IP, как на входе и регистрации. Это
+сознательное расширение `AUTH-RULES.md` §2: перечень в §2 — про перебор секретов, здесь его нет, а
+ограничивается ресурс — один запрос запускает `sharp` на двухмегабайтном файле.
+
+Аватар **не входит в квоту** 300 МБ и не создаёт строки в `files` — поэтому уборка при удалении аккаунта
+берёт его отдельно от обхода файлов (`account.service.ts#deleteAccount`).
 
 `DELETE /account` удаляет аккаунт полностью и необратимо: сохранённые файлы стираются из `Storage` (реальные
 байты, не только строки в БД), история конвертаций и refresh-токены исчезают каскадом вместе со строкой `users`.

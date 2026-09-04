@@ -68,6 +68,12 @@ export const authUserSchema = z.object({
    */
   firstName: z.string().nullable(),
   lastName: z.string().nullable(),
+  /**
+   * Спека 029. Подписанная ссылка, а не ключ в хранилище: `avatarKey` наружу
+   * не отдаётся никогда. Ссылка живёт `SIGNED_URL_TTL_SECONDS`, поэтому она
+   * пересобирается на каждый ответ и в БД не хранится. `null` — аватара нет.
+   */
+  avatarUrl: z.string().nullable(),
 });
 
 export type AuthUser = z.infer<typeof authUserSchema>;

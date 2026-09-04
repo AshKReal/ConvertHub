@@ -82,6 +82,26 @@ export class AuthService {
       .pipe(map((user) => this.user.set(user)));
   }
 
+  /**
+   * Спека 029. `FormData`, поле `avatar` — то же имя, что ждёт
+   * `createAvatarFileInterceptor` на сервере. `Content-Type` не выставляем
+   * руками: браузер сам добавит `multipart/form-data` с `boundary`, а
+   * заданный вручную заголовок этот boundary затрёт и тело станет неразбираемым.
+   */
+  uploadAvatar(file: File): Observable<void> {
+    const form = new FormData();
+    form.append('avatar', file);
+    return this.http
+      .post<AuthUser>(`${AUTH_BASE}/avatar`, form, { withCredentials: true })
+      .pipe(map((user) => this.user.set(user)));
+  }
+
+  removeAvatar(): Observable<void> {
+    return this.http
+      .delete<AuthUser>(`${AUTH_BASE}/avatar`, { withCredentials: true })
+      .pipe(map((user) => this.user.set(user)));
+  }
+
   /** Спека 008. Полная навигация браузера — `href` кнопки Google, не `HttpClient`: колбэк отвечает редиректом, не JSON. */
   googleStartUrl(): string {
     return `${AUTH_BASE}/google/start`;
