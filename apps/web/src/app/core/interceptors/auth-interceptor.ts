@@ -2,10 +2,10 @@ import { HttpErrorResponse, type HttpInterceptorFn } from '@angular/common/http'
 import { inject } from '@angular/core';
 import { catchError, switchMap, throwError } from 'rxjs';
 
-import { environment } from '../../../environments/environment';
+import { API_BASE, isApiUrl } from '../api-url';
 import { AuthService } from '../services/auth';
 
-const AUTH_BASE = `${environment.apiUrl}/v1/auth`;
+const AUTH_BASE = `${API_BASE}/auth`;
 /**
  * Only these four never carry a Bearer token and must never trigger the
  * refresh-and-retry path below — `refresh` itself can legitimately 401
@@ -25,7 +25,7 @@ const UNAUTHENTICATED_AUTH_PATHS = new Set([
 ]);
 
 function isProtectedApiRequest(url: string): boolean {
-  return url.startsWith(environment.apiUrl) && !UNAUTHENTICATED_AUTH_PATHS.has(url);
+  return isApiUrl(url) && !UNAUTHENTICATED_AUTH_PATHS.has(url);
 }
 
 /**

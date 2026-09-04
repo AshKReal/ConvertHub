@@ -1,6 +1,6 @@
 import { type HttpInterceptorFn } from '@angular/common/http';
 
-import { environment } from '../../../environments/environment';
+import { isApiUrl } from '../api-url';
 
 /**
  * Спека 014. Сквозной идентификатор запроса начинается на клиенте
@@ -10,7 +10,7 @@ import { environment } from '../../../environments/environment';
  * после `401` (`auth-interceptor.ts` переотправляет уже помеченный запрос).
  */
 export const requestIdInterceptor: HttpInterceptorFn = (req, next) => {
-  if (!req.url.startsWith(environment.apiUrl)) {
+  if (!isApiUrl(req.url)) {
     return next(req);
   }
   return next(

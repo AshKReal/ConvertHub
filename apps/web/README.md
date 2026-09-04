@@ -1,59 +1,41 @@
-# Web
+# apps/web
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.3.34.
+Фронтенд ConvertHub: Angular 22, standalone-компоненты, сигналы, `OnPush`, Tailwind 4.
 
-## Development server
+Общее описание проекта и быстрый старт — [корневой README](../../README.md). Локальный запуск и переменные
+окружения — [docs/SETUP.md](../../docs/SETUP.md).
 
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Команды
 
 ```bash
-ng generate component component-name
+pnpm dev:web                     # из корня репозитория; http://localhost:4200
+pnpm --filter web build          # прод-сборка → apps/web/dist/web/browser
+pnpm --filter web typecheck      # три проекта: app, spec, e2e
+pnpm --filter web test           # юнит, Vitest через @angular/build:unit-test
+pnpm --filter web e2e            # Playwright, нужен поднятый Postgres
+pnpm --filter web lint
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+Тесты идут на **Vitest**, не Karma: она выпилена спекой 015. `vi.mock` для относительных импортов
+Angular-раннер запрещает — зависимость подменяется через `TestBed` либо выносится параметром функции
+(пример — `src/app/core/api-url.spec.ts`).
 
-```bash
-ng generate --help
-```
+## Что важно знать до правок
 
-## Building
+- `NgModule` не используется. Компоненты standalone, `input()`/`output()` вместо декораторов, `OnPush`
+  обязателен.
+- Именование без суффиксов `.component`/`.service` — `dropzone.ts` / `class Dropzone`.
+- Цвета, отступы, радиусы — только токены из [DESIGN.md](../../DESIGN.md), реализованные в `src/styles.css`.
+  HEX в разметке запрещён; нужного значения нет — спросить, а не подобрать.
+- Каждый экран проверяется в обеих темах: тёмная не выводится инверсией светлой.
+- Стрелки зависимостей идут вниз: `features → shared → core`. Обратно и между фичами — нельзя.
+- Компоненты не вызывают `HttpClient` напрямую, только через `data/*.api.ts` своей фичи, и работают с
+  `AppError`, а не с сырым `HttpErrorResponse`.
+- Серверные данные живут в TanStack Query и не копируются в сигналы; локальное состояние — `signal()`.
 
-To build the project run:
+## Базовый URL API
 
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+`src/environments/environment.ts` — dev, API на отдельном origin (`http://localhost:3000`).
+`environment.prod.ts` — прод, `apiUrl` **пуст**: фронт и API там на одном origin, `/v1/*` проксируется
+Vercel на Railway. Прежде чем трогать это, прочитайте `src/app/core/api-url.ts` — пустая строка ломает
+наивную проверку «наш ли это запрос».

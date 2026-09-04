@@ -236,9 +236,14 @@
 
 ## Стадия 11 — развёртывание
 
-- [ ] **017** `deployment`
-  - [ ] Railway: `api` + `gotenberg` (без публичного домена) + managed Postgres/Redis
-  - [ ] Vercel: Angular, Output Directory `dist/web/browser`
-  - [ ] `CORS_ORIGIN` — конкретный домен, не `*`
-  - [ ] `prisma migrate deploy` при старте контейнера
-  - [ ] README для внешнего читателя
+- [ ] **017** `deployment` — `specs/017-deployment.md`
+  - [x] `vercel.json`: обратный прокси `/v1/*` на Railway, SPA-fallback, запрет кеширования API. Прокси вместо второго домена — иначе refresh-cookie `SameSite=Lax` не ходит между `*.vercel.app` и `*.up.railway.app` (`DEPLOYMENT.md` §9)
+  - [x] Vercel: Output Directory `dist/web/browser`, `packages/shared` собирается первым — задано в `vercel.json`, не в дашборде
+  - [x] Пустой `apiUrl` в `environment.prod.ts` зафиксирован как рабочее значение + фикс проверки происхождения запроса в двух интерцепторах, которую он ломает (`core/api-url.ts`, тест на обе конфигурации)
+  - [x] `enableShutdownHooks()` — без него `SIGTERM` от площадки не закрывает Prisma и Redis; `start:prod` → `dist/src/main` (`INFRA-06`)
+  - [x] `prisma migrate deploy` при старте контейнера — уже в `docker/api-entrypoint.sh` (016)
+  - [x] README для внешнего читателя: корневой + замена болванок `apps/api`/`apps/web` (`DOC-06`)
+  - [x] `docs/DEPLOYMENT.md` переписан под фактическую топологию
+  - [ ] Railway: `api` + `gotenberg` (без публичного домена) + managed Postgres/Redis; хост вписан в `vercel.json`
+  - [ ] `CORS_ORIGIN` и `GOOGLE_REDIRECT_URI` — домен **Vercel**, не Railway (`DEPLOYMENT.md` §5, §6)
+  - [ ] Приёмка владельцем: критерии 1–9 спеки руками, включая «сессия переживает F5» и файл ~9 МБ через прокси
