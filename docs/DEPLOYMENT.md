@@ -6,8 +6,11 @@ managed Postgres/Redis), **Vercel** (Angular-статика), **Cloudflare R2** 
 Документ описывает **что нажать**. Обоснование выбора площадок — `TECH-SPEC.md` §13, границы системы —
 `ARCHITECTURE.md` §10. Локальная разработка — `docs/SETUP.md`, это другой документ.
 
-> **Статус:** написан до первого реального деплоя. Спека 017 не закрыта — это подготовка к ней, а не отчёт о
-> проделанном. Всё ниже проверяемо только в момент, когда вы это делаете.
+> **Статус:** написан до первого реального деплоя, переписан под фактическую топологию (обратный прокси,
+> §9). Спека 017 — `specs/017-deployment.md`. Всё ниже проверяемо только в момент, когда вы это делаете.
+
+**Топология в одну строку:** браузер общается только с Vercel. Статика отдаётся оттуда же, а `/v1/*`
+переписывается на Railway. Своего домена не требуется — но причина не в экономии, а в cookie: §9.
 
 ---
 
@@ -16,33 +19,30 @@ managed Postgres/Redis), **Vercel** (Angular-статика), **Cloudflare R2** 
 | Что | Зачем |
 |---|---|
 | Аккаунт **Railway** | `api` (из `docker/api.Dockerfile`), `gotenberg`, managed Postgres, managed Redis |
-| Аккаунт **Vercel** | статика `apps/web` на CDN |
+| Аккаунт **Vercel** | статика `apps/web` + прокси `/v1/*` на Railway |
 | Аккаунт **Cloudflare** + R2 | объектное хранилище файлов |
 | Проект **Google Cloud** | боевой OAuth 2.0 Client ID (dev-креды не переиспользовать) |
 | **SMTP-провайдер** | восстановление пароля (спека 009). Resend / Postmark / Amazon SES / Mailgun |
-| **Домен** с управлением DNS | `api.example.com` для бэкенда, `example.com` для фронта — см. §9, это не косметика |
+
+Свой домен **не нужен**: прокси делает фронт и API одним origin. Если домен всё же появится — §9 объясняет,
+что тогда можно упростить.
 
 ---
 
-## 1. Правка в коде — блокирует всё остальное
+## 1. Порядок, в котором добываются имена
 
-`apps/web/src/environments/environment.prod.ts` сейчас:
+Здесь замкнутый круг, и он единственная нетривиальная часть деплоя:
 
-```ts
-export const environment = {
-  production: true,
-  apiUrl: '', // TODO(017): реальный домен API при деплое
-};
-```
+- `vercel.json` нужен **хост Railway** (куда проксировать);
+- переменные Railway (`CORS_ORIGIN`, `GOOGLE_REDIRECT_URI`) нужны **домен Vercel**.
 
-Angular вшивает это значение **на этапе сборки**, читать его из переменных окружения в рантайме нечем. Пока
-`apiUrl` пуст — фронт в проде шлёт запросы на собственный origin и получает 404.
+Круг разрывается тем, что Vercel выдаёт домен проекта **сразу при создании**, до первой успешной сборки.
+Отсюда порядок §10: создать проект Vercel → записать домен → поднять Railway → записать хост → вписать его
+в `vercel.json` → задать переменные Railway → собрать.
 
-```ts
-apiUrl: 'https://api.example.com',   // без слэша в конце
-```
-
-Закоммитить до первого деплоя Vercel.
+**`apps/web/src/environments/environment.prod.ts` править не нужно.** `apiUrl` там пуст, и это рабочее
+значение: фронт и API на одном origin, запросы уходят относительными путями. Angular вшивает эту константу
+на этапе сборки, читать её из переменных окружения в рантайме нечем — но при прокси и нечего.
 
 ---
 
@@ -100,17 +100,19 @@ gotenberg --chromium-disable-javascript=true --chromium-allow-list=file:///tmp/.
 **Это безопасно только при одном экземпляре** — при нескольких инстансах миграции пойдут параллельно, тогда
 их надо выносить в отдельный шаг деплоя.
 
-Прикрепить домен: `api.example.com`.
+Домен Railway генерируется (`convert-hub-api.up.railway.app`) — он нужен как цель прокси. Публичным он
+остаётся и напрямую: так проверяются `/health`, `/ready`, `/metrics` мимо Vercel.
 
 ### Переменные окружения (полный список — схема `apps/api/src/config/env.ts`)
 
 Значение вне схемы роняет процесс на старте, а не на первом запросе — это задумано.
+Ниже `convert-hub.vercel.app` — ваш домен Vercel из §7.
 
 | Переменная | Значение | Примечание |
 |---|---|---|
 | `NODE_ENV` | `production` | отключает `pino-pretty`, включает `Secure` на refresh-cookie |
 | `PORT` | `3000` | |
-| `CORS_ORIGIN` | `https://example.com` | **точный домен фронта**, не `*`, без слэша. С `*` cookie с refresh-токеном не отправляется |
+| `CORS_ORIGIN` | `https://convert-hub.vercel.app` | **домен Vercel**, не Railway. Больше, чем CORS, — см. ниже |
 | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` | |
 | `REDIS_URL` | `${{Redis.REDIS_URL}}` | rate limit + идемпотентность; при недоступности fail-open |
 | `JWT_SECRET` | 32+ случайных символа | `openssl rand -base64 32` |
@@ -129,11 +131,16 @@ gotenberg --chromium-disable-javascript=true --chromium-allow-list=file:///tmp/.
 | `GOTENBERG_URL` | `http://gotenberg.railway.internal:3000` | приватная сеть, не публичный домен |
 | `GOOGLE_CLIENT_ID` | из Google Cloud Console | |
 | `GOOGLE_CLIENT_SECRET` | из Google Cloud Console | |
-| `GOOGLE_REDIRECT_URI` | `https://api.example.com/v1/auth/google/callback` | **байт-в-байт** как в Google Console |
+| `GOOGLE_REDIRECT_URI` | `https://convert-hub.vercel.app/v1/auth/google/callback` | **домен Vercel**, см. §6 |
 | `SMTP_HOST` | хост провайдера | |
 | `SMTP_PORT` | `587` или `465` | |
 | `SMTP_SECURE` | `false` для 587 (STARTTLS), `true` для 465 | строка `'true'`/`'false'`, не булев — см. докблок в `env.ts` |
 | `SMTP_FROM` | `noreply@example.com` | должен пройти верификацию у провайдера |
+
+**`CORS_ORIGIN` — это не только CORS.** Тем же значением приложение пользуется как базой фронта: редирект
+после успешного входа через Google (`auth.controller.ts#googleCallback`) и ссылка в письме сброса пароля
+(`account.service.ts#requestPasswordReset`). Укажете сюда домен Railway — письма поведут пользователя на
+голый API. При прокси браузер и так не делает cross-origin запросов, но переменная обязана быть верной.
 
 **Секреты генерировать реально.** При `NODE_ENV=production` контейнер **не стартует**, если `JWT_SECRET`,
 `SIGNED_URL_SECRET` или `METRICS_TOKEN` содержит подстроку `change-me`, `changeme`, `unused-in-s3` или
@@ -151,105 +158,149 @@ gotenberg --chromium-disable-javascript=true --chromium-allow-list=file:///tmp/.
 
 Google Cloud Console → **APIs & Services → Credentials** → OAuth client ID, тип **Web application**.
 
-- **Authorized redirect URIs**: `https://api.example.com/v1/auth/google/callback` — ровно то же, что в
-  `GOOGLE_REDIRECT_URI`. Расхождение в одном символе → Google отвечает `redirect_uri_mismatch`, и это не наша
-  ошибка, а несовпадение настроек.
-- **Authorized JavaScript origins**: `https://example.com`
+- **Authorized redirect URIs**: `https://convert-hub.vercel.app/v1/auth/google/callback` — ровно то же, что в
+  `GOOGLE_REDIRECT_URI`. Расхождение в одном символе → Google отвечает `redirect_uri_mismatch`.
+- **Authorized JavaScript origins**: `https://convert-hub.vercel.app`
+
+**Почему домен Vercel, а не Railway — самое неочевидное место деплоя.** Кнопка «Войти через Google» — это
+полная навигация браузера на `/v1/auth/google/start`, то есть на Vercel. Прокси доносит её до Railway, тот
+ставит cookie `oauth_state` — и браузер приписывает эту cookie **домену Vercel**, потому что именно его он
+запрашивал. Если redirect URI указать на Railway напрямую, Google вернёт браузер на другой сайт, cookie
+`oauth_state` туда не поедет, `state` не сойдётся и вход упадёт. Симптом при этом невнятный: «попробуйте
+ещё раз», без единой ошибки в логах Google.
 
 ---
 
-## 7. Vercel — фронтенд
+## 7. Vercel — фронтенд и прокси
 
-Import Project → этот репозиторий.
+Import Project → этот репозиторий. **Root Directory: корень репозитория.**
 
-| Настройка | Значение |
-|---|---|
-| Framework Preset | Angular |
-| Root Directory | корень репозитория |
-| Install Command | `pnpm install` |
-| Build Command | `pnpm --filter @convert-hub/shared build && pnpm --filter web build` |
-| **Output Directory** | **`apps/web/dist/web/browser`** |
+Настройки сборки задавать в интерфейсе не нужно — они лежат в `vercel.json` и переопределяют дашборд:
+
+```
+installCommand    pnpm install
+buildCommand      pnpm --filter @convert-hub/shared build && pnpm --filter web build
+outputDirectory   apps/web/dist/web/browser
+```
+
+Три вещи, ради которых `vercel.json` вообще существует:
+
+1. **Прокси** — `/v1/:path*` уходит на Railway. Идёт первым правилом. Именно сюда вписывается хост из §5:
+   в репозитории лежит `REPLACE-WITH-RAILWAY-HOST` и его надо заменить.
+2. **SPA-fallback** — всё остальное на `/index.html`. Без него прямая ссылка `/login`, `/files` или
+   `/reset-password/<токен>` из письма даёт 404: файлов по этим путям нет, маршрутизация клиентская.
+   Правила `rewrites` применяются после проверки файловой системы, поэтому реальные ассеты не затеняются.
+3. **Запрет кеширования API** — заголовок `x-vercel-enable-rewrite-caching: 0` на `/v1/:path*`. Ответы
+   внешних rewrite Vercel по умолчанию кеширует, а под этим префиксом живут `/v1/auth/me` и `/v1/files`.
 
 Две вещи, на которых спотыкаются:
 
 - `packages/shared` **обязан собраться первым** — `apps/web` импортирует его через `main`/`types` из `dist/`,
-  которого нет в репозитории.
+  которого нет в репозитории. Это уже учтено в `buildCommand`.
 - Output Directory — **`dist/web/browser`**, не `dist/web`. С Angular 17+ сборщик кладёт результат в
-  подпапку `browser/`; при неверном пути Vercel отдаёт пустую страницу без единой ошибки в логе
-  (`TECH-SPEC.md` §13).
-
-Прикрепить домены: `example.com` и `www.example.com`.
+  подпапку `browser/`; при неверном пути Vercel отдаёт пустую страницу без единой ошибки в логе.
 
 ---
 
-## 8. DNS
+## 8. Домены
 
-| Запись | Куда |
-|---|---|
-| `api.example.com` | CNAME на target, который выдаст Railway |
-| `example.com`, `www` | по инструкции Vercel (A/CNAME) |
+Собственный домен не нужен: используются выданные `convert-hub.vercel.app` и
+`convert-hub-api.up.railway.app`. DNS настраивать нечего.
+
+Если домен появится — прикрепить его к проекту Vercel и заменить домен Vercel во всех трёх местах:
+`CORS_ORIGIN`, `GOOGLE_REDIRECT_URI` и Authorized-поля Google. Прокси при этом остаётся рабочим и менять его
+не обязательно (§9).
 
 ---
 
-## 9. Домены и refresh-cookie — не косметика
+## 9. Почему прокси, а не два домена — не косметика
 
 Refresh-токен живёт в cookie `HttpOnly; Secure; SameSite=Lax; Path=/v1/auth`
-(`apps/api/src/modules/auth/auth.controller.ts#respond`, обоснование — `TECH-SPEC.md` §8.2).
+(`apps/api/src/modules/auth/auth.controller.ts#setRefreshCookie`, обоснование — `TECH-SPEC.md` §8.2).
 
-`SameSite=Lax` означает: cookie уходит на XHR только если запрос **same-site**, то есть у фронта и API общий
-регистрируемый домен.
+`SameSite=Lax` означает: cookie уходит на XHR только если запрос **same-site**. `convert-hub.vercel.app` и
+`convert-hub-api.up.railway.app` — **разные сайты**: у них нет общего регистрируемого домена. Обращайся фронт
+к Railway напрямую, `POST /v1/auth/refresh` не получил бы cookie никогда, и пользователя выбрасывало бы через
+15 минут — на истечении access-токена.
 
-- ✅ `example.com` + `api.example.com` — один сайт, `POST /v1/auth/refresh` с `withCredentials` работает.
-- ❌ `convert-hub.vercel.app` + `convert-hub-api.up.railway.app` — **разные сайты**. Cookie не уйдёт,
-  `restoreSession()` и `ensureFreshToken()` всегда получат `401`, пользователя будет выкидывать после
-  истечения access-токена (15 минут).
+Выходов было три, и выбран третий:
 
-То есть: либо оба на поддоменах одного домена, либо менять cookie на `SameSite=None; Secure` — а это правка
-кода в 🔒-зоне `modules/auth/**`, со всеми последствиями (построчная приёмка, запись в `docs/SECURITY.md` как
-отступление от `AUTH-RULES.md` §2).
+1. **Купить домен** (`example.com` + `api.example.com`) — работает, ничего в коде не меняет. Отклонено:
+   владелец не хочет заводить домен под учебный проект.
+2. **`SameSite=None; Secure`** — правка в 🔒-зоне `modules/auth/**` (два `res.cookie` и два `clearCookie`,
+   которым тоже пришлось бы носить новые атрибуты, иначе logout перестал бы гасить cookie), отступление от
+   `AUTH-RULES.md` §35 с записью в `docs/SECURITY.md` и построчной приёмкой. И главное — **оно не работает**:
+   такая cookie является сторонней, а Safari блокирует сторонние cookie по умолчанию (ITP). Правка в самой
+   чувствительной зоне ради решения, ломающегося у части пользователей.
+3. **Обратный прокси на Vercel** — `vercel.json` переписывает `/v1/*` на Railway. Браузер видит **один
+   origin**, cookie остаётся `SameSite=Lax` и является first-party, `modules/auth/**` не тронут,
+   `AUTH-RULES.md` §35 соблюдён без отступления, работает во всех браузерах.
 
-**Проверить это до деплоя, а не после.**
+**Чем платит вариант 3.** Весь трафик API идёт через прокси Vercel, включая заливку файлов до 10 МБ и
+конвертацию длительностью до 60 секунд. Лимитов на размер тела и таймаут для внешних `rewrites` Vercel в
+документации **не публикует**, а соседний продукт той же площадки — serverless-функции — имеет потолок тела
+4.5 МБ, из-за которого `TECH-SPEC.md` §13 и отклонил serverless для бэкенда. Проверяется это только
+эмпирически, пунктами 2 и 3 в §11.
+
+**Если прокси не потянет** — обращаться к Railway напрямую и закрывать cookie вариантом 1 (домен) либо 2
+(`SameSite=None`, с оговоркой про Safari). Тогда придётся вернуть домен API в `environment.prod.ts` и
+пересобрать фронт: значение вшивается на этапе сборки.
 
 ---
 
 ## 10. Порядок первого деплоя
 
-1. Правка `environment.prod.ts` (§1), коммит.
-2. R2: бакет + токен (§2).
-3. Railway: Postgres → Redis → Gotenberg → `api` (§3–5). Дождаться, пока `api` станет healthy.
-4. Google OAuth: боевой клиент (§6).
-5. Vercel: сборка и деплой (§7).
-6. DNS (§8), дождаться выпуска сертификатов.
+1. **Vercel**: Import Project, Root Directory — корень. Записать выданный домен. Сборка на этом шаге
+   упадёт или отдаст нерабочий прокси — это нормально, хост Railway ещё не вписан.
+2. **R2**: бакет + токен (§2).
+3. **Railway**: Postgres → Redis → Gotenberg → `api` (§3–5). Записать домен `api`.
+4. **Google OAuth**: боевой клиент с redirect URI на домене Vercel (§6).
+5. Переменные Railway (§5) — теперь известны оба имени. Дождаться, пока `api` станет healthy:
+   `curl https://<railway-host>/health`.
+6. Заменить `REPLACE-WITH-RAILWAY-HOST` в `vercel.json`, закоммитить, запушить → Vercel пересоберёт сам.
 7. Smoke (§11).
 
 ---
 
 ## 11. Smoke после деплоя
 
+Напрямую к Railway, мимо прокси:
+
 ```bash
-curl https://api.example.com/health
+curl https://<railway-host>/health
 # → 200 {"status":"ok"}
 
-curl https://api.example.com/ready
+curl https://<railway-host>/ready
 # → 200 {"status":"ok","checks":{"db":"up","redis":"up","storage":"up"}}
 #   storage:"down" → неверные R2-креды или у токена нет прав на HeadBucket (INFRA-03)
 
-curl -H "Authorization: Bearer $METRICS_TOKEN" https://api.example.com/metrics
+curl -H "Authorization: Bearer $METRICS_TOKEN" https://<railway-host>/metrics
 # → 200 text/plain, converthub_* и process_*/nodejs_*
-curl https://api.example.com/metrics
+curl https://<railway-host>/metrics
 # → 401
 ```
 
-В браузере на `https://example.com`:
+Через прокси — проверяет, что `vercel.json` вообще работает:
 
-1. Регистрация → вход. **Перезагрузить страницу** — сессия должна пережить (это и есть проверка §9).
-2. `JPG → PNG`, скачивание результата — проверяет sharp, R2 `PutObject` и presigned-ссылку.
-3. `DOCX → PDF` — проверяет приватную сеть до Gotenberg. Отказ здесь при работающих остальных направлениях
-   означает, что `GOTENBERG_URL` не резолвится.
+```bash
+curl https://convert-hub.vercel.app/v1/openapi.json
+# → 200 application/json. 404 или HTML → прокси не сработал, правило /v1/:path* не первое
+```
+
+В браузере на `https://convert-hub.vercel.app`:
+
+1. Регистрация → вход. **Перезагрузить страницу** — сессия обязана пережить. Это главная проверка того, ради
+   чего взят прокси (§9). Не пережила — cookie не first-party, смотреть, точно ли запрос шёл на домен Vercel.
+2. `JPG → PNG` файлом **около 9 МБ** — проверяет sharp, R2 `PutObject`, presigned-ссылку и заодно потолок
+   тела у прокси (§9). Отказ здесь при работающем маленьком файле = прокси режет тело, нужен откат по §9.
+3. `DOCX → PDF` — самая долгая конвертация; проверяет приватную сеть до Gotenberg и таймаут шлюза Vercel.
+   Отказ при работающих остальных направлениях означает, что `GOTENBERG_URL` не резолвится.
 4. `PDF → DOCX` — проверяет, что Python и `pdf2docx` реально попали в образ.
 5. Файл > 10 МБ — отклоняется зоной загрузки, запрос не уходит.
-6. Вход через Google — полный цикл до возврата на фронт.
-7. Забыли пароль → письмо реально приходит (проверяет SMTP).
+6. Открыть `https://convert-hub.vercel.app/reset-password/whatever` **в новой вкладке** — должна открыться
+   страница приложения, а не 404. Это проверка SPA-fallback (§7); тем же путём приходят из письма.
+7. Вход через Google — полный цикл до возврата на фронт. Проверяет §6.
+8. Забыли пароль → письмо реально приходит, ссылка в нём ведёт на домен Vercel (проверяет `CORS_ORIGIN`).
 
 ---
 
@@ -258,10 +309,14 @@ curl https://api.example.com/metrics
 | Симптом | Причина |
 |---|---|
 | Пустая белая страница на Vercel | Output Directory `dist/web` вместо `dist/web/browser` |
-| Все запросы фронта в 404 / на свой домен | `apiUrl: ''` в `environment.prod.ts` |
-| Логин работает, но через 15 минут выкидывает | Разные сайты у фронта и API — cookie `SameSite=Lax` не уходит (§9) |
-| CORS-ошибка в консоли | `CORS_ORIGIN` со слэшем на конце, с `*`, или не тот домен |
+| Все запросы фронта в 404, отдаётся HTML вместо JSON | `REPLACE-WITH-RAILWAY-HOST` не заменён, либо правило `/v1/:path*` стоит после SPA-fallback и тот его перехватывает |
+| 404 на `/login`, `/files`, `/reset-password/...` при заходе по прямой ссылке | нет SPA-fallback в `vercel.json` (§7) |
+| Логин работает, но через 15 минут выкидывает | refresh-cookie не доходит: запрос ушёл на Railway напрямую, минуя прокси (§9) |
+| Ответы API «залипают», пользователь видит чужие или устаревшие данные | не выставлен `x-vercel-enable-rewrite-caching: 0` — Vercel кеширует внешние rewrite (§7) |
 | `redirect_uri_mismatch` от Google | `GOOGLE_REDIRECT_URI` ≠ Authorized redirect URI |
+| Google-вход возвращает «попробуйте ещё раз», в логах Google чисто | redirect URI указывает на Railway, а не на Vercel — cookie `oauth_state` не доехала (§6) |
+| Ссылка из письма сброса ведёт на голый API | `CORS_ORIGIN` = домен Railway вместо Vercel (§5) |
+| Конвертация большого файла падает, маленький проходит | потолок тела у прокси Vercel (§9) — откат по §9 |
 | Контейнер `api` не стартует, в логе Prisma | БД недоступна в момент старта — `prisma migrate deploy` в entrypoint падает первым |
 | Контейнер `api` не стартует, в логе «содержит плейсхолдер» | В `JWT_SECRET`/`SIGNED_URL_SECRET`/`METRICS_TOKEN` осталось значение из `.env.example` — так и задумано (`INFRA-01`), см. §5 |
 | `DOCX→PDF` даёт `CONVERSION_FAILED`, остальное работает | `GOTENBERG_URL` не резолвится, или у Gotenberg нет writable `HOME`/`/tmp` |
@@ -278,6 +333,8 @@ curl https://api.example.com/metrics
 - Реплика БД на чтение.
 - Больше одного инстанса `api` — миграции при старте безопасны только для одного.
 - Автоскейлинг, бэкапы по расписанию, алерты поверх `/metrics`.
+- Заголовки безопасности (HSTS, CSP, `X-Frame-Options`), которых требует `TECH-SPEC.md` §12: Helmet в
+  приложении не подключён, на площадке они тоже не настроены. Записано находкой `INFRA-10`.
 - Фоновая уборка истёкших файлов и ночная сверка `storage_used_bytes` — не построены
   (`REVIEW-FINDINGS.md`, «Не построено»).
 - Открытые находки безопасности и отказоустойчивости из `REVIEW-FINDINGS.md` — деплой их не закрывает.
