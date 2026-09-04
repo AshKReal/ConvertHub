@@ -36,6 +36,14 @@ async function bootstrap() {
   // Читает refresh-cookie (спека 007) в `req.cookies` — без этого пришлось
   // бы вручную парсить заголовок `Cookie` в каждом месте, где он нужен.
   app.use(cookieParser());
+
+  // Спека 017. Без этого вызова Nest не вешает слушатели сигналов ОС, и
+  // `PrismaService.onModuleDestroy` ($disconnect) и
+  // `RedisModule.onApplicationShutdown` (client.quit) не выполняются никогда:
+  // оба хука написаны, но на `SIGTERM` — а именно его шлёт Railway при
+  // остановке и передеплое — процесс просто умирает с открытыми соединениями.
+  app.enableShutdownHooks();
+
   await app.listen(env.PORT);
 }
 void bootstrap();
