@@ -98,10 +98,4 @@ export class LoginPage {
       },
     });
   }
-
-  /** Единственный оставшийся мок-провайдер — Telegram (`OauthButtons.chosen`, спека 008). */
-  protected onOauth(): void {
-    this.auth.loginAsMockOAuth('demo@convert-hub.io');
-    this.router.navigateByUrl('/');
-  }
 }

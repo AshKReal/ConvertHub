@@ -23,17 +23,4 @@
     </svg>
     {{ i18n.t('auth.oauth.google') }}
   </a>
-
-  <button
-    type="button"
-    class="flex h-10 w-full items-center justify-center gap-2 rounded-md border border-strong bg-surface text-label text-text transition-colors duration-150 hover:bg-surface-muted active:translate-y-px"
-    (click)="chosen.emit('telegram')"
-  >
-    <svg class="h-4.5 w-4.5 shrink-0" viewBox="0 0 24 24" fill="#26A5E4" aria-hidden="true">
-      <path
-        d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.568 8.16-1.844 8.696c-.139.624-.5.777-1.016.484l-2.808-2.07-1.355 1.304c-.15.15-.276.276-.566.276l.202-2.868 5.223-4.72c.227-.202-.05-.314-.352-.112l-6.455 4.064-2.78-.868c-.604-.19-.615-.604.126-.893l10.865-4.188c.503-.188.943.123.76.895z"
-      />
-    </svg>
-    {{ i18n.t('auth.oauth.telegram') }}
-  </button>
 </div>

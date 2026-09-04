@@ -18,8 +18,14 @@ import { environment } from '../../../environments/environment';
  * Спека 008. `password` — не элемент `OauthProvider` (`packages/shared`,
  * пока только `google`) — общий вид строки в профиле (`LOGIN_PROVIDER_LABEL_KEYS`,
  * `core/i18n/messages.ts`) для label'а, не для `AuthUser.providers`.
+ *
+ * Telegram убран: кнопка была визуальной заглушкой и ставила сессию без
+ * токена прямо в сигнал, минуя сервер. `authGuard` такую сессию пропускал,
+ * дальше каждый защищённый запрос ловил 401 — на живом деплое это выглядело
+ * как бесконечно мигающий список файлов. Вернётся вместе с настоящим
+ * потоком, если он получит свой номер спеки (`AUTH-RULES.md` §5).
  */
-export type LoginProvider = 'password' | 'google' | 'telegram';
+export type LoginProvider = 'password' | 'google';
 
 /**
  * Форма пользователя сессии — ровно `AuthUser` (`packages/shared`): реальный
@@ -63,22 +69,6 @@ export class AuthService {
     return this.http
       .post<AuthResponse>(`${AUTH_BASE}/register`, body, { withCredentials: true })
       .pipe(map((response) => this.applySession(response)));
-  }
-
-  /**
-   * Кнопка Telegram (019) остаётся визуальной заглушкой — спека 008 сузила
-   * OAuth до Google (`AUTH-RULES.md` §5), настоящий поток для Telegram ждёт
-   * отдельного номера спеки. Синтетический `id`: реальной учётной записи за
-   * этим входом нет, на сервер ничего не уходит.
-   */
-  loginAsMockOAuth(email: string): void {
-    this.accessToken = null;
-    this.user.set({
-      id: `mock-telegram-${Date.now()}`,
-      email,
-      hasPassword: false,
-      providers: [],
-    });
   }
 
   /** Спека 008. Полная навигация браузера — `href` кнопки Google, не `HttpClient`: колбэк отвечает редиректом, не JSON. */
