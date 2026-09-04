@@ -1,13 +1,20 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { ulid } from 'ulid';
-import { PASSWORD_RESET_TOKEN_TTL_SECONDS } from '@convert-hub/shared';
+import {
+  PASSWORD_RESET_TOKEN_TTL_SECONDS,
+  type AuthUser,
+} from '@convert-hub/shared';
 import { AppException } from '../../common/exceptions/app.exception';
 import { env } from '../../config/env';
 import { PrismaService } from '../../prisma/prisma.service';
 import { STORAGE, type Storage } from '../storage/storage.interface';
 import { MailService } from '../mail/mail.service';
-import { ARGON2_OPTIONS, normalizeEmail } from './auth.service';
+import {
+  ARGON2_OPTIONS,
+  PROVIDER_LABELS,
+  normalizeEmail,
+} from './auth.service';
 import { generateOpaqueToken, hashOpaqueToken } from './token.service';
 
 /**
@@ -152,6 +159,44 @@ export class AccountService {
     ]);
 
     void this.sendPasswordChangedNotice(user.email);
+  }
+
+  /**
+   * Спека 029. Возвращает обновлённый `AuthUser`, а не `void`: клиент показывает
+   * имя в шапке и профиле сразу после сохранения, и следующий `GET /me` ради
+   * двух полей, которые он только что записал, был бы лишним запросом.
+   *
+   * Сессии не отзываются, письмо не шлётся — в отличие от смены пароля
+   * (`AUTH-RULES.md` §2). Имя не способ входа: его смена не даёт и не отнимает
+   * доступ, поэтому и повода выкидывать другие вкладки нет.
+   */
+  async updateProfile(
+    userId: string,
+    input: { firstName: string; lastName: string },
+  ): Promise<AuthUser> {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { firstName: input.firstName, lastName: input.lastName },
+      select: {
+        id: true,
+        email: true,
+        passwordHash: true,
+        firstName: true,
+        lastName: true,
+        identities: { select: { provider: true } },
+      },
+    });
+
+    return {
+      id: user.id,
+      email: user.email,
+      hasPassword: user.passwordHash !== null,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      providers: user.identities.map(
+        (identity) => PROVIDER_LABELS[identity.provider],
+      ),
+    };
   }
 
   async deleteAccount(userId: string): Promise<void> {

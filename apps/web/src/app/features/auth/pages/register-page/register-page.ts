@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { MIN_PASSWORD_LENGTH } from '@convert-hub/shared';
+import { MAX_NAME_LENGTH, MIN_PASSWORD_LENGTH } from '@convert-hub/shared';
 
 import type { AppError } from '../../../../core/interceptors/error-interceptor';
 import { AuthService } from '../../../../core/services/auth';
@@ -24,6 +24,17 @@ export class RegisterPage {
   protected readonly i18n = inject(I18nService);
 
   protected readonly form = new FormGroup({
+    // Спека 029. Обязательны — решение владельца. `maxLength` совпадает с
+    // серверной схемой (`MAX_NAME_LENGTH`, packages/shared): одно число,
+    // подсказка в форме и валидация на сервере читают его же.
+    firstName: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.maxLength(MAX_NAME_LENGTH)],
+    }),
+    lastName: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.maxLength(MAX_NAME_LENGTH)],
+    }),
     email: new FormControl('', {
       nonNullable: true,
       validators: [Validators.required, Validators.email],
@@ -52,6 +63,23 @@ export class RegisterPage {
     );
   }
 
+  protected nameError(control: FormControl<string>): string | null {
+    if (!control.touched || control.valid) {
+      return null;
+    }
+    return control.hasError('required')
+      ? this.i18n.t('auth.error.nameRequired')
+      : this.i18n.t('auth.error.nameTooLong', { max: MAX_NAME_LENGTH });
+  }
+
+  protected get firstNameError(): string | null {
+    return this.nameError(this.form.controls.firstName);
+  }
+
+  protected get lastNameError(): string | null {
+    return this.nameError(this.form.controls.lastName);
+  }
+
   protected get passwordError(): string | null {
     const control = this.form.controls.password;
     if (!control.touched || control.valid) {
@@ -71,7 +99,12 @@ export class RegisterPage {
     this.emailTaken.set(false);
     this.submitting.set(true);
     this.auth
-      .register(this.form.controls.email.value, this.form.controls.password.value)
+      .register({
+        email: this.form.controls.email.value,
+        password: this.form.controls.password.value,
+        firstName: this.form.controls.firstName.value,
+        lastName: this.form.controls.lastName.value,
+      })
       .subscribe({
         next: () => this.router.navigateByUrl('/'),
         error: (error: AppError) => {

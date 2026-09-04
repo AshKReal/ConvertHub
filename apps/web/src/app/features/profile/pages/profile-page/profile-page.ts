@@ -8,7 +8,7 @@ import { I18nService } from '../../../../core/services/i18n';
 import { LOGIN_PROVIDER_LABEL_KEYS } from '../../../../core/i18n/messages';
 import { ModalService } from '../../../../core/services/modal';
 import { ToastService } from '../../../../core/services/toast';
-import { MIN_PASSWORD_LENGTH } from '@convert-hub/shared';
+import { MAX_NAME_LENGTH, MIN_PASSWORD_LENGTH } from '@convert-hub/shared';
 import { Button } from '../../../../shared/ui/button/button';
 import { ConfirmDialog } from '../../../../shared/ui/confirm-dialog/confirm-dialog';
 import { Input } from '../../../../shared/ui/input/input';
@@ -28,6 +28,24 @@ export class ProfilePage {
 
   protected readonly user = this.auth.user;
   protected readonly providerLabelKeys = LOGIN_PROVIDER_LABEL_KEYS;
+
+  /**
+   * Спека 029. Начальные значения из сигнала сессии: страница за `authGuard`,
+   * поэтому на момент создания компонента пользователь уже есть. `?? ''` —
+   * аккаунт, созданный до 029: имени нет, поля пустые.
+   */
+  protected readonly nameForm = new FormGroup({
+    firstName: new FormControl(this.auth.user()?.firstName ?? '', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.maxLength(MAX_NAME_LENGTH)],
+    }),
+    lastName: new FormControl(this.auth.user()?.lastName ?? '', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.maxLength(MAX_NAME_LENGTH)],
+    }),
+  });
+
+  protected readonly savingName = signal(false);
 
   protected readonly form = new FormGroup({
     currentPassword: new FormControl('', {
@@ -82,6 +100,48 @@ export class ProfilePage {
     return control.value !== this.form.controls.newPassword.value
       ? this.i18n.t('auth.resetPassword.mismatch')
       : null;
+  }
+
+  protected nameError(control: FormControl<string>): string | null {
+    if (!control.touched || control.valid) {
+      return null;
+    }
+    return control.hasError('required')
+      ? this.i18n.t('auth.error.nameRequired')
+      : this.i18n.t('auth.error.nameTooLong', { max: MAX_NAME_LENGTH });
+  }
+
+  protected get firstNameError(): string | null {
+    return this.nameError(this.nameForm.controls.firstName);
+  }
+
+  protected get lastNameError(): string | null {
+    return this.nameError(this.nameForm.controls.lastName);
+  }
+
+  /** Спека 029. Сессия не отзывается — имя не способ входа (`docs/AUTH.md`). */
+  protected saveName(): void {
+    this.nameForm.markAllAsTouched();
+    if (this.nameForm.invalid || this.savingName()) {
+      return;
+    }
+
+    this.savingName.set(true);
+    this.auth
+      .updateProfile({
+        firstName: this.nameForm.controls.firstName.value,
+        lastName: this.nameForm.controls.lastName.value,
+      })
+      .subscribe({
+        next: () => {
+          this.savingName.set(false);
+          this.toast.show('success', this.i18n.t('profile.name.success'));
+        },
+        error: (error: AppError) => {
+          this.savingName.set(false);
+          this.toast.show('danger', error.message);
+        },
+      });
   }
 
   /** Спека 008. Реальный список привязанных способов входа — не единственный метод текущей сессии, как в 020. */

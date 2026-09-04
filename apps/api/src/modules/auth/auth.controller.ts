@@ -21,7 +21,9 @@ import {
   loginRequestSchema,
   oauthProviderSchema,
   resetPasswordRequestSchema,
+  updateProfileRequestSchema,
   type AuthResponse,
+  type AuthUser,
   type ChangePasswordRequest,
   type ErrorCode,
   type ForgotPasswordRequest,
@@ -30,6 +32,7 @@ import {
   type OauthProvider,
   type RegisterRequest,
   type ResetPasswordRequest,
+  type UpdateProfileRequest,
   registerRequestSchema,
 } from '@convert-hub/shared';
 import type { Request, Response } from 'express';
@@ -247,6 +250,22 @@ export class AuthController {
     );
   }
 
+  /**
+   * Спека 029. Email сюда не входит — он идентификатор аккаунта и цель ссылки
+   * восстановления, маршрута для его смены нет. Ответ — обновлённый
+   * `AuthUser`, чтобы клиенту не требовался следующий `GET /me` ради двух
+   * полей, которые он только что и записал.
+   */
+  @Patch('profile')
+  @UseGuards(JwtGuard)
+  async updateProfile(
+    @CurrentUser() userId: string,
+    @Body(new ZodValidationPipe(updateProfileRequestSchema))
+    body: UpdateProfileRequest,
+  ): Promise<AuthUser> {
+    return this.accountService.updateProfile(userId, body);
+  }
+
   @Delete('account')
   @UseGuards(JwtGuard)
   @HttpCode(204)
@@ -274,6 +293,8 @@ export class AuthController {
         id: true,
         email: true,
         passwordHash: true,
+        firstName: true,
+        lastName: true,
         storageUsedBytes: true,
         identities: { select: { provider: true } },
       },
@@ -282,6 +303,8 @@ export class AuthController {
       id: user.id,
       email: user.email,
       hasPassword: user.passwordHash !== null,
+      firstName: user.firstName,
+      lastName: user.lastName,
       providers: user.identities.map(
         (identity) => PROVIDER_LABELS[identity.provider],
       ),

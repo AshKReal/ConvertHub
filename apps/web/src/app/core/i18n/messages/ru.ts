@@ -47,6 +47,8 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'toast.dismiss': 'Закрыть уведомление',
 
   'auth.email': 'Email',
+  'auth.firstName': 'Имя',
+  'auth.lastName': 'Фамилия',
   'auth.password': 'Пароль',
   'auth.or': 'или',
   'auth.login.title': 'Вход',
@@ -60,6 +62,8 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'auth.register.hasAccount': 'Уже есть аккаунт?',
   'auth.register.loginLink': 'Войти',
   'auth.error.emailRequired': 'Введите email',
+  'auth.error.nameRequired': 'Заполните поле',
+  'auth.error.nameTooLong': 'Не длиннее {max} символов',
   'auth.error.emailInvalid': 'Введите корректный email',
   'auth.error.passwordRequired': 'Введите пароль',
   'auth.error.passwordTooShort': 'Пароль должен быть не короче {min} символов',
@@ -89,6 +93,9 @@ export const RU_MESSAGES: Record<MessageKey, string> = {
   'auth.resetPassword.requestNewLink': 'Запросить новую ссылку',
 
   'profile.title': 'Профиль',
+  'profile.name.title': 'Имя',
+  'profile.name.save': 'Сохранить',
+  'profile.name.success': 'Имя обновлено',
   'profile.changePassword.title': 'Смена пароля',
   'profile.changePassword.currentPassword': 'Текущий пароль',
   'profile.changePassword.submit': 'Сменить пароль',

@@ -51,6 +51,8 @@ export const EN_MESSAGES = {
   'toast.dismiss': 'Close notification',
 
   'auth.email': 'Email',
+  'auth.firstName': 'First name',
+  'auth.lastName': 'Last name',
   'auth.password': 'Password',
   'auth.or': 'or',
   'auth.login.title': 'Log in',
@@ -64,6 +66,8 @@ export const EN_MESSAGES = {
   'auth.register.hasAccount': 'Already have an account?',
   'auth.register.loginLink': 'Log in',
   'auth.error.emailRequired': 'Enter your email',
+  'auth.error.nameRequired': 'Fill in this field',
+  'auth.error.nameTooLong': 'No longer than {max} characters',
   'auth.error.emailInvalid': 'Enter a valid email',
   'auth.error.passwordRequired': 'Enter your password',
   'auth.error.passwordTooShort': 'Password must be at least {min} characters',
@@ -92,6 +96,9 @@ export const EN_MESSAGES = {
   'auth.resetPassword.requestNewLink': 'Request a new link',
 
   'profile.title': 'Profile',
+  'profile.name.title': 'Name',
+  'profile.name.save': 'Save',
+  'profile.name.success': 'Name updated',
   'profile.changePassword.title': 'Change password',
   'profile.changePassword.currentPassword': 'Current password',
   'profile.changePassword.submit': 'Change password',

@@ -28,6 +28,7 @@ providers: []}`, других способов входа тогда ещё не
 | `POST` | `/forgot-password` | `{email}` | — (`200`, всегда одно и то же тело) | — | `INVALID_PARAMETER` (422), `RATE_LIMIT_EXCEEDED` (429) |
 | `POST` | `/reset-password` | `{token, password}` | — (`200`) | — | `INVALID_PARAMETER` (422), `INVALID_RESET_TOKEN` (400), `RATE_LIMIT_EXCEEDED` (429) |
 | `PATCH` | `/password` | `{currentPassword, newPassword}` | — (`204`) | `Authorization: Bearer <accessToken>` | `INVALID_PARAMETER` (422), `INVALID_CREDENTIALS` (401 — неверный текущий пароль, в т.ч. для чисто-Google аккаунта без пароля), `UNAUTHENTICATED` (401) |
+| `PATCH` | `/profile` | `{firstName, lastName}` | `user` (`200`) | `Authorization: Bearer <accessToken>` | `INVALID_PARAMETER` (422 — пусто после `trim` или длиннее `MAX_NAME_LENGTH`), `UNAUTHENTICATED` (401) |
 | `DELETE` | `/account` | — | — (`204`) | `Authorization: Bearer <accessToken>` | `UNAUTHENTICATED` (401) |
 | `GET` | `/me` | — | `user` | `Authorization: Bearer <accessToken>` | `UNAUTHENTICATED` (401) |
 
@@ -53,6 +54,11 @@ API). `logout` и `DELETE /account` чистят её (`Max-Age=0`).
 И `reset-password`, и `PATCH /password` отзывают ВСЕ refresh-токены пользователя (`AUTH-RULES.md` §2) и шлют
 письмо-уведомление о смене пароля. Уже выданные access-токены при этом не отзываются (см. риск logout в
 `docs/SECURITY.md` — тот же 15-минутный компромисс).
+
+`PATCH /profile` (спека 029) сессий НЕ отзывает и письма не шлёт — сознательно, а не по недосмотру. Правило
+§2 привязано к смене способа входа: имя доступа не даёт и не отнимает, поэтому выкидывать другие вкладки
+не за что. Email этим маршрутом не меняется и не меняется нигде: он идентификатор аккаунта и цель ссылки
+восстановления пароля, отдельного маршрута для него нет.
 
 `DELETE /account` удаляет аккаунт полностью и необратимо: сохранённые файлы стираются из `Storage` (реальные
 байты, не только строки в БД), история конвертаций и refresh-токены исчезают каскадом вместе со строкой `users`.

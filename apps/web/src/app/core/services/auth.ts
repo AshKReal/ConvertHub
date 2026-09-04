@@ -9,6 +9,7 @@ import type {
   OauthProvider,
   RegisterRequest,
   ResetPasswordRequest,
+  UpdateProfileRequest,
 } from '@convert-hub/shared';
 import { catchError, finalize, map, of, shareReplay, tap, type Observable } from 'rxjs';
 
@@ -64,11 +65,21 @@ export class AuthService {
       .pipe(map((response) => this.applySession(response)));
   }
 
-  register(email: string, password: string): Observable<void> {
-    const body: RegisterRequest = { email, password };
+  register(input: RegisterRequest): Observable<void> {
     return this.http
-      .post<AuthResponse>(`${AUTH_BASE}/register`, body, { withCredentials: true })
+      .post<AuthResponse>(`${AUTH_BASE}/register`, input, { withCredentials: true })
       .pipe(map((response) => this.applySession(response)));
+  }
+
+  /**
+   * Спека 029. Ответ — обновлённый `AuthUser`, поэтому сигнал сессии
+   * обновляется прямо здесь: имя видно в шапке сразу, без отдельного
+   * `GET /me` ради двух полей, которые только что записали.
+   */
+  updateProfile(input: UpdateProfileRequest): Observable<void> {
+    return this.http
+      .patch<AuthUser>(`${AUTH_BASE}/profile`, input, { withCredentials: true })
+      .pipe(map((user) => this.user.set(user)));
   }
 
   /** Спека 008. Полная навигация браузера — `href` кнопки Google, не `HttpClient`: колбэк отвечает редиректом, не JSON. */
