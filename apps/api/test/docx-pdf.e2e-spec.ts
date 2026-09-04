@@ -52,7 +52,12 @@ describe.skipIf(!runDocxE2e)('POST /v1/convert — DOCX to PDF (e2e)', () => {
 
     const registration = await request(app.getHttpServer())
       .post('/v1/auth/register')
-      .send({ email, password: 'correcthorsebatterystaple' })
+      .send({
+        email,
+        password: 'correcthorsebatterystaple',
+        firstName: 'Ада',
+        lastName: 'Лавлейс',
+      })
       .expect(200);
     token = authResponseSchema.parse(registration.body).accessToken;
   });
