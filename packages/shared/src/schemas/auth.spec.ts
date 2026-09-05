@@ -8,6 +8,8 @@ describe('registerRequestSchema', () => {
     const result = registerRequestSchema.safeParse({
       email: 'user@example.com',
       password: 'a'.repeat(MIN_PASSWORD_LENGTH),
+      firstName: 'Jane',
+      lastName: 'Doe',
     });
     expect(result.success).toBe(true);
   });
@@ -16,6 +18,8 @@ describe('registerRequestSchema', () => {
     const result = registerRequestSchema.safeParse({
       email: 'user@example.com',
       password: 'a'.repeat(MIN_PASSWORD_LENGTH - 1),
+      firstName: 'Jane',
+      lastName: 'Doe',
     });
     expect(result.success).toBe(false);
   });
@@ -24,6 +28,8 @@ describe('registerRequestSchema', () => {
     const result = registerRequestSchema.safeParse({
       email: 'not-an-email',
       password: 'a'.repeat(MIN_PASSWORD_LENGTH),
+      firstName: 'Jane',
+      lastName: 'Doe',
     });
     expect(result.success).toBe(false);
   });
