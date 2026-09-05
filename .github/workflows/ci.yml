@@ -173,9 +173,10 @@ jobs:
             -e STORAGE_DRIVER=s3 -e S3_ENDPOINT=http://localhost:9000 \
             -e S3_BUCKET=convert-hub -e S3_ACCESS_KEY_ID=minioadmin -e S3_SECRET_ACCESS_KEY=minioadmin \
             -e S3_FORCE_PATH_STYLE=true \
-            -e LOCAL_STORAGE_DIR=/tmp/unused -e SIGNED_URL_SECRET=unused-in-s3-mode-32-plus-characters \
+            -e LOCAL_STORAGE_DIR=/tmp/unused -e SIGNED_URL_SECRET=ci-smoke-signed-url-secret-32-plus-chars \
             -e JWT_SECRET=ci-smoke-jwt-secret-32-plus-characters -e METRICS_TOKEN=ci-metrics-16plus \
             -e SMTP_HOST=localhost -e SMTP_PORT=1025 -e SMTP_FROM=noreply@convert-hub.local \
+            -e SMTP_USER=ci-smoke-user -e SMTP_PASSWORD=ci-smoke-password \
             -e GOOGLE_CLIENT_ID=x.apps.googleusercontent.com -e GOOGLE_CLIENT_SECRET=x \
             -e GOOGLE_REDIRECT_URI=http://localhost:3000/v1/auth/google/callback \
             converthub-api:ci
