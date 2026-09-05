@@ -50,6 +50,8 @@ export { expect };
  */
 export async function registerViaUi(page: Page, email: string): Promise<void> {
   await page.goto('/register');
+  await page.locator('#register-first-name').fill('E2E');
+  await page.locator('#register-last-name').fill('Test');
   await page.locator('#register-email').fill(email);
   await page.locator('#register-password').fill('correcthorsebatterystaple');
   await page.getByRole('button', { name: 'Create account' }).click();
